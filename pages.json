@@ -1,72 +1,35 @@
 {
 	"pages": [
+		// 默认位置
 		{
-			"path": "pages/signIn/index",
-			"style": {
-				"navigationStyle": "custom"
-			}
-		},
-		{
-			"path": "pages/index/index",
+			"path": "pages-location/currentLocaltion/index",
 			"style": {
 				"navigationStyle": "custom",
 				"enablePullDownRefresh": true
 			}
+		},
+		// 单个位置明细
+		{
+			"path": "pages-location/locationDetail/index",
+			"style": {
+				"navigationStyle": "custom"
+			}
+		},
+		// 查询位置
+		{
+			"path": "pages-location/searchLocation/index",
+			"style": {
+				"navigationStyle": "custom"
+			}
 		}
 	],
 	"subPackages": [
-        {
-            "root": "pages-personal",
-            "pages": [
-				{
-					"path": "register/index",
-					"style": {
-						"navigationStyle": "custom"
-					}
-				},
-				{
-					"path": "search/index",
-					"style": {
-						"navigationStyle": "custom"
-					}
-				},
-				{
-					"path": "resetPassword/index",
-					"style": {
-						"navigationStyle": "custom"
-					}
-				},
-				{
-					"path": "home/index",
-					"style": {
-						"navigationStyle": "custom"
-					}
-				},
-				{
-					"path": "userDetail/index",
-					"style": {
-						"navigationStyle": "custom"
-					}
-				}
-            ]
-        },
+		// 聊天
 		{
 			"root": "pages-chat",
 			"pages": [
 				{
-					"path": "friendRequest/index",
-					"style": {
-						"navigationStyle": "custom"
-					}
-				},
-				{
-					"path": "buildGroup/index",
-					"style": {
-						"navigationStyle": "custom"
-					}
-				},
-				{
-					"path": "grouphome/index",
+					"path": "chatList/index",
 					"style": {
 						"navigationStyle": "custom"
 					}
@@ -78,7 +41,19 @@
 					}
 				}
 			]
-		}
+		},
+		// 个人
+        {
+            "root": "pages-personal",
+            "pages": [
+				{
+					"path": "userDetail/index",
+					"style": {
+						"navigationStyle": "custom"
+					}
+				}
+            ]
+        }
     ],
 	"globalStyle": {
 		"navigationBarTextStyle": "black",

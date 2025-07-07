@@ -720,16 +720,4 @@
             height: 100%;
         }
     }
-    /* #endif */
-    
-    /* #ifdef H5 */
-    // 优化H5的点击反馈效果
-    .row, .bt2 {
-        transition: background-color 0.2s;
-        
-        &:active {
-            background-color: #f8f8f8;
-        }
-    }
-    /* #endif */
 </style>
