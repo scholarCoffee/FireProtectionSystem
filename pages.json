@@ -1,0 +1,90 @@
+{
+	"pages": [
+		{
+			"path": "pages/signIn/index",
+			"style": {
+				"navigationStyle": "custom"
+			}
+		},
+		{
+			"path": "pages/index/index",
+			"style": {
+				"navigationStyle": "custom",
+				"enablePullDownRefresh": true
+			}
+		}
+	],
+	"subPackages": [
+        {
+            "root": "pages-personal",
+            "pages": [
+				{
+					"path": "register/index",
+					"style": {
+						"navigationStyle": "custom"
+					}
+				},
+				{
+					"path": "search/index",
+					"style": {
+						"navigationStyle": "custom"
+					}
+				},
+				{
+					"path": "resetPassword/index",
+					"style": {
+						"navigationStyle": "custom"
+					}
+				},
+				{
+					"path": "home/index",
+					"style": {
+						"navigationStyle": "custom"
+					}
+				},
+				{
+					"path": "userDetail/index",
+					"style": {
+						"navigationStyle": "custom"
+					}
+				}
+            ]
+        },
+		{
+			"root": "pages-chat",
+			"pages": [
+				{
+					"path": "friendRequest/index",
+					"style": {
+						"navigationStyle": "custom"
+					}
+				},
+				{
+					"path": "buildGroup/index",
+					"style": {
+						"navigationStyle": "custom"
+					}
+				},
+				{
+					"path": "grouphome/index",
+					"style": {
+						"navigationStyle": "custom"
+					}
+				},
+				{
+					"path": "chatRoom/index",
+					"style": {
+						"navigationStyle": "custom"
+					}
+				}
+			]
+		}
+    ],
+	"globalStyle": {
+		"navigationBarTextStyle": "black",
+		"navigationBarTitleText": "uni-app",
+		"navigationBarBackgroundColor": "#F8F8F8",
+		"backgroundColor": "#F8F8F8"
+	},
+	"uniIdRouter": {}
+}
