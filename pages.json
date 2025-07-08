@@ -1,65 +1,98 @@
 {
-	"pages": [
-		// 默认位置
-		{
-			"path": "pages-location/currentLocaltion/index",
-			"style": {
-				"navigationStyle": "custom",
-				"enablePullDownRefresh": true
-			}
-		},
-		// 单个位置明细
-		{
-			"path": "pages-location/locationDetail/index",
-			"style": {
-				"navigationStyle": "custom"
-			}
-		},
-		// 查询位置
-		{
-			"path": "pages-location/searchLocation/index",
-			"style": {
-				"navigationStyle": "custom"
-			}
-		}
-	],
-	"subPackages": [
-		// 聊天
-		{
-			"root": "pages-chat",
-			"pages": [
-				{
-					"path": "chatList/index",
-					"style": {
-						"navigationStyle": "custom"
-					}
-				},
-				{
-					"path": "chatRoom/index",
-					"style": {
-						"navigationStyle": "custom"
-					}
-				}
-			]
-		},
-		// 个人
+    "pages": [
+        // 默认位置
+        {
+            "path": "pages-location/currentLocaltion/index",
+            "style": {
+                "navigationStyle": "default", // 使用默认导航栏样式
+                "navigationBarTitleText": "当前位置", // 对应顶部标题
+                "enablePullDownRefresh": true
+            }
+        },
+        // 单个位置明细
+        {
+            "path": "pages-location/locationDetail/index",
+            "style": {
+                "navigationStyle": "default",
+                "navigationBarTitleText": "位置详情"
+            }
+        },
+        // 查询位置
+        {
+            "path": "pages-location/searchLocation/index",
+            "style": {
+                "navigationStyle": "default",
+                "navigationBarTitleText": "查询位置"
+            }
+        }
+    ],
+    "subPackages": [
+        // 聊天
+        {
+            "root": "pages-chat",
+            "pages": [
+                {
+                    "path": "chatList/index",
+                    "style": {
+                        "navigationStyle": "default",
+                        "navigationBarTitleText": "聊天列表"
+                    }
+                },
+                {
+                    "path": "chatRoom/index",
+                    "style": {
+                        "navigationStyle": "default",
+                        "navigationBarTitleText": "聊天窗口"
+                    }
+                }
+            ]
+        },
+        // 个人
         {
             "root": "pages-personal",
             "pages": [
-				{
-					"path": "userDetail/index",
-					"style": {
-						"navigationStyle": "custom"
-					}
-				}
+                {
+                    "path": "userDetail/index",
+                    "style": {
+                        "navigationStyle": "default",
+                        "navigationBarTitleText": "个人中心"
+                    }
+                }
             ]
         }
     ],
-	"globalStyle": {
-		"navigationBarTextStyle": "black",
-		"navigationBarTitleText": "uni-app",
-		"navigationBarBackgroundColor": "#F8F8F8",
-		"backgroundColor": "#F8F8F8"
-	},
-	"uniIdRouter": {}
+    "globalStyle": {
+        "navigationBarTextStyle": "black", // 顶部标题文字颜色
+        "navigationBarTitleText": "uni-app", // 默认标题（可被页面覆盖）
+        "navigationBarBackgroundColor": "#FFFFFF", // 顶部导航栏背景颜色
+        "backgroundColor": "#F8F8F8" // 页面背景颜色
+    },
+    "tabBar": {
+		"color": "#707070", // 未选中状态的字体颜色，柔和灰色
+		"backgroundColor": "#F8F8F8", // 底部导航栏背景颜色，浅灰色
+		"borderStyle": "white", // 边框样式，白色更柔和
+        "list": [
+            {
+                "pagePath": "pages-location/currentLocaltion/index",
+                "text": "位置",
+                "iconPath": "static/icons/location/location.png",
+                "selectedIconPath": "static/icons/location/location-active.png"
+            },
+            {
+                "pagePath": "pages-chat/chatList/index",
+                "text": "聊天",
+                "iconPath": "static/icons/chat/chat.png",
+                "selectedIconPath": "static/icons/chat/chat-active.png"
+            },
+            {
+                "pagePath": "pages-personal/userDetail/index",
+                "text": "个人",
+                "iconPath": "static/icons/person/person.png",
+                "selectedIconPath": "static/icons/person/person-active.png"
+            }
+        ],
+		"height": "60px", // 调整底部导航栏高度，增加间距
+		"paddingBottom": "10px" // 为图标和文字增加底部间距
+    },
+    "uniIdRouter": {}
 }
