@@ -6,7 +6,7 @@
             "style": {
                 "navigationStyle": "default", // 使用默认导航栏样式
                 "navigationBarTitleText": "当前位置", // 对应顶部标题
-                "enablePullDownRefresh": true
+                "enablePullDownRefresh": false
             }
         },
         // 单个位置明细
@@ -14,7 +14,8 @@
             "path": "pages-location/locationDetail/index",
             "style": {
                 "navigationStyle": "default",
-                "navigationBarTitleText": "位置详情"
+                "navigationBarTitleText": "位置详情",
+                "enablePullDownRefresh": false
             }
         },
         // 查询位置
@@ -22,7 +23,17 @@
             "path": "pages-location/searchLocation/index",
             "style": {
                 "navigationStyle": "default",
-                "navigationBarTitleText": "查询位置"
+                "navigationBarTitleText": "查询位置",
+                "enablePullDownRefresh": false
+            }
+        },
+        // 外部链接
+        {
+            "path": "pages-location/outWebview/index",
+            "style": {
+                "navigationStyle": "default",
+                "navigationBarTitleText": "720全景云",
+                "enablePullDownRefresh": false
             }
         }
     ],
