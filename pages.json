@@ -13,26 +13,9 @@
         {
             "path": "pages-location/locationDetail/index",
             "style": {
-                "navigationStyle": "default",
-                "navigationBarTitleText": "位置详情",
-                "enablePullDownRefresh": false
-            }
-        },
-        // 查询位置
-        {
-            "path": "pages-location/searchLocation/index",
-            "style": {
-                "navigationStyle": "default",
-                "navigationBarTitleText": "查询位置",
-                "enablePullDownRefresh": false
-            }
-        },
-        // 外部链接
-        {
-            "path": "pages-location/outWebview/index",
-            "style": {
-                "navigationStyle": "default",
-                "navigationBarTitleText": "720全景云",
+                // "navigationStyle": "default",
+                // "navigationBarTitleText": "位置详情",
+                "navigationStyle": "custom",
                 "enablePullDownRefresh": false
             }
         }

@@ -4,7 +4,14 @@
       <!-- 固定顶部和搜索栏 -->
       <view class="fixed-header">
         <view class="search-bar">
-          <input type="text" placeholder="搜索" class="search-input" @focus="goToSearchPage" />
+          <input 
+            type="text" 
+            placeholder="输入地址名称查询" 
+            class="search-input" 
+            @input="handleInput" 
+            @focus="onClickSearch"
+            v-model="searchKeyword"
+          />
         </view>
       </view>
       <!-- Tab 分类 -->
@@ -55,10 +62,9 @@
     </view>
     <!-- 新增：web-view 返回按钮 -->
     <view class="webview-header" v-if="showWebview">
-      <image src="/static/icons/location/back.png" class="back-icon" @click="goBackToList" />
-      <text class="webview-title">720全景云</text>
       <web-view :src="webviewUrl"></web-view>
     </view>
+    <image src="/static/icons/common/back.png" class="back-icon" @click="goBackToList" v-if="showWebview" />
   </view>
 </template>
 
@@ -66,6 +72,12 @@
 export default {
   data() {
     return {
+      // 新增：搜索关键词
+      searchKeyword: '',
+      // 防抖定时器
+      debounceTimer: null,
+      // 原数据备份（用于搜索清空后恢复）
+      originIniDataList: [],
       tabs: [
         { name: '全部', type: 0, icon: '/static/icons/location/all.png', activeIcon: '/static/icons/location/all-active.png' },
         { name: '小区', type: 1, icon: '/static/icons/location/community.png', activeIcon: '/static/icons/location/community-active.png' },
@@ -78,8 +90,8 @@ export default {
         { name: '江苏省常熟市虞山消防', address: '金山大道009号',  link: 'https://www.720yun.com/vr/471j5gmwvu2', type: 1 },
         { name: '江苏省昆山市立讯精密', address: '昆山市立讯精密',  link: 'https://www.720yun.com/vr/471j5gmwvu2', type: 2 },
         { name: '江苏省虎丘区电区', address: '金山大道009号',  link: 'https://www.720yun.com/vr/471j5gmwvu2', type: 2 },
-        { name: '江苏省苏州市姑苏区小商品聚集', address: '金山大道009号',  link: 'https://www.720yun.com/vr/471j5gmwvu2', type: 3 },
-        { name: '江苏省苏州市姑苏区', address: '金山大道009号',  link: 'https://www.720yun.com/vr/471j5gmwvu2', type: 3 },
+        { name: '江苏省苏州市姑苏区小商品聚集', address: '金山大道009号',  link: 'https://www.720yun.com/vr/471j5gmwvu2', type: 2 },
+        { name: '江苏省苏州市姑苏区', address: '金山大道009号',  link: 'https://www.720yun.com/vr/471j5gmwvu2', type: 2 },
         // ...可继续补充更多数据...
       ],
       iniDataList: [], // 当前tab下全部数据
@@ -118,6 +130,42 @@ export default {
     });
   },
   methods: {
+    // 新增：处理输入（防抖）
+    handleInput() {
+      // 清除上一次定时器
+      if (this.debounceTimer) clearTimeout(this.debounceTimer);
+      // 300ms 防抖：停止输入300ms后执行查询
+      this.debounceTimer = setTimeout(() => {
+        this.searchData();
+      }, 300);
+    },
+
+    // 新增：模糊查询逻辑
+    searchData() {
+      const keyword = this.searchKeyword.trim().toLowerCase();
+      // 备份原数据（仅首次搜索时备份）
+      if (!this.originIniDataList.length) {
+        this.originIniDataList = [...this.iniDataList];
+      }
+
+      if (keyword) {
+        // 模糊查询：匹配名称或地址（忽略大小写）
+        const filtered = this.allData.filter(item => {
+          const nameMatch = item.name.toLowerCase().includes(keyword);
+          const addressMatch = item.address.toLowerCase().includes(keyword);
+          return nameMatch || addressMatch;
+        });
+        // 搜索结果替换当前数据
+        this.iniDataList = filtered;
+      } else {
+        // 清空搜索：恢复原Tab数据
+        this.iniDataList = [...this.originIniDataList];
+      }
+
+      // 重置分页和展示列表
+      this.page = 1;
+      this.initShowList();
+    },
     initShowList() {
       // 计算可展示条数
       const maxCount = Math.max(Math.floor(this.contentHeight / this.cardHeight), 1);
@@ -162,7 +210,7 @@ export default {
         this.initShowList();
       });
     },
-    goToSearchPage() {
+    onClickSearch() {
       // 填写关键字查询具体内容
 
     },
@@ -370,5 +418,15 @@ body, html {
 }
 .empty-text {
   font-size: 15px;
+}
+
+.back-icon {
+  position: fixed;
+  top: 13px;
+  left: 10px;
+  width: 20px;
+  height: 20px;
+  z-index: 1000;
+  cursor: pointer;
 }
 </style>

@@ -1,14 +1,5 @@
 <template>
     <view class="content">
-        <view class="top-bar">
-            <view class="top-bar-left" @tap="backOne">
-                <image src="../../static/user/back.png" class="back-img"></image>
-            </view>
-            <view class="top-bar-center"><view class="top-bar-name">{{ name }}</view></view>
-            <view class="top-bar-right">
-                <view class="group-img" v-if="isGroup" @tap="goGroupHome"><image :src="imgurl"></image></view>
-            </view>
-        </view>
         <scroll-view class="chat" scroll-y="true" :scroll-with-animation="scrollAnimation" :scroll-into-view="scrollToView" @scrolltoupper="nextPage">
             <view class="chat-main" :style="{ 'padding-bottom': inputh + 'px'}">
                 <view class="chat-ls" v-for="(item, index) in chatMessage" :key="index" :id="'chatMessage' + item.id">     
