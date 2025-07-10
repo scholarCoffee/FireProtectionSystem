@@ -1,7 +1,9 @@
 import App from './App'
 import Vue from 'vue'
 import io from './componets/socket/weapp.socket.io.js'
+import authMixin from './commons/mixins/authMixin.js'
 
+Vue.mixin(authMixin)
 Vue.config.productionTip = false
 // // 修改为 HTTPS 地址和 443 端口
 // Vue.prototype.serverUrl = 'https://www.xiaobei.space' 
