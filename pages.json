@@ -5,7 +5,7 @@
             "path": "pages-location/currentLocaltion/index",
             "style": {
                 "navigationStyle": "default", // 使用默认导航栏样式
-                "navigationBarTitleText": "当前位置", // 对应顶部标题
+                "navigationBarTitleText": "单位信息", // 对应顶部标题
                 "enablePullDownRefresh": false
             }
         },
@@ -68,7 +68,7 @@
         "list": [
             {
                 "pagePath": "pages-location/currentLocaltion/index",
-                "text": "位置",
+                "text": "单位",
                 "iconPath": "static/icons/location/location.png",
                 "selectedIconPath": "static/icons/location/location-active.png"
             },

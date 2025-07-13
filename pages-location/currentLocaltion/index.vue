@@ -1,18 +1,15 @@
 <template>
   <view class="container">
     <view v-if="!showWebview">
-      <!-- 固定顶部和搜索栏 -->
-      <view class="fixed-header">
-        <view class="search-bar">
-          <input 
-            type="text" 
-            placeholder="输入地址名称查询" 
-            class="search-input" 
-            @input="handleInput" 
-            @focus="onClickSearch"
-            v-model="searchKeyword"
-          />
-        </view>
+      <!-- 搜索栏 -->
+      <view class="search-bar">
+        <input 
+          type="text" 
+          placeholder="输入地址名称查询" 
+          class="search-input" 
+          @input="handleInput" 
+          v-model="searchKeyword"
+        />
       </view>
       <!-- Tab 分类 -->
       <view class="tabs">
@@ -20,12 +17,12 @@
           v-for="(tab, index) in tabs" 
           :key="index" 
           :class="['tab-item', activeTab === index ? 'active' : '']" 
-          @click="changeTab(index)">
+          @click="changeTab(index)"
+        >
           <image :src="activeTab === index ? tab.activeIcon : tab.icon" class="tab-icon" />
           <text :style="{ color: activeTab === index ? '#1296db' : '#707070' }">{{ tab.name }}</text>
         </view>
       </view>
-
       <!-- 内容展示 -->
       <scroll-view 
         class="content" 
@@ -34,23 +31,45 @@
         @scrolltolower="loadMore"
       >
         <template v-if="showList.length > 0">
-          <view v-for="(item, index) in showList" :key="index" class="card">
-            <image :src="showImgUrl(item.type)" class="card-img" @click="goToDetail(item)" />
-            <view class="card-info">
-              <view class="card-row">
-                <text class="card-title" @click="goToDetail(item)">
-                  <image src="/static/icons/location/showLocationImg.png" class="title-icon" />
-                  {{ item.name.length > 20 ? item.name.slice(0, 20) + '…' : item.name }}
+          <view 
+            v-for="(item, index) in showList" 
+            :key="index" 
+            class="card"
+          >
+            <!-- 左侧图片 + 标签区域 -->
+            <view class="card-left">
+              <view class="img-container">
+                <image :src="showImgUrl(item.type)" class="card-img" @click="goToDetail(item)"/>
+                <!-- 安全等级标签 -->
+                <text :class="['safety-tag', getSafeLevelClass(item.safeLevelId)]">
+                  {{ item.safeLevelName }}
                 </text>
               </view>
-              <text class="card-desc">
-                {{ item.address.length > 25 ? item.address.slice(0, 25) + '…' : item.address }}
+            </view>
+            <!-- 右侧信息区域 -->
+            <view class="card-info">
+              <text class="card-title" @click="goToDetail(item)">
+                {{ item.addressName.length > 15 ? item.addressName.slice(0, 15) + '…' : item.addressName }}
               </text>
-              <button class="card-btn" @click="goToExternalLink(item.link)">一键查看</button>
+              <view class="phone-list">
+                <view 
+                  v-for="(phoneItem, phoneIndex) in item.phoneList" 
+                  :key="phoneIndex" 
+                  class="phone-item"
+                  @click="copyPhone(phoneItem.phone)"
+                >
+                  <text class="phone-label">
+                    {{ phoneItem.type === 1 ? '单位负责人：' : '消防负责人：' }}
+                  </text>
+                  <text class="phone-number">{{ phoneItem.phone }}</text>
+                  <image src="/static/icons/common/copy.png" class="copy-icon" />
+                </view>
+              </view>
+              <button class="card-btn" @click="goToExternalLink(item.allSenceLink)">一键查看</button>
             </view>
           </view>
           <view class="load-more">{{ loadingText }}</view>
-          <view style="height: 140px;"></view> <!-- 底部留白 -->
+          <view style="height: 140px;"></view> 
         </template>
         <template v-else>
           <view class="empty-data">
@@ -69,107 +88,62 @@
 </template>
 
 <script>
+import { locationInfo, locationTabList } from '@/commons/mock/index.js';
 export default {
   data() {
     return {
-      // 新增：搜索关键词
       searchKeyword: '',
-      // 防抖定时器
       debounceTimer: null,
-      // 原数据备份（用于搜索清空后恢复）
-      originIniDataList: [],
-      tabs: [
-        { name: '全部', type: 0, icon: '/static/icons/location/all.png', activeIcon: '/static/icons/location/all-active.png' },
-        { name: '小区', type: 1, icon: '/static/icons/location/community.png', activeIcon: '/static/icons/location/community-active.png' },
-        { name: '厂房', type: 2, icon: '/static/icons/location/factory.png', activeIcon: '/static/icons/location/factory-active.png' },
-        { name: '商铺', type: 3, icon: '/static/icons/location/shop.png', activeIcon: '/static/icons/location/shop-active.png' }
-      ],
-      activeTab: 0,
-      allData: [
-        { name: '江苏省苏州市工业园区东方之门', address: '金山大道009号222222222222222222222222222222222',  link: 'https://www.720yun.com/vr/471j5gmwvu2', type: 1 },
-        { name: '江苏省常熟市虞山消防', address: '金山大道009号',  link: 'https://www.720yun.com/vr/471j5gmwvu2', type: 1 },
-        { name: '江苏省昆山市立讯精密', address: '昆山市立讯精密',  link: 'https://www.720yun.com/vr/471j5gmwvu2', type: 2 },
-        { name: '江苏省虎丘区电区', address: '金山大道009号',  link: 'https://www.720yun.com/vr/471j5gmwvu2', type: 2 },
-        { name: '江苏省苏州市姑苏区小商品聚集', address: '金山大道009号',  link: 'https://www.720yun.com/vr/471j5gmwvu2', type: 2 },
-        { name: '江苏省苏州市姑苏区', address: '金山大道009号',  link: 'https://www.720yun.com/vr/471j5gmwvu2', type: 2 },
-        // ...可继续补充更多数据...
-      ],
-      iniDataList: [], // 当前tab下全部数据
-      showList: [], // 当前已加载数据
+      tabs: locationTabList,
+      activeTab: 0, 
+      iniDataList: [],
+      showList: [],
       page: 1,
       pageSize: 10,
       loadingText: '向下拉取更多',
       loading: false,
       finished: false,
-      contentHeight: 0, // 内容区高度
-      cardHeight: 130,  // 单个card高度（可根据实际调整）
-      showWebview: false, // 控制 web-view 显示/隐藏
-      webviewUrl: ''      // 外部链接地址
+      showWebview: false,
+      webviewUrl: '',
     };
   },
   computed: {
     showImgUrl() {
-      // 根据type显示
       return type => {
-        return type === 1 ? '/static/icons/location/showCommunity.png' : type === 2 ? '/static/icons/location/showFactory.png' : '/static/icons/location/showShop.png';
+        return type === 1 ? '/static/icons/location/showCommunity.png' : 
+               type === 2 ? '/static/icons/location/showFactory.png' : 
+               '/static/icons/location/showShop.png';
       }
     }
   },
   onShow() {
-    // 同样也可以在页面显示时关闭下拉刷新
     uni.stopPullDownRefresh();
   },
   mounted() {
-    this.changeTab(0); // 默认显示全部
-    this.$nextTick(() => {
-      const query = uni.createSelectorQuery().in(this);
-      query.select('.content').boundingClientRect(rect => {
-        this.contentHeight = rect.height;
-        this.initShowList();
-      }).exec();
-    });
+    this.changeTab(0); 
   },
   methods: {
-    // 新增：处理输入（防抖）
     handleInput() {
-      // 清除上一次定时器
       if (this.debounceTimer) clearTimeout(this.debounceTimer);
-      // 300ms 防抖：停止输入300ms后执行查询
       this.debounceTimer = setTimeout(() => {
         this.searchData();
       }, 300);
     },
-
-    // 新增：模糊查询逻辑
     searchData() {
       const keyword = this.searchKeyword.trim().toLowerCase();
-      // 备份原数据（仅首次搜索时备份）
-      if (!this.originIniDataList.length) {
-        this.originIniDataList = [...this.iniDataList];
-      }
-
       if (keyword) {
-        // 模糊查询：匹配名称或地址（忽略大小写）
-        const filtered = this.allData.filter(item => {
-          const nameMatch = item.name.toLowerCase().includes(keyword);
-          const addressMatch = item.address.toLowerCase().includes(keyword);
-          return nameMatch || addressMatch;
+        this.iniDataList = locationInfo.filter(item => {
+          const nameMatch = item.addressName.toLowerCase().includes(keyword);
+          return nameMatch;
         });
-        // 搜索结果替换当前数据
-        this.iniDataList = filtered;
       } else {
-        // 清空搜索：恢复原Tab数据
-        this.iniDataList = [...this.originIniDataList];
+        this.iniDataList = locationInfo.filter(item => item.type === this.activeTab + 1);
       }
-
-      // 重置分页和展示列表
       this.page = 1;
       this.initShowList();
     },
     initShowList() {
-      // 计算可展示条数
-      const maxCount = Math.max(Math.floor(this.contentHeight / this.cardHeight), 1);
-      const count = Math.min(this.pageSize, maxCount, this.iniDataList.length);
+      const count = Math.min(this.pageSize, this.iniDataList.length);
       this.showList = this.iniDataList.slice(0, count);
       this.page = 1;
       this.finished = this.iniDataList.length <= count;
@@ -201,18 +175,39 @@ export default {
     },
     changeTab(index) {
       this.activeTab = index;
-      if (index === 0) {
-        this.iniDataList = this.allData;
-      } else {
-        this.iniDataList = this.allData.filter(item => item.type === index);
+      // 选中tab后，内容展示滚动到顶部
+      uni.showToast({
+        title: '正在加载中...',
+        icon: 'none',
+        duration: 1500
+      })
+      this.iniDataList = locationInfo.filter(item => item.type === index + 1);
+      this.initShowList();
+      // uni.hideToast();
+    },
+    getSafeLevelClass(safeLevelId) {
+      switch (safeLevelId) {
+        case 1: return 'excellent'; 
+        case 2: return 'good';      
+        case 3: return 'normal';    
+        case 4: return 'danger';    
+        default: return '';
       }
-      this.$nextTick(() => {
-        this.initShowList();
+    },
+    copyPhone(phone) {
+      uni.setClipboardData({
+        data: phone,
+        success() {
+          uni.showToast({
+            title: '已复制',
+            icon: 'none',
+            duration: 1500
+          });
+        }
       });
     },
-    onClickSearch() {
-      // 填写关键字查询具体内容
-
+    goToDetail(item) {
+      uni.navigateTo({ url: '/pages-location/locationDetail/index?id=' + item.id });
     },
     goToExternalLink(link) {
       this.webviewUrl = decodeURIComponent(link);
@@ -222,9 +217,6 @@ export default {
     goBackToList() {
       this.showWebview = false;
       this.webviewUrl = '';
-    },
-    goToDetail(item) {
-      uni.navigateTo({ url: '/pages-location/locationDetail/index?id=' + item.id });
     }
   }
 };
@@ -233,7 +225,7 @@ export default {
 <style>
 .container {
   height: 100vh;
-  overflow: hidden; /* 只让内容区滚动 */
+  overflow: hidden;
 }
 .fixed-header {
   position: sticky;
@@ -273,7 +265,7 @@ export default {
   justify-content: space-around;
   align-items: center;
   background-color: #FFFFFF;
-  padding: 5px 0;
+  padding: 10px 0 5px 0;
   box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
 }
 .tab-item {
@@ -292,12 +284,12 @@ export default {
   margin-bottom: 2px;
 }
 .content {
-  height: calc(100vh - 80px); /* 顶部高度根据实际调整 */
+  height: calc(100vh - 80px);
   overflow-y: auto;
   overflow-x: hidden;
 }
 body, html {
-  overflow: hidden !important; /* 防止外部滚动条 */
+  overflow: hidden !important;
 }
 .card {
   display: flex;
@@ -306,16 +298,41 @@ body, html {
   margin: 10px 16px;
   box-shadow: 0 2px 8px rgba(0,0,0,0.06);
   overflow: hidden;
-  min-height: 120px;
+  height: 140px;
+}
+
+/* 左侧图片区域（包含左上角标签） */
+.card-left {
+  margin-right: 10px;
+}
+.img-container {
+  position: relative; /* 相对定位，用于标签绝对定位 */
+  margin: 10px;
 }
 .card-img {
-  width: 100px;
-  height: 100px;
+  width: 120px;
+  height: 120px;
   object-fit: cover;
-  margin: 10px;
   border-radius: 6px;
   cursor: pointer;
 }
+/* 安全等级标签（左上角） */
+.safety-tag {
+  position: absolute; /* 绝对定位到图片左上角 */
+  top: 0px;
+  left: 0px;
+  font-size: 12px;
+  color: #fff;
+  border-radius: 4px;
+  padding: 1px 6px;
+  z-index: 2; /* 确保在图片上方 */
+}
+.safety-tag.excellent { background: #4CAF50; } /* 优秀-绿色 */
+.safety-tag.good { background: #2196F3; }      /* 良好-蓝色 */
+.safety-tag.normal { background: #FF9800; }    /* 一般-橙色 */
+.safety-tag.danger { background: #F44336; }    /* 较差-红色 */
+
+/* 右侧信息区域 */
 .card-info {
   flex: 1;
   display: flex;
@@ -328,25 +345,6 @@ body, html {
   align-items: center;
   margin-bottom: 4px;
 }
-.tag {
-  font-size: 13px;
-  color: #fff;
-  border-radius: 4px;
-  padding: 2px 8px;
-  margin-right: 8px;
-}
-.tag.excellent { background: #e57373; } /* 优秀-红 */
-.tag.good { background: #ffd54f; color: #333; } /* 良好-黄 */
-.tag.normal { background: #81c784; } /* 一般-绿 */
-.tag.danger { background: #e53935; } /* 危险-深红 */
-.status {
-  font-size: 13px;
-  border-radius: 4px;
-  padding: 2px 8px;
-  margin-left: auto;
-}
-.status.checked { background: #43c97c; color: #fff; } /* 已验收-绿 */
-.status.unchecked { background: #ff5252; color: #fff; } /* 未验收-红 */
 .card-title {
   font-weight: bold;
   margin: 0px;
@@ -368,7 +366,7 @@ body, html {
 .card-desc {
   color: #888;
   font-size: 13px;
-  margin-bottom: 4px;
+  margin-bottom: 8px;
   max-width: 240px;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -376,15 +374,33 @@ body, html {
   display: inline-block;
   vertical-align: middle;
 }
-.card-detail {
+
+/* 电话列表样式 */
+.phone-list {
+  margin-bottom: 8px;
+}
+.phone-item {
   display: flex;
+  align-items: center;
   font-size: 13px;
+  margin-bottom: 4px;
   color: #555;
-  margin-bottom: 2px;
+  cursor: pointer; /* 提示可点击 */
 }
-.card-detail text {
-  margin-right: 16px;
+.phone-label {
+  color: #666;
+  margin-right: 4px;
 }
+.phone-number {
+  color: #2196F3;
+  margin-right: 6px;
+}
+.copy-icon {
+  width: 14px;
+  height: 14px;
+  opacity: 0.7;
+}
+
 .card-btn {
   margin-top: 6px;
   background: #12c4db;
@@ -419,7 +435,6 @@ body, html {
 .empty-text {
   font-size: 15px;
 }
-
 .back-icon {
   position: fixed;
   top: 13px;
