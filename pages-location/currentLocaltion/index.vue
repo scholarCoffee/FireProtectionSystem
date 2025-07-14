@@ -207,7 +207,7 @@ export default {
       });
     },
     goToDetail(item) {
-      uni.navigateTo({ url: '/pages-location/locationDetail/index?id=' + item.id });
+      uni.navigateTo({ url: '/pages-location/locationDetail/index?addressId=' + item.addressId });
     },
     goToExternalLink(link) {
       this.webviewUrl = decodeURIComponent(link);
