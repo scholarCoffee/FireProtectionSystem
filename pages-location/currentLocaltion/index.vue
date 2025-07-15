@@ -303,6 +303,7 @@ body, html {
 
 /* 左侧图片区域（包含左上角标签） */
 .card-left {
+  flex-shrink: 0; /* 防止图片区域被压缩 */
   margin-right: 10px;
 }
 .img-container {
@@ -337,8 +338,9 @@ body, html {
   flex: 1;
   display: flex;
   flex-direction: column;
-  padding: 10px 5px 10px 0px;
+  padding: 10px 10px 10px 0px;
   justify-content: space-between;
+  min-width: 0; /* 允许flex子项收缩 */
 }
 .card-row {
   display: flex;
@@ -350,7 +352,7 @@ body, html {
   margin: 0px;
   font-size: 16px;
   display: inline-block;
-  max-width: 230px;
+  max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -367,7 +369,7 @@ body, html {
   color: #888;
   font-size: 13px;
   margin-bottom: 8px;
-  max-width: 240px;
+  max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -378,6 +380,7 @@ body, html {
 /* 电话列表样式 */
 .phone-list {
   margin-bottom: 8px;
+  flex: 1;
 }
 .phone-item {
   display: flex;
@@ -386,19 +389,26 @@ body, html {
   margin-bottom: 4px;
   color: #555;
   cursor: pointer; /* 提示可点击 */
+  min-width: 0; /* 允许收缩 */
 }
 .phone-label {
   color: #666;
   margin-right: 4px;
+  flex-shrink: 0; /* 防止标签被压缩 */
 }
 .phone-number {
   color: #2196F3;
   margin-right: 6px;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .copy-icon {
   width: 14px;
   height: 14px;
   opacity: 0.7;
+  flex-shrink: 0; /* 防止图标被压缩 */
 }
 
 .card-btn {
@@ -407,11 +417,20 @@ body, html {
   color: #fff;
   border: none;
   border-radius: 4px;
-  padding: 0px;
-  font-size: 12px;
+  padding: 8px 0;
+  font-size: 14px;
   width: 100%;
+  height: 36px;
+  line-height: 20px;
   align-self: stretch;
   box-sizing: border-box;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+  flex-shrink: 0; /* 防止按钮被压缩 */
+}
+
+.card-btn:active {
+  background: #0ea5b8;
 }
 .load-more {
   text-align: center;

@@ -2,8 +2,12 @@
     <view class="content">
         <!-- 未登录提示 -->
         <view v-if="!isLoggedIn" class="not-logged-in">
-            <text>当前用户未登录，请登录</text>
-            <button @click="loginWithWechat">请登录</button>
+            <view class="login-container">
+                <image src="/static/user/profile.png" class="login-avatar"></image>
+                <text class="login-title">欢迎使用消防作战终端</text>
+                <text class="login-desc">登录后即可查看群聊消息</text>
+                <button class="login-btn" @click="loginWithWechat">一键登录</button>
+            </view>
         </view>
         <!-- 已登录内容 -->
         <view v-else class="main main-content-adjust">
@@ -61,11 +65,11 @@
             }
         },
         onLoad() {
-            this.checkLoginStatus(); // 检查登录状态
             this.initSocket(); // 初始化socket
         },
         onShow() {
-            this.getStorages(); // 获取登录信息
+            this.checkLoginStatus(); // 检查登录状态
+            // this.getStorages(); // 获取登录信息
             this.loadGroups(); // 加载群聊列表
         },
         onPullDownRefresh() {
@@ -81,8 +85,9 @@
         methods: {
             // 检查登录状态
             checkLoginStatus() {
-                const userInfo = uni.getStorageSync('userInfo');
-                this.isLoggedIn = !!userInfo;
+                // const userInfo = uni.getStorageSync('userInfo');
+                // this.isLoggedIn = !!userInfo;
+                this.isLoggedIn = false
             },
             // 初始化socket连接
             initSocket() {
@@ -269,49 +274,50 @@
             },
             // 使用微信一键登录
             loginWithWechat() {
-                uni.login({
-                    provider: 'weixin',
-                    success: (loginRes) => {
-                        if (loginRes.code) {
-                            // 获取用户信息
-                            uni.getUserInfo({
-                                provider: 'weixin',
-                                success: (userRes) => {
-                                    // 这里可以将用户信息发送到服务器进行验证和登录
-                                    const { userInfo } = userRes;
-                                    const { nickName, avatarUrl } = userInfo;
-                                    // 假设服务器返回用户ID和token
-                                    const userId = '123';
-                                    const token = 'abc';
-                                    // 保存用户信息到本地存储
-                                    uni.setStorageSync('userInfo', { userId, token });
-                                    this.isLoggedIn = true;
-                                    this.uid = userId;
-                                    this.token = token;
-                                    // 登录socket
-                                    if (this.isInit && this.socket) {
-                                        this.socket.send({
-                                            data: JSON.stringify({
-                                                type: 'login',
-                                                uid: this.uid
-                                            })
-                                        });
-                                    }
-                                    // 加载群聊列表
-                                    this.loadGroups();
-                                },
-                                fail: (err) => {
-                                    console.error('获取用户信息失败:', err);
-                                }
-                            });
-                        } else {
-                            console.error('登录失败:', loginRes.errMsg);
-                        }
-                    },
-                    fail: (err) => {
-                        console.error('微信登录失败:', err);
-                    }
+                uni.showLoading({
+                    title: '登录中...'
                 });
+                
+                // 模拟登录过程
+                setTimeout(() => {
+                    // 生成假数据
+                    const mockUserInfo = {
+                        userId: 'user_' + Date.now(),
+                        token: 'token_' + Math.random().toString(36).substr(2, 9),
+                        nickName: '测试用户',
+                        avatarUrl: '/static/user/profile.png',
+                        openId: 'openid_' + Math.random().toString(36).substr(2, 15),
+                        unionId: 'unionid_' + Math.random().toString(36).substr(2, 15)
+                    };
+                    
+                    // 保存用户信息到本地存储
+                    uni.setStorageSync('userInfo', mockUserInfo);
+                    
+                    // 更新组件状态
+                    this.isLoggedIn = true;
+                    this.uid = mockUserInfo.userId;
+                    this.token = mockUserInfo.token;
+                    
+                    // 登录socket
+                    if (this.isInit && this.socket) {
+                        this.socket.send({
+                            data: JSON.stringify({
+                                type: 'login',
+                                uid: this.uid
+                            })
+                        });
+                    }
+                    
+                    // 加载群聊列表
+                    this.loadGroups();
+                    
+                    uni.hideLoading();
+                    uni.showToast({
+                        title: '登录成功',
+                        icon: 'success',
+                        duration: 1500
+                    });
+                }, 1500);
             }
         }
     }
@@ -477,10 +483,74 @@
     /* 未登录提示 */
     .not-logged-in {
         display: flex;
-        flex-direction: column;
         align-items: center;
         justify-content: center;
         height: 100vh;
-        color: #8a8a8a;
+        background: linear-gradient(135deg, hsla(0, 0%, 100%, .95) 0%, #e5e5e5 100%);
+    }
+    
+    .login-container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 60rpx 40rpx;
+        background: rgba(255, 255, 255, 0.95);
+        border-radius: 24rpx;
+        box-shadow: 0 8rpx 32rpx rgba(0, 0, 0, 0.1);
+        backdrop-filter: blur(10rpx);
+        max-width: 600rpx;
+        width: 90%;
+    }
+    
+    .login-avatar {
+        width: 120rpx;
+        height: 120rpx;
+        border-radius: 50%;
+        margin-bottom: 30rpx;
+        border: 4rpx solid #fff;
+        box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.1);
+    }
+    
+    .login-title {
+        font-size: 36rpx;
+        font-weight: 600;
+        color: #333;
+        margin-bottom: 16rpx;
+        text-align: center;
+    }
+    
+    .login-desc {
+        font-size: 28rpx;
+        color: #666;
+        margin-bottom: 40rpx;
+        text-align: center;
+        line-height: 1.5;
+    }
+    
+    .login-btn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 100%;
+        height: 88rpx;
+        background: #07c160;
+        color: #fff;
+        border: none;
+        border-radius: 44rpx;
+        font-size: 32rpx;
+        font-weight: 500;
+        box-shadow: 0 4rpx 16rpx rgba(7, 193, 96, 0.3);
+        transition: all 0.3s ease;
+        
+        &:active {
+            transform: translateY(2rpx);
+            box-shadow: 0 2rpx 8rpx rgba(7, 193, 96, 0.3);
+        }
+    }
+    
+    .wechat-icon {
+        width: 40rpx;
+        height: 40rpx;
+        margin-right: 16rpx;
     }
 </style>
