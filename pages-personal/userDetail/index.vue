@@ -3,7 +3,7 @@
         <!-- 如果用户未登录，显示登录提示和按钮 -->
         <view v-if="!isLoggedIn" class="login-prompt">
             <view class="login-container">
-                <image src="/static/user/profile.png" class="login-avatar"></image>
+                <image src="/static/icons/person/person.png" class="login-avatar"></image>
                 <text class="login-title">欢迎使用消防作战终端</text>
                 <text class="login-desc">登录后即可管理个人信息</text>
                 <button class="login-button" @tap="wxLogin">一键登录</button>
@@ -18,7 +18,7 @@
                         <image :src="userInfo.avatar" class="user-img"></image>
                     </view>
                     <view class="more" >
-                        <image src="../../static/user/arrow-right.png" mode="aspectFit"></image>
+                        <image src="/static/icons/common/arrow-right.png" mode="aspectFit"></image>
                     </view>
                 </view>
             </view>
@@ -27,7 +27,7 @@
                     <view class="title">昵称：</view>
                     <view class="cont">{{ userInfo.markname }}</view>
                     <view class="more">
-                        <image src="../../static/user/arrow-right.png" mode="aspectFit"></image>
+                        <image src="/static/icons/common/arrow-right.png" mode="aspectFit"></image>
                     </view>
                 </view>
             </view>
@@ -260,7 +260,7 @@
                         userId: 'user_' + Date.now(),
                         token: 'token_' + Math.random().toString(36).substr(2, 9),
                         userName: '测试用户',
-                        imgUrl: '/static/user/profile.png',
+                        imgUrl: '/static/icons/chat/person-avatar.png',
                         openId: 'openid_' + Math.random().toString(36).substr(2, 15),
                         unionId: 'unionid_' + Math.random().toString(36).substr(2, 15)
                     };

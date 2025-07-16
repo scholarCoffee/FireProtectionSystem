@@ -3,7 +3,7 @@
         <!-- 未登录提示 -->
         <view v-if="!isLoggedIn" class="not-logged-in">
             <view class="login-container">
-                <image src="/static/user/profile.png" class="login-avatar"></image>
+                <image src="/static/icons/person/person.png" class="login-avatar"></image>
                 <text class="login-title">欢迎使用消防作战终端</text>
                 <text class="login-desc">登录后即可查看群聊消息</text>
                 <button class="login-btn" @click="loginWithWechat">一键登录</button>
@@ -13,7 +13,7 @@
         <view v-else class="main main-content-adjust">
             <!-- 下拉刷新提示 -->
             <view class="refresh" v-if="isRefresh">
-                <image src="/static/user/refresh.png" class="refresh-icon"></image>
+                <image src="/static/icons/common/refresh.png" class="refresh-icon"></image>
                 <text class="ref-title">下拉刷新</text>
             </view>
 
@@ -43,7 +43,7 @@
 
             <!-- 无群聊时显示 -->
             <view class="no-group" v-if="groupsList.length === 0 && !isRefresh">
-                <image src="/static/chat/no-group.png" class="no-group-img"></image>
+                <image src="/static/icons/common/no-data.png" class="no-group-img"></image>
                 <text class="no-group-text">暂无群聊</text>
             </view>
         </view>
@@ -285,7 +285,7 @@
                         userId: 'user_' + Date.now(),
                         token: 'token_' + Math.random().toString(36).substr(2, 9),
                         nickName: '测试用户',
-                        avatarUrl: '/static/user/profile.png',
+                        avatarUrl: '/static/icons/chat/person-avatar.png',
                         openId: 'openid_' + Math.random().toString(36).substr(2, 15),
                         unionId: 'unionid_' + Math.random().toString(36).substr(2, 15)
                     };

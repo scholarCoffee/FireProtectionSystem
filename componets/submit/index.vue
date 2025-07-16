@@ -8,23 +8,23 @@
                 <textarea v-model="msg" auto-height="true" class="chat-send btn" :class="{ displayNone: isRecord}" @input="onClickInput" @focus="focus"></textarea>
                 <view class="record btn" :class="{ displayNone: !isRecord }" @longpress="touchstart" @touchend="touchend" @touchmove="touchmove">按住说话</view>
                 <view class="bt-img emoji-icon" @tap="onClickEmoji">
-                    <image src="../../static/emoji.png" class="icon gray"></image>
+                    <image src="/static/icons/chat/emoji.png" class="icon gray"></image>
                 </view>
                 <view class="bt-img add-icon" @tap="moreFun">
-                    <image src="../../static/add.png" class="icon gray"></image>
+                    <image src="/static/icons/chat/add.png" class="icon gray"></image>
                 </view>
             </view>
             <view class="emoji" :class="{ displayNone: isEmoji }">
                 <view class="emoji-send">
                     <view class="emoji-send-det" @tap="emojiDel">
-                        <image src="../../static/emojiDel.png"></image>
+                        <image src="/static/icons/chat/emojiDel.png"></image>
                     </view>
                     <view class="emoji-send-bt" @tap="emojiSend">发送</view>
                 </view>
                 <emoji @emotion="emotion" :height="260"></emoji>
                 </view>
                 <view class="more" :class="{ displayNone: isMore }">
-                    <view class="more-list"  v-for="(item, index) in moreList" :key="index" @tap="onClickMore(item)">
+                    <view class="more-list" v-for="(item, index) in moreList" :key="index" @tap="onClickMore(item)">
                         <image :src="item.imgUrl"></image>
                         <view class="more-list-text">{{ item.text }}</view>
                     </view>
@@ -76,7 +76,7 @@
                 isMore: true,
                 isVoice: true,
                 msg: '',
-                toc: '../../static/yy.png',
+                toc: '/static/icons/chat/yy.png',
                 timer: '',
                 vlength: 0,
                 pageY: 0,
@@ -96,9 +96,9 @@
                 this.isEmoji = true
                 this.isMore = true
                 if(this.isRecord) {
-                    this.toc = "../../static/clickSpeak.png"
+                    this.toc = "/static/icons/chat/clickSpeak.png"
                 } else {
-                    this.toc = "../../static/speak.png"
+                    this.toc = "/static/icons/chat/speak.png"
                 }
                 this.isRecord = !this.isRecord
             },
@@ -107,7 +107,7 @@
                 this.isEmoji = !this.isEmoji
                 this.isMore = true
                 this.isRecord = false
-                this.toc = "../../static/clickSpeak.png"
+                this.toc = "/static/icons/chat/clickSpeak.png"
                 setTimeout(() => { 
                     this.getElementHeight(0)
                 }, 0)
@@ -220,7 +220,7 @@
                 this.isEmoji = true
                 this.isMore = true
                 this.isRecord = false
-                this.toc = "../../static/clickSpeak.png"
+                this.toc = "/static/icons/chat/clickSpeak.png"
                 setTimeout(() => {
                     this.getElementHeight(0)
                 }, 10)
@@ -247,7 +247,7 @@
             moreFun() {
                 this.isMore = !this.isMore
                 this.isRecord = false
-                this.toc = "../../static/clickSpeak.png"
+                this.toc = "/static/icons/chat/clickSpeak.png"
                 this.isEmoji = true
                 setTimeout(() => {
                     this.getElementHeight(0)

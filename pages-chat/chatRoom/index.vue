@@ -63,7 +63,7 @@
             <!-- <view class="padbt"></view> -->
         </scroll-view>
         <view class="submit-container">
-            <submit @currentHeight="currentHeight" @sendMsg="sendMessage"></submit>
+            <Submit @currentHeight="currentHeight" @sendMsg="sendMessage"></Submit>
         </view>
     </view>
 </template>
@@ -514,7 +514,6 @@ export default {
 }
 </script>
 <style lang="scss">
-@import "../../commons/css/top-bar.scss"; // 引入公共样式
 .displayNone {
     display: none;
 }
