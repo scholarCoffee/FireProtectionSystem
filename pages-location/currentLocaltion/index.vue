@@ -125,20 +125,13 @@ export default {
   methods: {
     handleInput() {
       if (this.debounceTimer) clearTimeout(this.debounceTimer);
-      this.debounceTimer = setTimeout(() => {
-        this.searchData();
-      }, 300);
+      this.debounceTimer = setTimeout(this.searchData, 300);
     },
     searchData() {
       const keyword = this.searchKeyword.trim().toLowerCase();
-      if (keyword) {
-        this.iniDataList = locationInfo.filter(item => {
-          const nameMatch = item.addressName.toLowerCase().includes(keyword);
-          return nameMatch;
-        });
-      } else {
-        this.iniDataList = locationInfo.filter(item => item.type === this.activeTab + 1);
-      }
+      this.iniDataList = keyword
+        ? locationInfo.filter(item => item.addressName.toLowerCase().includes(keyword))
+        : locationInfo.filter(item => item.type === this.activeTab + 1);
       this.page = 1;
       this.initShowList();
     },
@@ -160,12 +153,8 @@ export default {
         if (more.length) {
           this.showList = this.showList.concat(more);
           this.page++;
-          if (this.showList.length >= this.iniDataList.length) {
-            this.finished = true;
-            this.loadingText = '没有更多了';
-          } else {
-            this.loadingText = '向下拉取更多';
-          }
+          this.finished = this.showList.length >= this.iniDataList.length;
+          this.loadingText = this.finished ? '没有更多了' : '向下拉取更多';
         } else {
           this.finished = true;
           this.loadingText = '没有更多了';
@@ -175,34 +164,19 @@ export default {
     },
     changeTab(index) {
       this.activeTab = index;
-      // 选中tab后，内容展示滚动到顶部
-      uni.showToast({
-        title: '正在加载中...',
-        icon: 'none',
-        duration: 1500
-      })
+      uni.showToast({ title: '正在加载中...', icon: 'none', duration: 1500 });
       this.iniDataList = locationInfo.filter(item => item.type === index + 1);
       this.initShowList();
-      // uni.hideToast();
     },
     getSafeLevelClass(safeLevelId) {
-      switch (safeLevelId) {
-        case 1: return 'excellent'; 
-        case 2: return 'good';      
-        case 3: return 'normal';    
-        case 4: return 'danger';    
-        default: return '';
-      }
+      const map = { 1: 'excellent', 2: 'good', 3: 'normal', 4: 'danger' };
+      return map[safeLevelId] || '';
     },
     copyPhone(phone) {
       uni.setClipboardData({
         data: phone,
         success() {
-          uni.showToast({
-            title: '已复制',
-            icon: 'none',
-            duration: 1500
-          });
+          uni.showToast({ title: '已复制', icon: 'none', duration: 1500 });
         }
       });
     },
@@ -211,9 +185,8 @@ export default {
     },
     goToExternalLink(link) {
       this.webviewUrl = decodeURIComponent(link);
-      this.showWebview = true; // 显示 web-view，隐藏原有列表
+      this.showWebview = true;
     },
-    // 可选：加返回按钮，隐藏 web-view 回到列表
     goBackToList() {
       this.showWebview = false;
       this.webviewUrl = '';
@@ -298,7 +271,8 @@ body, html {
   margin: 10px 16px;
   box-shadow: 0 2px 8px rgba(0,0,0,0.06);
   overflow: hidden;
-  height: 140px;
+  min-width: 0;
+  min-height: 140px;
 }
 
 /* 左侧图片区域（包含左上角标签） */
@@ -307,6 +281,8 @@ body, html {
   margin-right: 10px;
 }
 .img-container {
+  width: 120px;
+  height: 120px;
   position: relative; /* 相对定位，用于标签绝对定位 */
   margin: 10px;
 }

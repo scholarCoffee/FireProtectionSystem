@@ -14,24 +14,6 @@
                             <view class="name-text" v-if="isGroup">{{ item.name }}</view>
                             <image :src="item.message" class="msg-img" @tap="previewImg(item.message)" mode="widthFix"></image>
                         </view>
-                        <!-- <view class="message" v-if="item.types === 2">
-                            <view class="name-text" v-if="isGroup">{{ item.name }}</view>
-                            <view class="msg-text voice" :style="{
-                                'width': item.message.time*4 + 'px'
-                            }" @tap="playVoice(item.message.voice)"> 
-                                <image src="../../static/yy.png" class="voice-img"></image>
-                                {{ item.message.time }}"
-                            </view>    
-                        </view> -->
-                        <!-- <view class="message" v-if="item.types === 3" @tap="openLocation(item.message)">
-                            <view class="name-text" v-if="isGroup">{{ item.name }}</view>
-                            <view class="msg-map">
-                                <view class="map-name">{{ item.message.name }}</view>
-                                <view class="map-address">{{ item.message.address }}</view>   
-                                <image src="../../static/6.png" class="msg-img" mode="aspectFit"></image>                 -->
-                                <!-- <map class="map" :longitude="item.message.longitude" :latitude="item.message.latitude" :markers="cover(item.message)"></map>    
-                            </view>
-                        </view> -->
                     </view>
                     <view class="msg-m msg-right" v-else>
                         <image :src="item.imgurl" class="user-img"  @tap="goUserHome(item.fromId)"></image>
@@ -41,26 +23,9 @@
                         <view class="message" v-if="item.types === 1">
                             <image :src="item.message" class="msg-img" @tap="previewImg(item.message)" mode="widthFix"></image>
                         </view>
-                        <!-- <view class="message" v-if="item.types === 2">
-                            <view class="msg-text voice" :style="{
-                                'width': item.message.time*4 + 'px'
-                            }" @tap="playVoice(item.message.voice)">
-                                {{ item.message.time }}"
-                                <image src="../../static/yy.png" class="voice-img"></image>
-                            </view>    
-                        </view>  -->
-                        <!-- <view class="message" v-if="item.types === 3">
-                            <view class="msg-map" @tap="openLocation(item.message)">
-                                <view class="map-name">{{ item.message.name }}</view>
-                                <view class="map-address">{{ item.message.address }}</view>                    
-                                <image src="../../static/6.png" class="msg-img" mode="aspectFit"></image> -->
-                                <!-- <map class="map" :longitude="item.message.longitude" :latitude="item.message.latitude" :markers="cover(item.message)"></map>    
-                            </view>
-                        </view> -->
                     </view>
                 </view>
             </view>
-            <!-- <view class="padbt"></view> -->
         </scroll-view>
         <view class="submit-container">
             <Submit @currentHeight="currentHeight" @sendMsg="sendMessage"></Submit>
@@ -110,9 +75,7 @@ export default {
     },
     computed: {
         // 是否群聊
-        isGroup() {
-            return this.chatType == 1
-        }
+        isGroup() { return this.chatType == 1 }
     },
     onShow() {
         this.getStorages()
@@ -134,68 +97,50 @@ export default {
                 this.uname = userName; // 用户名
                 this.uimgurl = this.serverUrl + imgUrl; // 头像URL
                 this.token = token; // 用户token
-            } else {
-                uni.navigateTo({
-                    url: '/pages/signIn/index'
-                });
-            } 
+            }
         },
         backOne() {
-            this.socket.emit('leaveChatRoomServer', this.uid, this.id)
-            uni.navigateBack({
-                delta: 1
-            });
+            try {
+                this.socket.emit('leaveChatRoomServer', this.uid, this.id);
+            } catch (e) {}
+            uni.navigateBack({ delta: 1 });
         },
         goUserHome(fromId) {
-            uni.navigateTo({
-                url: '/pages-personal/userDetail/index?id=' + fromId
-            })
+            // 可跳转到用户详情页
         },
         goGroupHome() {
-            uni.navigateTo({
-                url: '/pages-chat/grouphome/index?gid=' + this.id + '&gimg=' + this.imgurl
-            })
+            console.log('goGroupHome')
         },
         nextPage() {
             if (this.isLoading) {
-                this.isLoading = false
-                // 节流
+                this.isLoading = false;
+                clearTimeout(this.loadingTimers);
                 this.loadingTimers = setTimeout(() => {
-                    this.pageSize += 20
-                    this.getChatMessage('scrollTop')
-                }, 1000)
+                    this.pageSize += 20;
+                    this.getChatMessage('scrollTop');
+                }, 1000);
             }
-
         },
         getChatMessage(action) {
             // 获取消息列表
-            uni.showToast({
-                title: '加载中...',
-                icon: 'loading',
-                duration: 5000
-            });
-            this.chatMessage = []
-            const url = this.isGroup ? this.serverUrl + '/chat/getGroupMsg' : this.serverUrl + '/chat/getSelfMsg'
+            uni.showToast({ title: '加载中...', icon: 'loading', duration: 5000 });
+            this.chatMessage = [];
+            const url = this.isGroup ? this.serverUrl + '/chat/getGroupMsg' : this.serverUrl + '/chat/getSelfMsg';
             const data = {
                 uid: this.uid,
                 nowPage: this.nowPage,
                 pageSize: this.pageSize,
                 state: 1,
-                token: this.token
-            }
-            if (this.isGroup) {
-                data.gid = this.id
-            } else {
-                data.fid = this.id
-            }
+                token: this.token,
+                ...(this.isGroup ? { gid: this.id } : { fid: this.id })
+            };
             uni.request({
-                url, // 替换为你的登录接口地址,
+                url,
                 method: 'POST',
                 data,
                 success: (res) => {
-                    const { data, code } = res.data
+                    const { data, code } = res.data;
                     if (code === 200) {
-                        // 反转消息列表
                         data.reverse();
                         if (data.length > 0) {
                             let oldTime = data[0].time
@@ -230,75 +175,30 @@ export default {
                         }
                         this.scrollToBottom(action)
                     } else {
-                        uni.showToast({
-                            title: '获取聊天信息失败',
-                            icon: 'none',
-                            duration: 5000
-                        });
+                        uni.showToast({ title: '获取聊天信息失败', icon: 'none', duration: 5000 });
                     }
                 },
-                fail: (err) => {
-                    uni.showToast({
-                        title: '获取聊天信息失败',
-                        icon: 'none',
-                        duration: 5000
-                    });
+                fail: () => {
+                    uni.showToast({ title: '获取聊天信息失败', icon: 'none', duration: 5000 });
                 },
                 complete: () => {
-                    uni.hideToast()
+                    uni.hideToast();
                 }
             })
         },
         // 预览图片
-        previewImg(e) {
-            let index = 0
-            for(let i = 0; i < this.imgMsg.length; i++) {
-                if(this.imgMsg[i] === e) {
-                    index = i
-                }
-            }
+        previewImg(url) {
+            const index = this.imgMsg.findIndex(img => img === url);
             uni.previewImage({
                 current: index,
                 urls: this.imgMsg,
                 longPressAction: {
                     itemList: ['保存图片', '发送给朋友', '收藏'],
-                    success: function (res) {
-                        console.log(res.tapIndex)
-                    },
-                    fail: function (res) {
-                        console.log(res.errMsg)
-                    }
+                    success: function (res) {},
+                    fail: function (res) {}
                 }
             });
         },
-        // playVoice(e) {
-        //     innerAudioContext.src = e
-        //     innerAudioContext.play();
-        // },
-        // cover(e) {
-        //     const { longitude, latitude, name, address } = e || {}
-        //     let map = [{
-        //         latitude: latitude,
-        //         longitude: longitude,
-        //         iconPath: '/static/6.png',
-        //     }] 
-        //     return map
-        // },
-        // openLocation(e) {
-        //     const { longitude, latitude, name, address } = e || {}
-        //     uni.openLocation({
-        //         latitude: latitude,
-        //         longitude: longitude,
-        //         name: name,
-        //         address: address,
-        //         success: function (res) {
-        //             console.log(res)
-        //         },
-        //         fail: function (res) {
-        //             console.log(res.errMsg)
-        //         }
-        //     });
-        // },
         sendMessage(e) {
            this.receiveMsg(e, this.uid, this.uimgurl, 0)
         },
@@ -341,38 +241,6 @@ export default {
                 uploadTask.onProgressUpdate((res) => {
                     console.log('上传进度', res.progress)
                 })
-            // } else if (e.types === 2) {
-            //     let url = fileNameTime(new Date())
-            //     const uploadTask = uni.uploadFile({
-            //         url: this.serverUrl + '/files/upload', // 仅为示例，非真实的接口地址
-            //         filePath: e.message.voice,
-            //         name: 'file',
-            //         formData: {
-            //             url: url,
-            //             name: new Date().getTime() + this.uid + Math.ceil(Math.random()*10),
-            //         },
-            //         success: (res) => {
-            //             // 处理返回的数据
-            //             res = JSON.parse(res.data)
-            //             console.log('上传成功', res)
-            //             let data = {
-            //                 message: res.data,
-            //                 types: e.types
-            //             }
-            //             this.sendSocket(data)
-            //         },
-            //         fail: (err) => {
-            //             uni.showToast({
-            //                 title: '语音上传失败',
-            //                 icon: 'none',
-            //                 duration: 2000
-            //             });
-            //         }
-            //     })
-
-            //     uploadTask.onProgressUpdate((res) => {
-            //         console.log('上传进度', res.progress)
-            //     })
             }
             const { message, types } = e || {}
             this.scrollAnimation = true
@@ -574,11 +442,11 @@ page {
                 border-radius: 20rpx;
                 font-size: 28rpx;
                 line-height: 44rpx;
-                word-wrap: break-word; // 添加换行支持
-                word-break: break-word; // 添加换行支持
+                word-break: break-all; // 防止长文本溢出
+                word-wrap: break-word;
             }
             .msg-img {
-                max-width: 400rpx;
+                max-width: 60vw; // 适配不同屏幕
                 border-radius: $uni-border-radius-base;
             }
             .msg-map {
@@ -682,5 +550,6 @@ page {
     background-color: #fff;
     border-top: 1px solid #eaeaea;
     z-index: 10;
+    padding-bottom: env(safe-area-inset-bottom); // 适配全面屏
 }
 </style>    
