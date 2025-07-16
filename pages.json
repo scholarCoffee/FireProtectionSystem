@@ -1,27 +1,22 @@
 {
     "pages": [
-        // 默认位置
         {
             "path": "pages-location/currentLocaltion/index",
             "style": {
-                "navigationStyle": "default", // 使用默认导航栏样式
-                "navigationBarTitleText": "单位信息", // 对应顶部标题
+                "navigationStyle": "default",
+                "navigationBarTitleText": "单位信息",
                 "enablePullDownRefresh": false
             }
         },
-        // 单个位置明细
         {
             "path": "pages-location/locationDetail/index",
             "style": {
-                // "navigationStyle": "default",
-                // "navigationBarTitleText": "位置详情",
                 "navigationStyle": "custom",
                 "enablePullDownRefresh": false
             }
         }
     ],
     "subPackages": [
-        // 聊天
         {
             "root": "pages-chat",
             "pages": [
@@ -41,7 +36,6 @@
                 }
             ]
         },
-        // 个人
         {
             "root": "pages-personal",
             "pages": [
@@ -56,15 +50,15 @@
         }
     ],
     "globalStyle": {
-        "navigationBarTextStyle": "black", // 顶部标题文字颜色
-        "navigationBarTitleText": "uni-app", // 默认标题（可被页面覆盖）
-        "navigationBarBackgroundColor": "#FFFFFF", // 顶部导航栏背景颜色
-        "backgroundColor": "#F8F8F8" // 页面背景颜色
+        "navigationBarTextStyle": "black",
+        "navigationBarTitleText": "uni-app",
+        "navigationBarBackgroundColor": "#FFFFFF",
+        "backgroundColor": "#F8F8F8"
     },
     "tabBar": {
-		"color": "#707070", // 未选中状态的字体颜色，柔和灰色
-		"backgroundColor": "#F8F8F8", // 底部导航栏背景颜色，浅灰色
-		"borderStyle": "white", // 边框样式，白色更柔和
+        "color": "#707070",
+        "backgroundColor": "#F8F8F8",
+        "borderStyle": "white",
         "list": [
             {
                 "pagePath": "pages-location/currentLocaltion/index",
@@ -85,8 +79,8 @@
                 "selectedIconPath": "static/icons/person/person-active.png"
             }
         ],
-		"height": "60px", // 调整底部导航栏高度，增加间距
-		"paddingBottom": "10px" // 为图标和文字增加底部间距
+        "height": "60px",
+        "paddingBottom": "10px"
     },
     "uniIdRouter": {}
 }

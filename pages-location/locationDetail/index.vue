@@ -18,7 +18,7 @@
           class="detail-img" 
         />
         <!-- 安全等级标签 -->
-        <view class="safety-tag" :class="getSafeLevelClass(locationObj.safeLevelId)">
+        <view class="safety-tag" :class="safeLevelClass">
           <text>{{ locationObj.safeLevelName }}</text>
         </view>
       </view>
@@ -111,6 +111,12 @@ export default {
     // 根据 addressId 获取位置详情
     this.locationObj = locationInfo.find(item => item.addressId === this.addressId) || {};
   },
+  computed: {
+    safeLevelClass() {
+      const map = { 1: 'safety-excellent', 2: 'safety-good', 3: 'safety-normal', 4: 'safety-danger' };
+      return map[this.locationObj.safeLevelId] || '';
+    }
+  },
   methods: {
     goBack() {
       // 如果是在 web-view 中，点击返回按钮则隐藏 web-view
@@ -142,15 +148,6 @@ export default {
       uni.makePhoneCall({
         phoneNumber: phone
       });
-    },
-    getSafeLevelClass(safeLevelId) {
-      switch (safeLevelId) {
-        case 1: return 'safety-excellent'; 
-        case 2: return 'safety-good';      
-        case 3: return 'safety-normal';    
-        case 4: return 'safety-danger';    
-        default: return '';
-      }
     },
     goToExternalLink(link) {
       this.webviewUrl = decodeURIComponent(link);
