@@ -1,40 +1,50 @@
 <template>
     <view class="content">
-        <scroll-view class="chat" scroll-y="true" :scroll-with-animation="scrollAnimation" :scroll-into-view="scrollToView" @scrolltoupper="nextPage">
-            <view class="chat-main" :style="{ 'padding-bottom': inputh + 'px'}">
-                <view class="chat-ls" v-for="(item, index) in chatMessage" :key="index" :id="'chatMessage' + item.id">     
-                    <view class="chat-time" v-if="item.time != ''">{{ dateTime(item.time) }}</view>
-                    <view class="msg-m msg-left" v-if="item.fromId !== uid"  @tap="goUserHome(item.fromId)">
-                        <image :src="item.imgurl" class="user-img"></image>
-                        <view class="message" v-if="item.types === 0">
-                            <view class="name-text" v-if="isGroup">{{ item.name }}</view>
-                            <view class="msg-text">{{ item.message }}</view>
+        <!-- 顶部导航栏 -->
+        <view class="nav-bar">
+            <view class="nav-left" v-if="showBack" @click="goBack">
+                <image src="/static/icons/common/back.png" class="nav-back-icon" />
+            </view>
+            <view class="nav-title">聊天</view>
+            <view class="nav-right"></view>
+        </view>
+        <view class="page-content">
+            <scroll-view class="chat" scroll-y="true" :scroll-with-animation="scrollAnimation" :scroll-into-view="scrollToView" @scrolltoupper="nextPage">
+                <view class="chat-main" :style="{ 'padding-bottom': inputh + 'px'}">
+                    <view class="chat-ls" v-for="(item, index) in chatMessage" :key="index" :id="'chatMessage' + item.id">     
+                        <view class="chat-time" v-if="item.time != ''">{{ dateTime(item.time) }}</view>
+                        <view class="msg-m msg-left" v-if="item.fromId !== uid"  @tap="goUserHome(item.fromId)">
+                            <image :src="item.imgurl" class="user-img"></image>
+                            <view class="message" v-if="item.types === 0">
+                                <view class="name-text" v-if="isGroup">{{ item.name }}</view>
+                                <view class="msg-text">{{ item.message }}</view>
+                            </view>
+                            <view class="message" v-if="item.types === 1">
+                                <view class="name-text" v-if="isGroup">{{ item.name }}</view>
+                                <image :src="item.message" class="msg-img" @tap="previewImg(item.message)" mode="widthFix"></image>
+                            </view>
                         </view>
-                        <view class="message" v-if="item.types === 1">
-                            <view class="name-text" v-if="isGroup">{{ item.name }}</view>
-                            <image :src="item.message" class="msg-img" @tap="previewImg(item.message)" mode="widthFix"></image>
-                        </view>
-                    </view>
-                    <view class="msg-m msg-right" v-else>
-                        <image :src="item.imgurl" class="user-img"  @tap="goUserHome(item.fromId)"></image>
-                        <view class="message" v-if="item.types === 0">
-                            <view class="msg-text">{{ item.message }}</view>
-                        </view>
-                        <view class="message" v-if="item.types === 1">
-                            <image :src="item.message" class="msg-img" @tap="previewImg(item.message)" mode="widthFix"></image>
+                        <view class="msg-m msg-right" v-else>
+                            <image :src="item.imgurl" class="user-img"  @tap="goUserHome(item.fromId)"></image>
+                            <view class="message" v-if="item.types === 0">
+                                <view class="msg-text">{{ item.message }}</view>
+                            </view>
+                            <view class="message" v-if="item.types === 1">
+                                <image :src="item.message" class="msg-img" @tap="previewImg(item.message)" mode="widthFix"></image>
+                            </view>
                         </view>
                     </view>
                 </view>
+            </scroll-view>
+            <view class="submit-container">
+                <Submit @currentHeight="currentHeight" @sendMsg="sendMessage"></Submit>
             </view>
-        </scroll-view>
-        <view class="submit-container">
-            <Submit @currentHeight="currentHeight" @sendMsg="sendMessage"></Submit>
         </view>
     </view>
 </template>
 <script>
-import { dateTime, spaceTime, fileNameTime } from './../../commons/js/utils.js'; // 导入 dateTime 函数
-import Submit from './../../componets/submit'
+import { dateTime, spaceTime, fileNameTime } from './../../../commons/js/utils.js'; // 导入 dateTime 函数
+import Submit from './../../../componets/submit'
 // const innerAudioContext = uni.createInnerAudioContext()
 
 export default {
@@ -57,7 +67,8 @@ export default {
             pageSize: 20,
             loadingTimers: '',
             isLoading: false,
-            scrollAnimation: true
+            scrollAnimation: true,
+            showBack: false, // 是否显示返回按钮，适配小程序
         }
     },
     components: { Submit },
@@ -78,6 +89,10 @@ export default {
         isGroup() { return this.chatType == 1 }
     },
     onShow() {
+        // #ifdef MP
+        const pages = getCurrentPages();
+        this.showBack = pages.length > 1;
+        // #endif
         this.getStorages()
         this.getChatMessage()
     },
@@ -88,6 +103,9 @@ export default {
     },
     methods: {
         dateTime,
+        goBack() {
+            uni.navigateBack();
+        },
         getStorages() {
             // 获取本地存储的用户信息
             const userInfo = uni.getStorageSync('userInfo');
@@ -391,6 +409,46 @@ page {
 .content {
     height: 100%;
     background: rgba(244, 244, 244 ,1)
+}
+/* 顶部导航栏样式 */
+.nav-bar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: #fff;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+    z-index: 100;
+    padding-top: var(--status-bar-height, 0); /* 适配小程序 */
+}
+.nav-left, .nav-right {
+    width: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.nav-title {
+    flex: 1;
+    text-align: center;
+    font-size: 17px;
+    font-weight: bold;
+    color: #222;
+}
+.nav-back-icon {
+    width: 22px;
+    height: 22px;
+}
+/* 内容区下移，避免被导航栏遮挡 */
+.page-content {
+  margin-top: 44px;
+  padding-top: var(--status-bar-height, 0);
+}
+.chat, .submit-container {
+  margin-top: 0;
 }
 .chat {
     height: 100%; // 减去头部高度

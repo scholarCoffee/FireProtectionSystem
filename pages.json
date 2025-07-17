@@ -3,47 +3,47 @@
         {
             "path": "pages-location/currentLocaltion/index",
             "style": {
-                "navigationStyle": "default",
+                "navigationStyle": "custom",
                 "navigationBarTitleText": "单位信息",
                 "enablePullDownRefresh": false
             }
         },
         {
-            "path": "pages-location/locationDetail/index",
+            "path": "pages-chat/chatList/index",  // 根目录页面，路径为pages-chat/...
             "style": {
                 "navigationStyle": "custom",
-                "enablePullDownRefresh": false
+                "navigationBarTitleText": "聊天列表"
+            }
+        },
+        {
+            "path": "pages-personal/userDetail/index",
+            "style": {
+                "navigationStyle": "custom",
+                "navigationBarTitleText": "个人中心"
             }
         }
     ],
     "subPackages": [
         {
-            "root": "pages-chat",
+            "root": "pages-location/subPackages",
             "pages": [
                 {
-                    "path": "chatList/index",
+                    "path": "locationDetail/index",
                     "style": {
-                        "navigationStyle": "default",
-                        "navigationBarTitleText": "聊天列表"
-                    }
-                },
-                {
-                    "path": "chatRoom/index",
-                    "style": {
-                        "navigationStyle": "default",
-                        "navigationBarTitleText": "聊天窗口"
+                        "navigationStyle": "custom",
+                        "navigationBarTitleText": "单位详情"
                     }
                 }
             ]
         },
         {
-            "root": "pages-personal",
+            "root": "pages-chat/subPackages",  // 子包路径修改为pages-chat/sub，与根目录页面路径分离
             "pages": [
                 {
-                    "path": "userDetail/index",
+                    "path": "chatRoom/index",  // 子包页面完整路径为pages-chat/sub/chatRoom/index
                     "style": {
-                        "navigationStyle": "default",
-                        "navigationBarTitleText": "个人中心"
+                        "navigationStyle": "custom",
+                        "navigationBarTitleText": "聊天窗口"
                     }
                 }
             ]
@@ -67,7 +67,7 @@
                 "selectedIconPath": "static/icons/location/location-active.png"
             },
             {
-                "pagePath": "pages-chat/chatList/index",
+                "pagePath": "pages-chat/chatList/index",  // 仍指向根目录的聊天列表页面
                 "text": "聊天",
                 "iconPath": "static/icons/chat/chat.png",
                 "selectedIconPath": "static/icons/chat/chat-active.png"
