@@ -58,21 +58,17 @@
                 groupsList: [], // 群聊列表
                 uid: '', // 用户ID
                 token: '', // 用户token
+                permissions: '', // 权限实体
                 isInit: false, // 是否初始化
                 isRefresh: false, // 刷新状态
                 socket: null, // 显式定义socket
                 isLoggedIn: false, // 用户是否登录
-                showBack: false, // 是否显示返回按钮，适配小程序
             }
         },
         onLoad() {
             this.initSocket(); // 初始化socket
         },
         onShow() {
-            // #ifdef MP
-            const pages = getCurrentPages();
-            this.showBack = pages.length > 1;
-            // #endif
             this.checkLoginStatus(); // 检查登录状态
             // this.getStorages(); // 获取登录信息
             this.loadGroups(); // 加载群聊列表
@@ -88,9 +84,6 @@
             }
         },
         methods: {
-            goBack() {
-                uni.navigateBack();
-            },
             // 检查登录状态
             checkLoginStatus() {
                 // const userInfo = uni.getStorageSync('userInfo');

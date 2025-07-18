@@ -76,10 +76,8 @@
                 tempFilePaths: ''
             }
         },
-        onLoad(data) {
-            this.getStorages(); // 获取本地存储的用户信息
-        },
         onShow() {
+            this.getStorages(); // 获取本地存储的用户信息
         },
         methods: {
             getStorages() {
