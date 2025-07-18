@@ -1,13 +1,13 @@
 <template>
     <view class="content">
         <!-- 顶部导航栏 -->
-        <view class="nav-bar">
+        <!-- <view class="nav-bar">
             <view class="nav-left" v-if="showBack" @click="goBack">
                 <image src="/static/icons/common/back.png" class="nav-back-icon" />
             </view>
             <view class="nav-title">聊天</view>
             <view class="nav-right"></view>
-        </view>
+        </view> -->
         <view class="page-content">
             <scroll-view class="chat" scroll-y="true" :scroll-with-animation="scrollAnimation" :scroll-into-view="scrollToView" @scrolltoupper="nextPage">
                 <view class="chat-main" :style="{ 'padding-bottom': inputh + 'px'}">
@@ -43,8 +43,8 @@
     </view>
 </template>
 <script>
-import { dateTime, spaceTime, fileNameTime } from './../../../commons/js/utils.js'; // 导入 dateTime 函数
-import Submit from './../../../componets/submit'
+import { dateTime, spaceTime, fileNameTime } from '@/commons/js/utils.js'; // 导入 dateTime 函数
+import Submit from '@/componets/submit'
 // const innerAudioContext = uni.createInnerAudioContext()
 
 export default {

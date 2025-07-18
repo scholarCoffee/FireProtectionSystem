@@ -1,13 +1,13 @@
 <template>
     <view class="content">
         <!-- 顶部导航栏 -->
-        <view class="nav-bar">
+        <!-- <view class="nav-bar">
             <view class="nav-left" v-if="showBack" @click="goBack">
                 <image src="/static/icons/common/back.png" class="nav-back-icon" />
             </view>
             <view class="nav-title">个人信息</view>
             <view class="nav-right"></view>
-        </view>
+        </view> -->
         <!-- 如果用户未登录，显示登录提示和按钮 -->
         <view v-if="!isLoggedIn" class="login-prompt">
             <view class="login-container">

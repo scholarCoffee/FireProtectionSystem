@@ -1,13 +1,13 @@
 <template>
   <view class="container">
     <!-- 顶部导航栏 -->
-    <view class="nav-bar">
+    <!-- <view class="nav-bar">
       <view class="nav-left" v-if="showBack" @click="goBack">
         <image src="/static/icons/common/back.png" class="nav-back-icon" />
       </view>
       <view class="nav-title">位置查询</view>
       <view class="nav-right"></view>
-    </view>
+    </view> -->
     <view class="page-content">
       <view v-if="!showWebview">
         <!-- 搜索栏 -->
@@ -210,11 +210,12 @@ export default {
       });
     },
     goToDetail(item) {
-      uni.navigateTo({ url: '/pages-location/subPackages/locationDetail/index?addressId=' + item.addressId });
+      uni.navigateTo({ url: '/subPackages/locationInfo/locationDetail/index?addressId=' + item.addressId });
     },
     goToExternalLink(link) {
-      this.webviewUrl = decodeURIComponent(link);
+      // uni.navigateTo({ url: '/subPackages/common/webview/index?url=' + link });
       this.showWebview = true;
+      this.webviewUrl = link;
     },
     goBackToList() {
       this.showWebview = false;

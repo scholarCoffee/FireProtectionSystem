@@ -1,16 +1,16 @@
 <template>
   <view class="detail-container">
     <!-- 顶部导航栏 -->
-    <view class="nav-bar">
+    <!-- <view class="nav-bar">
       <view class="nav-left" v-if="showBack" @click="goBack">
         <image src="/static/icons/common/back.png" class="nav-back-icon" />
       </view>
       <view class="nav-title">位置详情</view>
       <view class="nav-right"></view>
-    </view>
+    </view> -->
     <!-- 顶部导航栏下方内容 -->
     <view class="page-content">
-      <view v-if="!showWebview">
+      <view>
         <!-- 头部图片区域 -->
         <view class="header-image">
           <image 
@@ -89,9 +89,9 @@
         </view>
       </view>
       <!-- 新增：web-view 返回按钮 -->
-      <view class="webview-content" v-if="showWebview">
+      <!-- <view class="webview-content" v-if="showWebview">
         <web-view :src="webviewUrl"></web-view>
-      </view>
+      </view> -->
     </view>
   </view>
 </template>
@@ -102,7 +102,7 @@ export default {
     return {
       locationObj: {}, // 接收接口返回的详情数据
       addressId: null, // 用于接收传入的 addressId
-      showWebview: false,
+      // showWebview: false,
       webviewUrl: '',
       showBack: true, // 是否显示返回按钮，适配小程序
     };
@@ -145,15 +145,15 @@ export default {
         }
       });
     },
-    goBack() {
-      // 如果在webview中，则返回列表页
-      if (this.showWebview) {
-        this.showWebview = false;
-        this.webviewUrl = '';
-      } else {
-        uni.navigateBack();
-      }
-    },
+    // goBack() {
+    //   // 如果在webview中，则返回列表页
+    //   if (this.showWebview) {
+    //     this.showWebview = false;
+    //     this.webviewUrl = '';
+    //   } else {
+    //     uni.navigateBack();
+    //   }
+    // },
     getLocationTypeName() {
       // 直接用locationObj.type判断
       const typeMap = { 1: '小区', 2: '厂房', 3: '商铺' };
@@ -165,8 +165,7 @@ export default {
       });
     },
     goToExternalLink(link) {
-      this.webviewUrl = decodeURIComponent(link);
-      this.showWebview = true; // 显示 web-view，隐藏原有列表
+      uni.navigateTo({ url: '/subPackages/common/webview/index?url=' + link });
     },
   }
 };

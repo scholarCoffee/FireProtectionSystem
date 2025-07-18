@@ -1,13 +1,13 @@
 <template>
     <view class="content">
         <!-- 顶部导航栏 -->
-        <view class="nav-bar">
+        <!-- <view class="nav-bar">
             <view class="nav-left" v-if="showBack" @click="goBack">
                 <image src="/static/icons/common/back.png" class="nav-back-icon" />
             </view>
             <view class="nav-title">群聊列表</view>
             <view class="nav-right"></view>
-        </view>
+        </view> -->
         <!-- 未登录提示 -->
         <view v-if="!isLoggedIn" class="not-logged-in">
             <view class="login-container">
@@ -59,7 +59,7 @@
 </template>
 
 <script>
-    import { dateTime } from './../../commons/js/utils.js';
+    import { dateTime } from '@/commons/js/utils.js';
     export default {
         data() {
             return {
@@ -285,7 +285,7 @@
                 
                 const { id, name, imgUrl } = group;
                 uni.navigateTo({
-                    url: `/pages-chat/chatRoom/index?id=${id}&name=${name}&imgurl=${imgUrl}&chatType=1`
+                    url: `/subPackages/chatInfo/chatRoom/index?id=${id}&name=${name}&imgurl=${imgUrl}&chatType=1`
                 });
             },
             // 使用微信一键登录
