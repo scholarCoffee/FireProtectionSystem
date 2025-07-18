@@ -82,8 +82,10 @@
       </view>
       <!-- 新增：web-view 返回按钮 -->
       <view class="webview-header" v-if="showWebview">
-        <web-view :src="webviewUrl" class="webview"></web-view>
-        <image src="/static/icons/common/back.png" class="back-icon" @click="goBackToList" v-if="showWebview" />
+        <cover-view class="cover-back-btn" @click="goBackToList" v-if="showWebview">
+          <cover-image src="/static/icons/common/back.png" class="cover-back-icon"></cover-image>
+        </cover-view>
+        <web-view :src="webviewUrl"></web-view>
       </view>
     </view>
   </view>
@@ -104,10 +106,9 @@ export default {
       page: 1,
       pageSize: 10,
       loadingText: '向下拉取更多',
-      loading: false,
       finished: false,
       showWebview: false,
-      webviewUrl: '',
+      webviewUrl: ''
     };
   },
   computed: {
@@ -134,7 +135,11 @@ export default {
       uni.navigateBack();
     },
     fetchLocationList({ page = 1, pageSize = 10, keyword = '', type = '' } = {}) {
-      this.loading = true;
+      uni.showLoading({ 
+        title: '加载中...',
+        mask: true,
+        duration: 10000
+      });
       uni.request({
         url: this.serverUrl + '/location/list', // 替换为你的server实际地址
         method: 'GET',
@@ -158,17 +163,14 @@ export default {
             this.iniDataList = this.showList; // 兼容原有逻辑
           } else {
             this.showList = [];
-            this.finished = true;
-            this.loadingText = '加载失败';
           }
         },
         fail: () => {
           this.showList = [];
           this.finished = true;
-          this.loadingText = '加载失败';
         },
         complete: () => {
-          this.loading = false;
+          uni.hideLoading();
         }
       });
     },
@@ -182,7 +184,7 @@ export default {
       this.fetchLocationList({ page: 1, pageSize: this.pageSize, keyword: this.searchKeyword.trim(), type: this.activeTab + 1 });
     },
     loadMore() {
-      if (this.loading || this.finished) return;
+      if (this.finished) return;
       this.fetchLocationList({ page: this.page + 1, pageSize: this.pageSize, keyword: this.searchKeyword.trim(), type: this.activeTab + 1 });
     },
     changeTab(index) {
@@ -205,19 +207,12 @@ export default {
       uni.navigateTo({ url: '/subPackages/locationInfo/locationDetail/index?addressId=' + item.addressId });
     },
     goToExternalLink(link) {
-      // uni.navigateTo({ url: '/subPackages/common/webview/index?url=' + link });
       this.showWebview = true;
       this.webviewUrl = link;
     },
     goBackToList() {
       this.showWebview = false;
       this.webviewUrl = '';
-    },
-    goHome() {
-      // 返回主页（单位信息页面）
-      uni.switchTab({
-        url: '/pages/location/currentLocaltion/index'
-      });
     }
   }
 };
@@ -258,7 +253,6 @@ export default {
   color: #707070;
   outline: none;
   box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-  background-image: url('/static/icons/location/search.png');
   background-repeat: no-repeat;
   background-size: 16px;
   background-position: 10px center;
@@ -462,13 +456,21 @@ body, html {
 .empty-text {
   font-size: 15px;
 }
-.back-icon {
+.cover-back-btn {
   position: fixed;
-  top: 13px;
-  left: 10px;
+  top: 10px;
+  left: 15px;
+  width: 30px;
+  height: 30px;
+  z-index: 99999; 
+  background-color: rgba(255, 255, 255, 0.9);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.cover-back-icon {
   width: 20px;
   height: 20px;
-  z-index: 1000;
-  cursor: pointer;
 }
 </style>

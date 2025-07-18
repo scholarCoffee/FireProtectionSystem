@@ -91,12 +91,6 @@
             goBack() {
                 uni.navigateBack();
             },
-            goHome() {
-                // 返回主页（单位信息页面）
-                uni.switchTab({
-                    url: '/pages/location/currentLocaltion/index'
-                });
-            },
             // 检查登录状态
             checkLoginStatus() {
                 // const userInfo = uni.getStorageSync('userInfo');
@@ -567,11 +561,5 @@
             transform: translateY(2rpx);
             box-shadow: 0 2rpx 8rpx rgba(7, 193, 96, 0.3);
         }
-    }
-    
-    .wechat-icon {
-        width: 40rpx;
-        height: 40rpx;
-        margin-right: 16rpx;
     }
 </style>

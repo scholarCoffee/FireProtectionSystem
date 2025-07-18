@@ -261,7 +261,6 @@
                 uni.showLoading({
                     title: '登录中...'
                 });
-                
                 // 模拟登录过程
                 setTimeout(() => {
                     // 生成假数据
@@ -372,12 +371,6 @@
         transform: translateY(2rpx);
         box-shadow: 0 2rpx 8rpx rgba(7, 193, 96, 0.3);
     }
-}
-
-.wechat-icon {
-    width: 40rpx;
-    height: 40rpx;
-    margin-right: 16rpx;
 }
 
 .prompt-text {

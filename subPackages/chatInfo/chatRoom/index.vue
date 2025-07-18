@@ -59,8 +59,7 @@ export default {
             pageSize: 20,
             loadingTimers: '',
             isLoading: false,
-            scrollAnimation: true,
-            showBack: false, // 是否显示返回按钮，适配小程序
+            scrollAnimation: true
         }
     },
     components: { Submit },
@@ -81,10 +80,6 @@ export default {
         isGroup() { return this.chatType == 1 }
     },
     onShow() {
-        // #ifdef MP
-        const pages = getCurrentPages();
-        this.showBack = pages.length > 1;
-        // #endif
         this.getStorages()
         this.getChatMessage()
     },
@@ -392,9 +387,6 @@ export default {
 }
 </script>
 <style lang="scss">
-.displayNone {
-    display: none;
-}
 page {
     height: 100%;
 }

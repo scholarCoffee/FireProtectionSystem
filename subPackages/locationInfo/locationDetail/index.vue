@@ -80,10 +80,6 @@
           </view>
         </view>
       </view>
-      <!-- 新增：web-view 返回按钮 -->
-      <!-- <view class="webview-content" v-if="showWebview">
-        <web-view :src="webviewUrl"></web-view>
-      </view> -->
     </view>
   </view>
 </template>
@@ -94,9 +90,6 @@ export default {
     return {
       locationObj: {}, // 接收接口返回的详情数据
       addressId: null, // 用于接收传入的 addressId
-      // showWebview: false,
-      webviewUrl: '',
-      showBack: true, // 是否显示返回按钮，适配小程序
     };
   },
   onLoad(data) {
@@ -104,12 +97,6 @@ export default {
     this.addressId = addressId; // 保存 addressId
     // 根据 addressId 获取位置详情（接口调用）
     this.fetchLocationDetail();
-  },
-  onShow() {
-    // #ifdef MP
-    const pages = getCurrentPages();
-    this.showBack = pages.length > 1;
-    // #endif
   },
   computed: {
     safeLevelClass() {
@@ -137,15 +124,6 @@ export default {
         }
       });
     },
-    // goBack() {
-    //   // 如果在webview中，则返回列表页
-    //   if (this.showWebview) {
-    //     this.showWebview = false;
-    //     this.webviewUrl = '';
-    //   } else {
-    //     uni.navigateBack();
-    //   }
-    // },
     getLocationTypeName() {
       // 直接用locationObj.type判断
       const typeMap = { 1: '小区', 2: '厂房', 3: '商铺' };
