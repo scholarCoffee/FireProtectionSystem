@@ -1,13 +1,5 @@
 <template>
     <view class="content">
-        <!-- 顶部导航栏 -->
-        <!-- <view class="nav-bar">
-            <view class="nav-left" v-if="showBack" @click="goBack">
-                <image src="/static/icons/common/back.png" class="nav-back-icon" />
-            </view>
-            <view class="nav-title">群聊列表</view>
-            <view class="nav-right"></view>
-        </view> -->
         <!-- 未登录提示 -->
         <view v-if="!isLoggedIn" class="not-logged-in">
             <view class="login-container">
@@ -98,6 +90,12 @@
         methods: {
             goBack() {
                 uni.navigateBack();
+            },
+            goHome() {
+                // 返回主页（单位信息页面）
+                uni.switchTab({
+                    url: '/pages/location/currentLocaltion/index'
+                });
             },
             // 检查登录状态
             checkLoginStatus() {
@@ -345,43 +343,9 @@
         background-color: #f7f8fc;
         padding-bottom: env(safe-area-inset-bottom);
     }
-
-    /* 顶部导航栏样式 */
-    .nav-bar {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 44px;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        background: #fff;
-        box-shadow: 0 1px 4px rgba(0,0,0,0.04);
-        z-index: 100;
-        padding-top: var(--status-bar-height, 0); /* 适配小程序 */
-    }
-    .nav-left, .nav-right {
-        width: 44px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-    }
-    .nav-title {
-        flex: 1;
-        text-align: center;
-        font-size: 17px;
-        font-weight: bold;
-        color: #222;
-    }
-    .nav-back-icon {
-        width: 22px;
-        height: 22px;
-    }
     /* 内容区下移，避免被导航栏遮挡 */
     .page-content {
-        margin-top: 44px;
-        padding-top: var(--status-bar-height, 0);
+        padding-top: 0;
     }
     .main, .not-logged-in, .groups-container, .no-group {
         margin-top: 0;

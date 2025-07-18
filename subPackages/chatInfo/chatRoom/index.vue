@@ -1,13 +1,5 @@
 <template>
     <view class="content">
-        <!-- 顶部导航栏 -->
-        <!-- <view class="nav-bar">
-            <view class="nav-left" v-if="showBack" @click="goBack">
-                <image src="/static/icons/common/back.png" class="nav-back-icon" />
-            </view>
-            <view class="nav-title">聊天</view>
-            <view class="nav-right"></view>
-        </view> -->
         <view class="page-content">
             <scroll-view class="chat" scroll-y="true" :scroll-with-animation="scrollAnimation" :scroll-into-view="scrollToView" @scrolltoupper="nextPage">
                 <view class="chat-main" :style="{ 'padding-bottom': inputh + 'px'}">
@@ -410,42 +402,9 @@ page {
     height: 100%;
     background: rgba(244, 244, 244 ,1)
 }
-/* 顶部导航栏样式 */
-.nav-bar {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 44px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    background: #fff;
-    box-shadow: 0 1px 4px rgba(0,0,0,0.04);
-    z-index: 100;
-    padding-top: var(--status-bar-height, 0); /* 适配小程序 */
-}
-.nav-left, .nav-right {
-    width: 44px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-.nav-title {
-    flex: 1;
-    text-align: center;
-    font-size: 17px;
-    font-weight: bold;
-    color: #222;
-}
-.nav-back-icon {
-    width: 22px;
-    height: 22px;
-}
 /* 内容区下移，避免被导航栏遮挡 */
 .page-content {
-  margin-top: 44px;
-  padding-top: var(--status-bar-height, 0);
+  padding-top: 0;
 }
 .chat, .submit-container {
   margin-top: 0;

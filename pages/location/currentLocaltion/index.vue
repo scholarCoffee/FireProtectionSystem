@@ -1,13 +1,5 @@
 <template>
   <view class="container">
-    <!-- 顶部导航栏 -->
-    <!-- <view class="nav-bar">
-      <view class="nav-left" v-if="showBack" @click="goBack">
-        <image src="/static/icons/common/back.png" class="nav-back-icon" />
-      </view>
-      <view class="nav-title">位置查询</view>
-      <view class="nav-right"></view>
-    </view> -->
     <view class="page-content">
       <view v-if="!showWebview">
         <!-- 搜索栏 -->
@@ -90,9 +82,9 @@
       </view>
       <!-- 新增：web-view 返回按钮 -->
       <view class="webview-header" v-if="showWebview">
-        <web-view :src="webviewUrl"></web-view>
+        <web-view :src="webviewUrl" class="webview"></web-view>
+        <image src="/static/icons/common/back.png" class="back-icon" @click="goBackToList" v-if="showWebview" />
       </view>
-      <image src="/static/icons/common/back.png" class="back-icon" @click="goBackToList" v-if="showWebview" />
     </view>
   </view>
 </template>
@@ -220,57 +212,21 @@ export default {
     goBackToList() {
       this.showWebview = false;
       this.webviewUrl = '';
+    },
+    goHome() {
+      // 返回主页（单位信息页面）
+      uni.switchTab({
+        url: '/pages/location/currentLocaltion/index'
+      });
     }
   }
 };
 </script>
 
 <style>
-web-view {
-  margin-top: -44px; /* 向上偏移覆盖原导航栏（需根据实际导航高度调整） */
-  height: calc(100% + 44px);
-}
-.container {
-  height: 100vh;
-  overflow: hidden;
-  background: #f8f8f8;
-}
-/* 顶部导航栏样式 */
-.nav-bar {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 44px; /* 导航栏高度，与小程序默认导航一致 */
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  background: #fff; /* 导航栏背景色 */
-  padding: 0 15px;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.04);
-  z-index: 99999; /* 确保在web-view上方 */
-}
-.nav-left, .nav-right {
-  width: 44px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.nav-title {
-  flex: 1;
-  text-align: center;
-  font-size: 17px;
-  font-weight: bold;
-  color: #222;
-}
-.nav-back-icon {
-  width: 22px;
-  height: 22px;
-}
 /* 内容区下移，避免被导航栏遮挡 */
 .page-content {
-  margin-top: 44px;
-  padding-top: var(--status-bar-height, 0);
+  padding-top: 0;
 }
 .search-bar, .tabs, .content {
   margin-top: 0;

@@ -1,13 +1,5 @@
 <template>
   <view class="detail-container">
-    <!-- 顶部导航栏 -->
-    <!-- <view class="nav-bar">
-      <view class="nav-left" v-if="showBack" @click="goBack">
-        <image src="/static/icons/common/back.png" class="nav-back-icon" />
-      </view>
-      <view class="nav-title">位置详情</view>
-      <view class="nav-right"></view>
-    </view> -->
     <!-- 顶部导航栏下方内容 -->
     <view class="page-content">
       <view>
@@ -172,95 +164,11 @@ export default {
 </script>
 
 <style scoped>
-/* 基础样式 */
+/* 容器样式 - 添加滚动功能 */
 .detail-container {
-  background-color: #F8F8F8;
-  min-height: 100vh;
-  padding-bottom: 60px; /* 为底部操作栏留出空间 */
-}
-
-/* 顶部导航栏样式 */
-.nav-bar {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 44px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  background: #fff;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.04);
-  z-index: 100;
-  padding-top: var(--status-bar-height, 0); /* 适配小程序 */
-}
-.nav-left, .nav-right {
-  width: 44px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.nav-title {
-  flex: 1;
-  text-align: center;
-  font-size: 17px;
-  font-weight: bold;
-  color: #222;
-}
-.nav-back-icon {
-  width: 22px;
-  height: 22px;
-}
-/* 内容区下移，避免被导航栏遮挡 */
-.header-image, .info-card, .webview-content {
-  margin-top: 0;
-}
-
-/* 导航栏 */
-.nav-bar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  height: 44px;
-  width: 100%;
-  background-color: #FFF;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
-}
-
-.webview-header {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  height: 44px;
-  background-color: #FFF;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
-  z-index: 1000;
-  cursor: pointer;
-}
-.webview-content {
-  position: fixed;
-  top: 44px;
-  left: 0;
-  right: 0;
-  bottom: 0;
-}
-.nav-left, .nav-right {
-  width: 40px;
-  display: flex;
-  justify-content: center;
-}
-.back-icon, .share-icon {
-  width: 20px;
-  height: 20px;
-}
-.nav-title {
-  font-size: 16px;
-  font-weight: bold;
-  color: #333;
+  height: 100vh;
+  overflow-y: auto;
+  background-color: #f5f5f5;
 }
 
 /* 头部图片区域 */
@@ -411,7 +319,7 @@ export default {
   font-size: 14px;
 }
 .page-content {
-  margin-top: 44px;
-  padding-top: var(--status-bar-height, 0);
+  padding-top: 0;
+  padding-bottom: 20px; /* 添加底部间距，确保内容可以完全滚动 */
 }
 </style>

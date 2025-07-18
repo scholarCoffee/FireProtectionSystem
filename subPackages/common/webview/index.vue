@@ -1,23 +1,5 @@
 <template>
   <view class="webview-page">
-    <!-- 自定义导航栏 -->
-    <view class="custom-navbar">
-      <view class="navbar-left">
-        <view class="back-btn" @click="goBack">
-          <text class="back-icon">‹</text>
-          <text class="back-text">返回</text>
-        </view>
-      </view>
-      <view class="navbar-title">
-        <text>{{ pageTitle }}</text>
-      </view>
-      <view class="navbar-right">
-        <view class="refresh-btn" @click="refreshWebview">
-          <text class="refresh-icon">↻</text>
-        </view>
-      </view>
-    </view>
-    
     <!-- Webview 容器 -->
     <view class="webview-container">
       <!-- 微信小程序 webview 组件 -->
@@ -84,9 +66,7 @@ export default {
     if (options.title) {
       this.pageTitle = decodeURIComponent(options.title)
     }
-    
-    // 验证URL格式
-    this.validateUrl()
+  
   },
   
   onShow() {
@@ -134,28 +114,6 @@ export default {
       this.loading = true
       this.error = false
       this.errorMessage = ''
-      
-      // 重新验证URL
-      this.validateUrl()
-    },
-    
-    /**
-     * 验证URL格式
-     */
-    validateUrl() {
-      try {
-        const url = new URL(this.webviewUrl)
-        if (!['http:', 'https:'].includes(url.protocol)) {
-          throw new Error('不支持的协议')
-        }
-        this.loading = false
-      } catch (error) {
-        this.handleError({
-          detail: {
-            errMsg: 'URL格式错误'
-          }
-        })
-      }
     },
     
     /**
@@ -217,9 +175,6 @@ export default {
       this.loading = true
       this.error = false
       this.errorMessage = ''
-      
-      // 重新验证URL
-      this.validateUrl()
     },
     
     /**
@@ -267,13 +222,6 @@ export default {
   position: relative;
   z-index: 1000;
 }
-
-.navbar-left {
-  flex: 1;
-  display: flex;
-  align-items: center;
-}
-
 .back-btn {
   display: flex;
   align-items: center;

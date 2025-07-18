@@ -1,13 +1,5 @@
 <template>
     <view class="content">
-        <!-- 顶部导航栏 -->
-        <!-- <view class="nav-bar">
-            <view class="nav-left" v-if="showBack" @click="goBack">
-                <image src="/static/icons/common/back.png" class="nav-back-icon" />
-            </view>
-            <view class="nav-title">个人信息</view>
-            <view class="nav-right"></view>
-        </view> -->
         <!-- 如果用户未登录，显示登录提示和按钮 -->
         <view v-if="!isLoggedIn" class="login-prompt">
             <view class="login-container">
@@ -41,7 +33,6 @@
             </view>
             <view class="bt2" @tap="onQuitLogin">退出登录</view>
         </view>
-        
         <!-- 昵称修改弹窗 -->
         <view v-if="showModifyModal" class="modal-overlay" @tap="closeModal">
             <view class="modal-content" @tap.stop>
@@ -308,46 +299,9 @@
 </script>
 
 <style lang="scss">
-.content {
-    background-color: #f8f8f8;
-    min-height: 100vh;
-}
-/* 顶部导航栏样式 */
-.nav-bar {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 44px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    background: #fff;
-    box-shadow: 0 1px 4px rgba(0,0,0,0.04);
-    z-index: 100;
-    padding-top: var(--status-bar-height, 0); /* 适配小程序 */
-}
-.nav-left, .nav-right {
-    width: 44px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-.nav-title {
-    flex: 1;
-    text-align: center;
-    font-size: 17px;
-    font-weight: bold;
-    color: #222;
-}
-.nav-back-icon {
-    width: 22px;
-    height: 22px;
-}
 /* 内容区下移，避免被导航栏遮挡 */
 .page-content {
-  margin-top: 44px;
-  padding-top: var(--status-bar-height, 0);
+  padding-top: 0;
 }
 .main, .login-prompt, .login-container {
   margin-top: 0;
