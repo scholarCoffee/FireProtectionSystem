@@ -5,15 +5,7 @@
             "style": {
                 "navigationStyle": "default",
                 "navigationBarTitleText": "单位信息",
-                "enablePullDownRefresh": false,
-                "navigationBarButton": [
-                    {
-                      "iconPath": "static/icons/common/back.png",
-                      "width": "20px",
-                      "height": "20px",
-                      "click": "goHome"
-                    }
-                  ]
+                "enablePullDownRefresh": false
             }
         },
         {

@@ -6,7 +6,7 @@
                 <image src="/static/icons/person/person.png" class="login-avatar"></image>
                 <text class="login-title">欢迎使用消防作战终端</text>
                 <text class="login-desc">登录后即可管理个人信息</text>
-                <button class="login-button" @tap="wxLogin">一键登录</button>
+                <button class="login-button" open-type="getUserInfo" @getuserinfo="onGetUserInfo">一键登录</button>
             </view>
         </view>
         <!-- 如果用户已登录，显示个人信息页面 -->
@@ -15,7 +15,7 @@
                 <view class="row" @tap="onChosenImage" >
                     <view class="title">头像：</view>
                     <view class="cont" >
-                        <image :src="userInfo.avatar" class="user-img"></image>
+                        <image :src="userInfo.avatarUrl" class="user-img"></image>
                     </view>
                     <view class="more" >
                         <image src="/static/icons/common/arrow-right.png" mode="aspectFit"></image>
@@ -23,9 +23,9 @@
                 </view>
             </view>
             <view class="column">
-                <view class="row" @tap="modifyUserInfo('markname', '昵称', userInfo.markname)">
+                <view class="row" @tap="modifyUserInfo('nickName', '昵称', userInfo.nickName)">
                     <view class="title">昵称：</view>
-                    <view class="cont">{{ userInfo.markname }}</view>
+                    <view class="cont">{{ userInfo.nickName }}</view>
                     <view class="more">
                         <image src="/static/icons/common/arrow-right.png" mode="aspectFit"></image>
                     </view>
@@ -63,97 +63,73 @@
         data() {
             return {
                 userInfo: {
-                    uid: '', // 用户ID
-                    token: '', // 用户token
-                    userName: '', // 用户名
-                    markname: '', // 昵称
-                    avatar: '' // 头像
+                    nickName: '', 
+                    avatarUrl: '',
+                    permissionStatus: 1,
+                    id: ''
                 },
                 isLoggedIn: false, // 用户是否已登录
                 showModifyModal: false, // 是否显示修改弹窗
                 modifyValue: '', // 修改的值
                 modifyType: '', // 修改类型
                 modifyTitle: '', // 修改标题
-                showBack: false, // 是否显示返回按钮，适配小程序
+                tempFilePaths: ''
             }
         },
         onLoad(data) {
             this.getStorages(); // 获取本地存储的用户信息
         },
         onShow() {
-            // #ifdef MP
-            const pages = getCurrentPages();
-            this.showBack = pages.length > 1;
-            // #endif
         },
         methods: {
-            goBack() {
-                uni.navigateBack();
-            },
             getStorages() {
                 // 获取本地存储的用户信息
                 const userInfo = uni.getStorageSync('userInfo');
                 if (userInfo) {
-                    const { userId, token, userName } = userInfo;
+                    const { id, nickName, avatarUrl } = userInfo;
                     this.userInfo = {
-                        uid: userId,
-                        token: token,
-                        userName: userName,
-                        markname: '',
-                        avatar: ''
+                        id,
+                        avatarUrl,
+                        nickName
                     }
                     this.isLoggedIn = true; // 用户已登录
-                    this.getUser(); // 获取用户信息
                 } else {
                     this.isLoggedIn = false; // 用户未登录
                 } 
-            },
-            // 获取用户信息
-            getUser() {
-                uni.request({
-                    url: this.serverUrl + '/user/detail', // 替换为你的登录接口地址,
-                    method: 'POST',
-                    data: {
-                        id: this.id,
-                        token: this.token
-                    },
-                    success: (res) => {
-                        const { data, code } = res.data
-                        if (code === 200) {
-                            let { sex, name, imgurl, explain, birth, phone } = data || {}
-                            this.tempFilePaths = this.serverUrl + imgurl; // 头像URL
-                            if (!phone) {
-                                phone = '000'
-                            }
-                            this.user = {
-                                ...data,
-                                explain,
-                                phone,
-                                birth,
-                                markname: ''
-                            }
-                            this.getMarkName(); // 获取好友昵称
-                        } else {
-                            uni.showToast({
-                                title: '获取用户信息失败',
-                                icon: 'none',
-                                duration: 2000
-                            });
-                        }
-                    },
-                    fail: (err) => {
-                        uni.showToast({
-                            title: '获取用户信息失败',
-                            icon: 'none',
-                            duration: 2000
-                        });
-                    }
-                })
             },
             onQuitLogin() {
                 // 清楚缓存
                 uni.removeStorageSync('userInfo')
                 this.isLoggedIn = false; // 用户已退出登录
+            },
+            updateUserInfoToServer(data, successMsg = '更新成功') {
+                uni.request({
+                    url: this.serverUrl + '/user/update',
+                    method: 'POST',
+                    data,
+                    success: (res) => {
+                        if (res.data && res.data.code === 200) {
+                            uni.showToast({
+                                title: successMsg,
+                                icon: 'success',
+                                duration: 1200
+                            });
+                        } else {
+                            uni.showToast({
+                                title: res.data.msg || '后端同步失败',
+                                icon: 'none',
+                                duration: 1500
+                            });
+                        }
+                    },
+                    fail: () => {
+                        uni.showToast({
+                            title: '网络错误，未同步后端',
+                            icon: 'none',
+                            duration: 1500
+                        });
+                    }
+                });
             },
             onChosenImage() {
                 uni.chooseImage({
@@ -161,26 +137,27 @@
                     sizeType: ['original', 'compressed'],
                     sourceType: ['album'],
                     success: (res) => {
-                        this.tempFilePaths = res.tempFilePaths.shift() 
+                        this.tempFilePaths = res.tempFilePaths.shift();
                         uni.uploadFile({
                             url: this.serverUrl + '/files/upload', // 替换为你的上传接口地址
                             filePath: this.tempFilePaths,
                             name: 'file',
                             fileType: 'image',
                             formData: {
-                                url: 'user',
-                                name: this.uid,
-                                token: this.token
+                                id: this.userInfo.id
                             },
                             success: (res) => {
-                                const backImg = JSON.parse(res.data).data
-                                uni.setStorageSync('userInfo', {
-                                    'userId': this.uid,
-                                    'userName': this.myname,
-                                    'imgUrl': backImg,
-                                    'token': this.token
-                                })
-                                this.update(backImg, 'imgurl', undefined)
+                                const backImg = JSON.parse(res.data).data;
+                                const oldUserInfo = uni.getStorageSync('userInfo');
+                                const newUserInfo = { ...oldUserInfo, avatarUrl: backImg };
+                                uni.setStorageSync('userInfo', newUserInfo);
+                                this.userInfo.avatarUrl = backImg;
+                                this.tempFilePaths = '';
+                                // 同步更新后端头像
+                                this.updateUserInfoToServer(
+                                    { id: this.userInfo.id, avatarUrl: backImg, type: 'avatarUrl' },
+                                    '头像已同步'
+                                );
                             },
                             fail: (err) => {
                                 uni.showToast({
@@ -189,9 +166,9 @@
                                     duration: 2000
                                 });
                             }
-                        })
+                        });
                     }
-                })
+                });
             },
             // 修改用户信息
             modifyUserInfo(type, title, currentValue) {
@@ -220,8 +197,7 @@
                     });
                     return;
                 }
-                
-                if (this.modifyType === 'markname' && value.length > 20) {
+                if (this.modifyType === 'nickName' && value.length > 20) {
                     uni.showToast({
                         title: '昵称不能超过20个字符',
                         icon: 'none',
@@ -229,69 +205,96 @@
                     });
                     return;
                 }
-                
-                // 模拟更新用户信息
-                uni.showLoading({
-                    title: '更新中...'
-                });
-                
-                setTimeout(() => {
-                    // 更新本地数据
-                    if (this.modifyType === 'markname') {
-                        this.userInfo.markname = value;
-                        // 更新本地存储
-                        const userInfo = uni.getStorageSync('userInfo');
-                        if (userInfo) {
-                            userInfo.markname = value;
-                            uni.setStorageSync('userInfo', userInfo);
-                        }
+                uni.showLoading({ title: '更新中...' });
+                // 更新本地数据和本地存储
+                if (this.modifyType === 'nickName') {
+                    this.userInfo.nickName = value;
+                    const userInfo = uni.getStorageSync('userInfo');
+                    if (userInfo) {
+                        userInfo.nickName = value;
+                        uni.setStorageSync('userInfo', userInfo);
                     }
-                    
-                    this.closeModal();
-                    uni.hideLoading();
-                    uni.showToast({
-                        title: '更新成功',
-                        icon: 'success',
-                        duration: 1500
-                    });
-                }, 1000);
-            },
-            // 微信一键登录
-            wxLogin() {
-                uni.showLoading({
-                    title: '登录中...'
+                    // 同步昵称到后端
+                    this.updateUserInfoToServer(
+                        { id: this.userInfo.id, nickName: value, type: 'nickName' },
+                        '昵称已同步'
+                    );
+                }
+                this.closeModal();
+                uni.hideLoading();
+                uni.showToast({
+                    title: '更新成功',
+                    icon: 'success',
+                    duration: 1500
                 });
-                // 模拟登录过程
-                setTimeout(() => {
-                    // 生成假数据
-                    const mockUserInfo = {
-                        userId: 'user_' + Date.now(),
-                        token: 'token_' + Math.random().toString(36).substr(2, 9),
-                        userName: '测试用户',
-                        imgUrl: '/static/icons/chat/person-avatar.png',
-                        openId: 'openid_' + Math.random().toString(36).substr(2, 15),
-                        unionId: 'unionid_' + Math.random().toString(36).substr(2, 15)
-                    };
-                    
-                    // 保存用户信息到本地存储
-                    uni.setStorageSync('userInfo', mockUserInfo);
-                    
-                    // 更新组件状态
-                    this.uid = mockUserInfo.userId;
-                    this.token = mockUserInfo.token;
-                    this.myname = mockUserInfo.userName;
-                    this.isLoggedIn = true;
-                    
-                    // 获取用户信息
-                    this.getUser();
-                    
-                    uni.hideLoading();
+            },
+            // 微信一键登录新版，强制获取头像昵称
+            async onGetUserInfo(e) {
+                if (!e.detail || !e.detail.userInfo) {
                     uni.showToast({
-                        title: '登录成功',
-                        icon: 'success',
-                        duration: 1500
+                        title: '需要授权获取头像昵称',
+                        icon: 'none',
+                        duration: 2000
                     });
-                }, 1500);
+                    return;
+                }
+                uni.showLoading({ title: '登录中...' });
+                // 先获取微信登录code
+                uni.login({
+                    provider: 'weixin',
+                    success: (loginRes) => {
+                        const code = loginRes.code;
+                        const { nickName, avatarUrl } = e.detail.userInfo;
+                        // 你可以把 code、encryptedData、iv、userInfo 一起发给后端
+                        // 这里只做本地存储和状态更新
+                        const userInfo = {
+                            code: code,
+                            nickName: nickName,
+                            avatarUrl: avatarUrl,
+                            encryptedData: e.detail.encryptedData,
+                            permissionStatus: 1,
+                            id: e.detail.iv
+                        };
+                        uni.setStorageSync('userInfo', userInfo);
+                        this.userInfo.nickName = nickName;
+                        this.userInfo.avatarUrl = avatarUrl;
+                        this.isLoggedIn = true;
+                        uni.hideLoading();
+                        uni.showToast({
+                            title: '登录成功',
+                            icon: 'success',
+                            duration: 1500
+                        });
+                        // 调用接口存储用户信息
+                        uni.request({
+                            url: this.serverUrl + '/user/update', // 替换为你的后端登录接口
+                            method: 'POST',
+                            data: {
+                                nickName: nickName,
+                                avatarUrl: avatarUrl,
+                                code: code,
+                                encryptedData: e.detail.encryptedData,
+                                permissionStatus: 1, 
+                                id: e.detail.iv,
+                                signature: e.detail.signature
+                            },
+                            success: (res) => {
+                            
+                            },
+                            fail: () => {
+                               
+                            }
+                        });
+                    },
+                    fail: () => {
+                        uni.hideLoading();
+                        uni.showToast({
+                            title: '微信登录失败',
+                            icon: 'none',
+                            duration: 2000
+                        });
+                    }
+                });
             }
         }
     }
