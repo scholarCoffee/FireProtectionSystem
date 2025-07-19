@@ -59,6 +59,7 @@
 </template>
 
 <script>
+    import { clearUnreadCount } from '@/commons/js/utils.js';
     export default {
         data() {
             return {
@@ -99,6 +100,8 @@
                 // 清楚缓存
                 uni.removeStorageSync('userInfo')
                 this.isLoggedIn = false; // 用户已退出登录
+                // 清除未读消息数
+                clearUnreadCount();
             },
             updateUserInfoToServer(data, successMsg = '更新成功') {
                 uni.request({

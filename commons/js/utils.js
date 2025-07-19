@@ -101,3 +101,49 @@ export const fileNameTime = (date) => {
     const day = String(d.getDate()).padStart(2, '0');
     return `${year}${month}${day}`;
 }
+
+// 未读消息管理
+let unreadCount = 0;
+
+// 设置未读消息数
+export const setUnreadCount = (count) => {
+    unreadCount = count;
+    updateTabBarBadge();
+};
+
+// 增加未读消息数
+export const addUnreadCount = (count = 1) => {
+    unreadCount += count;
+    updateTabBarBadge();
+};
+
+// 减少未读消息数
+export const reduceUnreadCount = (count = 1) => {
+    unreadCount = Math.max(0, unreadCount - count);
+    updateTabBarBadge();
+};
+
+// 清除未读消息数
+export const clearUnreadCount = () => {
+    unreadCount = 0;
+    updateTabBarBadge();
+};
+
+// 获取未读消息数
+export const getUnreadCount = () => {
+    return unreadCount;
+};
+
+// 更新tabBar未读数
+const updateTabBarBadge = () => {
+    if (unreadCount > 0) {
+        uni.setTabBarBadge({
+            index: 1, // 聊天tab的索引
+            text: unreadCount > 99 ? '99+' : unreadCount.toString()
+        });
+    } else {
+        uni.removeTabBarBadge({
+            index: 1
+        });
+    }
+};
