@@ -279,8 +279,8 @@ export default {
             this.socket.on('msgFront', this.friendIndexServerListener)
         },
         friendIndexServerListener(data, fromid) {
-            const { msg, userID } = data
-            if (userID == this.id && userID !== this.uid) {
+            const { msg, userId } = data
+            if (userId == this.id && userId !== this.uid) {
                 console.log('')
                 this.scrollAnimation = true
                 let nowTime = new Date();
@@ -293,7 +293,7 @@ export default {
                 }
                 nowTime = t;
                 const data = {
-                    fromId: userID, // 假设 1 表示当前用户
+                    fromId: userId, // 假设 1 表示当前用户
                     message: msg.message,
                     types: msg.types, // 假设 0 表示文本消息
                     time: nowTime,
@@ -314,9 +314,9 @@ export default {
             this.socket.on('groupMsgFront', this.groupIndexServerListener)
         },
         groupIndexServerListener(data) {
-            const { msg, userID, groupID, name, imgurl } = data
+            const { msg, userId, groupId, name, imgurl } = data
             console.log('-------------')
-            if (groupID == this.id && userID !== this.uid) {
+            if (groupId == this.id && userId !== this.uid) {
                 this.scrollAnimation = true
                 let nowTime = new Date();
                 let t = spaceTime(this.oldTime, nowTime);
@@ -328,7 +328,7 @@ export default {
                 }
                 nowTime = t;
                 const data = {
-                    fromId: userID, // 假设 1 表示当前用户
+                    fromId: userId, // 假设 1 表示当前用户
                     name: name, 
                     message: msg.message,
                     types: msg.types, // 假设 0 表示文本消息
@@ -353,8 +353,8 @@ export default {
             } else {
                 this.socket.emit('groupMsgServer', {
                     msg: e,
-                    userID: this.uid, // 信息来源：当前用户
-                    groupID: this.id, // 当前群id
+                    userId: this.uid, // 信息来源：当前用户
+                    groupId: this.id, // 当前群id
                     name: this.uname, // 当前用户名称
                     imgurl: this.uimgurl, // 当前用户头像
                 })

@@ -19,18 +19,12 @@
         </view>
         <!-- 已登录且有权限内容 -->
         <view v-else class="main main-content-adjust">
-            <!-- 下拉刷新提示 -->
-            <view class="refresh" v-if="isRefresh">
-                <image src="/static/icons/common/refresh.png" class="refresh-icon"></image>
-                <text class="ref-title">下拉刷新</text>
-            </view>
-
             <!-- 群聊列表 -->
             <view class="groups-container" v-if="groupsList.length > 0">
                 <view class="group-item" 
                       v-for="(group, index) in groupsList" 
                       :key="group.id" 
-                      @tap="toChatRoom(group)">
+                      @tap="goToChatRoom(group)">
                     <!-- 左侧头像与未读提示 -->
                     <view class="group-left">
                         <text class="unread-tip" v-if="group.tip > 0">{{ group.tip }}</text>
@@ -50,7 +44,7 @@
             </view>
 
             <!-- 无群聊时显示 -->
-            <view class="no-group" v-if="groupsList.length === 0 && !isRefresh">
+            <view class="no-group" v-if="groupsList.length === 0">
                 <image src="/static/icons/common/no-data.png" class="no-group-img"></image>
                 <text class="no-group-text">暂无群聊</text>
             </view>
@@ -71,8 +65,6 @@
                     id: ''
                 },
                 permissionStatus: 0, // 权限状态
-                isInit: false, // 是否初始化
-                isRefresh: false, // 刷新状态
                 socket: null, // 显式定义socket
                 isLoggedIn: false, // 用户是否登录
             }
@@ -104,33 +96,15 @@
                 // #ifndef MP-WEIXIN
                 // 非微信小程序：生成假数据
                 const mockUserInfo = {
-                    userId: '687a6f59e83419906c0699e0',
-                    nickName: 'admin',
+                    id: '687a6f59e83419906c0699f3',
+                    nickName: '测试用户-小北',
                     avatarUrl: '/static/icons/chat/person-avatar.png',
                     permissionStatus: 1 // 默认有权限
                 };
                 uni.setStorageSync('userInfo', mockUserInfo);
-
                 // #endif
-                const userInfo = uni.getStorageSync('userInfo');
-                if (userInfo) {
-                    const { id, nickName, avatarUrl, permissionStatus } = userInfo;
-                    this.userInfo = {
-                        id,
-                        nickName,
-                        avatarUrl,
-                        permissionStatus
-                    }
-                    this.isLoggedIn = true;
-                    // 页面显示时更新未读数
-                    if (this.hasChatPermission) {
-                        this.loadGroups(); // 加载群聊列表
-                    }
-                } else {
-                    this.isLoggedIn = false;    
-                    // 清除未读数
-                    clearUnreadCount();
-                }
+                this.getStorages();
+                
             },
             // 初始化socket连接
             initSocket() {
@@ -148,8 +122,13 @@
                 // 监听socket连接成功
                 this.socket.onOpen(() => {
                     console.log('Socket已连接');
-                    this.isInit = true;
                     this.getStorages(); // 连接成功后获取用户信息并登录
+                    this.socket.send({
+                        data: JSON.stringify({
+                            type: 'login',
+                            uid: this.userInfo.id
+                        })
+                    });
                 });
                 
                 // 监听群消息
@@ -188,72 +167,98 @@
                         permissionStatus
                     }
                     this.isLoggedIn = true;
-                    // 登录socket（增加socket检查）
-                    if (this.isInit && this.socket) {
-                        this.socket.send({
-                            data: JSON.stringify({
-                                type: 'login',
-                                uid: this.userInfo.id
-                            })
-                        });
+                    // 页面显示时更新未读数
+                    if (this.hasChatPermission) {
+                        this.loadGroups(); // 加载群聊列表
                     }
                 } else {
-                    this.isLoggedIn = false;
+                    this.isLoggedIn = false;    
+                    // 清除未读数
+                    clearUnreadCount();
                 }
             },
 
             // 加载群聊列表
             loadGroups() {
-                this.isRefresh = true;
+                uni.showLoading({
+                    title: '加载群聊列表...',
+                    mask: true,
+                    duration: 1500
+                });
                 this.groupsList = [];
                 uni.request({
-                    url: this.serverUrl + '/index/getGroup',
+                    url: this.serverUrl + '/group/getGroupList',
                     method: 'POST',
-                    data: { permissionStatus: this.userInfo.permissionStatus, status: 1 },
+                    data: { permissionStatus: this.userInfo.permissionStatus, uid: this.userInfo.id },
                     success: (res) => {
                         const { code, data } = res.data || {};
-                        if (code === 200 && Array.isArray(data)) {
-                            this.groupsList = this.formatGroups(data);
-                            // 按最后消息时间排序（最新的在前面）
-                            this.groupsList.sort((a, b) => {
-                                const timeA = new Date(a.lastTime || 0);
-                                const timeB = new Date(b.lastTime || 0);
-                                return timeB - timeA;
-                            });
-                            // 更新tabBar未读数
-                            this.updateTabBarBadge();
+                        if (code === 200 && Array.isArray(data) && data.length > 0) {
+                            // 调用后台接口，获取群列表最后消息
+                            this.getGroupLastMsg(data);
                         } else {
-                            console.error('获取群聊列表失败:', res.data);
+                            this.groupsList = [];
+                            uni.showToast({
+                                title: '获取群聊列表失败',
+                                icon: 'none',
+                                duration: 2000
+                            });
                         }
                     },
                     fail: (err) => {
-                        console.error('加载群聊失败：', err);
+                        this.groupsList = [];
+                        uni.showToast({
+                            title: '获取群聊列表失败:' + err,
+                            icon: 'none',
+                            duration: 2000
+                        });
                     },
                     complete: () => {
-                        this.isRefresh = false;
                         uni.stopPullDownRefresh();
+                        uni.hideLoading();
                     }
                 });
             },
 
+            // 获取群列表最后消息
+            getGroupLastMsg(data) {
+                uni.request({
+                    url: this.serverUrl + '/group/getLastGroupMsg',
+                    method: 'POST',
+                    data: { groupList: data, uid: this.userInfo.id },
+                    success: (res) => {
+                        const { code, data } = res.data || {};
+                        if (code === 200 && Array.isArray(data)) {
+                            this.groupsList = this.formatGroups(data);
+                            // 更新tabBar未读数
+                            this.updateTabBarBadge();
+                        }
+                    },
+                    fail: (err) => {
+                        uni.showToast({
+                            title: '获取群列表最后消息失败:' + err,
+                            icon: 'none',
+                            duration: 2000
+                        });
+                    }
+                });
+            },
             // 格式化群聊数据
             formatGroups(groups) {
                 return groups.map(group => ({
-                    id: group.id,
+                    id: group._id,
                     name: group.markname || group.name || '未命名群组',
-                    imgUrl: '/static/icons/chat/defautl-group.png',
-                    lastTime: group.lastTime ? new Date(group.lastTime) : new Date(),
-                    message: group.msg ? `${group.username || '群成员'}: ${group.msg}` : '暂无消息',
-                    tip: group.tip || 0,
-                    chatType: 1
+                    imgUrl: group.imgUrl ? (this.serverUrl + group.imgUrl) : '/static/icons/chat/defautl-group.png',
+                    lastTime: group?.groupMessageInfo?.lastTime ? new Date(group?.groupMessageInfo?.lastTime) : new Date(),
+                    message: group?.groupMessageInfo?.message ? `${group.name || '群成员'}: ${group?.groupMessageInfo?.message}` : '暂无消息',
+                    tip: group?.groupMessageInfo?.tip || 0
                 }));
             },
 
             // 处理新群消息
             handleGroupMsg(data) {
-                if (!data || !data.groupID || !this.hasChatPermission) return;
+                if (!data || !data.groupId || !this.hasChatPermission) return;
                 
-                const { msg, userID, groupID, name } = data;
+                const { msg, userId, groupId, name } = data;
                 let content = '';
                 
                 // 格式化消息内容
@@ -268,12 +273,12 @@
                 }
 
                 // 更新群聊列表
-                const index = this.groupsList.findIndex(g => g.id === groupID);
+                const index = this.groupsList.findIndex(g => g.id === groupId);
                 if (index > -1) {
                     // 已存在的群聊：更新信息并置顶
                     const group = { ...this.groupsList[index] };
                     group.lastTime = new Date();
-                    group.message = userID === this.userInfo.id ? content : `${name || '群成员'}: ${content}`;
+                    group.message = userId === this.userInfo.id ? content : `${name || '群成员'}: ${content}`;
                     group.tip = (group.tip || 0) + 1;
                     
                     // 使用不可变数据模式更新数组
@@ -283,7 +288,7 @@
                     this.updateTabBarBadge();
                 } else {
                     // 新群聊（理论上不会出现，因为初始化时已加载所有群）
-                    console.warn('收到未知群组的消息:', groupID);
+                    console.warn('收到未知群组的消息:', groupId);
                 }
             },
 
@@ -322,7 +327,7 @@
             },
 
             // 进入群聊房间
-            toChatRoom(group) {
+            goToChatRoom(group) {
                 if (!group || !group.id || !this.hasChatPermission) return;
                 
                 const { id, name, imgUrl } = group;
@@ -376,18 +381,7 @@
                                 if (res.data && res.data.code === 200) {
                                     const userInfo = res.data.data;
                                     uni.setStorageSync('userInfo', userInfo);
-                                    this.isLoggedIn = true;
-                                    
-                                    // 登录socket
-                                    if (this.isInit && this.socket) {
-                                        this.socket.send({
-                                            data: JSON.stringify({
-                                                type: 'login',
-                                                uid: this.userInfo.id
-                                            })
-                                        });
-                                    }
-                                    
+                                    this.isLoggedIn = true;                                    
                                     // 加载群聊列表
                                     this.loadGroups();
                                     
