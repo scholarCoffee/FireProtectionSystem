@@ -3,12 +3,12 @@
         <view class="submit">
             <view class="submit-chat">
                 <view class="bt-img" @tap="onClickRecords">
-                    <image :src="toc" class="icon gray"></image>
+                    <image :src="speakIcon" class="icon gray"></image>
                 </view>
                 <textarea v-model="msg" auto-height="true" class="chat-send btn" :class="{ displayNone: isRecord}" @input="onClickInput" @focus="focus"></textarea>
                 <view class="record btn" :class="{ displayNone: !isRecord }" @longpress="touchstart" @touchend="touchend" @touchmove="touchmove">按住说话</view>
                 <view class="bt-img emoji-icon" @tap="onClickEmoji">
-                    <image src="/static/icons/chat/emoji.png" class="icon gray"></image>
+                    <image src="/static/icons/chat/smile.png" class="icon gray"></image>
                 </view>
                 <view class="bt-img add-icon" @tap="moreFun">
                     <image src="/static/icons/chat/add.png" class="icon gray"></image>
@@ -17,7 +17,7 @@
             <view class="emoji" :class="{ displayNone: isEmoji }">
                 <view class="emoji-send">
                     <view class="emoji-send-det" @tap="emojiDel">
-                        <image src="/static/icons/chat/emojiDel.png"></image>
+                        <image src="/static/icons/chat/delete.png"></image>
                     </view>
                     <view class="emoji-send-bt" @tap="emojiSend">发送</view>
                 </view>
@@ -51,23 +51,23 @@
         data() {
             return {
                 moreList: [{
-                    imgUrl: '../../static/img.png',
+                    imgUrl: '/static/icons/chat/img.png',
                     key: 1,
                     text: '图片'
                 }, {
-                    imgUrl: '../../static/photo.png',
+                    imgUrl: '/static/icons/chat/photo.png',
                     key: 2,
                     text: '拍照'
                 }, {
-                    imgUrl: '../../static/location.png',
+                    imgUrl: '/static/icons/chat/chatLocation.png',
                     key: 3,
                     text: '位置'
                 }, {
-                    imgUrl: '../../static/video.png',
+                    imgUrl: '/static/icons/chat/video.png',
                     key: 4,
                     text: '视频'
                 }, {
-                    imgUrl: '../../static/file.png',
+                    imgUrl: '/static/icons/chat/file.png',
                     key: 5,
                     text: '文件'
                 }],
@@ -76,7 +76,7 @@
                 isMore: true,
                 isVoice: true,
                 msg: '',
-                toc: '/static/icons/chat/yy.png',
+                speakIcon: '/static/icons/chat/beforeSpeak.png',
                 timer: '',
                 vlength: 0,
                 pageY: 0,
@@ -96,9 +96,9 @@
                 this.isEmoji = true
                 this.isMore = true
                 if(this.isRecord) {
-                    this.toc = "/static/icons/chat/clickSpeak.png"
+                    this.speakIcon = "/static/icons/chat/beforeSpeak.png"
                 } else {
-                    this.toc = "/static/icons/chat/speak.png"
+                    this.speakIcon = "/static/icons/chat/speaking.png"
                 }
                 this.isRecord = !this.isRecord
             },
@@ -107,7 +107,7 @@
                 this.isEmoji = !this.isEmoji
                 this.isMore = true
                 this.isRecord = false
-                this.toc = "/static/icons/chat/clickSpeak.png"
+                this.speakIcon = "/static/icons/chat/beforeSpeak.png"
                 setTimeout(() => { 
                     this.getElementHeight(0)
                 }, 0)
@@ -220,7 +220,7 @@
                 this.isEmoji = true
                 this.isMore = true
                 this.isRecord = false
-                this.toc = "/static/icons/chat/clickSpeak.png"
+                this.speakIcon = "/static/icons/chat/beforeSpeak.png"
                 setTimeout(() => {
                     this.getElementHeight(0)
                 }, 10)
@@ -247,7 +247,7 @@
             moreFun() {
                 this.isMore = !this.isMore
                 this.isRecord = false
-                this.toc = "/static/icons/chat/clickSpeak.png"
+                this.speakIcon = "/static/icons/chat/beforeSpeak.png"
                 this.isEmoji = true
                 setTimeout(() => {
                     this.getElementHeight(0)
@@ -268,7 +268,7 @@
 </script>
 <style lang="scss">
 .submit {
-    background: rgba(244,244,244,0.96);
+    background-color: #f7f8fc;
     border-top: 1px solid #eaeaea;
     width: 100%;
     z-index: 10002;
@@ -290,7 +290,7 @@
         flex: auto;
         margin: 0 10rpx;
         max-height: 160rpx;
-        padding: 20rpx;
+        padding: 10rpx;
         border: 1px solid #ccc;
         border-radius: 10rpx;
         background-color: #fff;
@@ -299,7 +299,7 @@
         line-height: 44rpx;
     }
     .record {
-        font-size: $uni-font-size-lg;
+        font-size: $uni-font-size-base;
         color: $uni-text-color-grey;
         text-align: center;
         line-height: 44rpx;
@@ -308,8 +308,7 @@
 .emoji {
     width: 100%;
     height: 460rpx;
-    background: rgba(236, 237, 238, 1);
-    box-shadow: 0 -1rpx 0 0 rgba(0,0,0,0.1);
+    background:  #f7f8fc;
     .emoji-send {
         width: 300rpx;
         height: 104rpx;
@@ -322,8 +321,9 @@
         .emoji-send-bt {
             flex: 1;
             margin: 0 32rpx 0 20rpx;
+            color: #fff;
             height: 88rpx;
-            background: rgba(255,228, 49, 1);
+            background: #1296DB;
             font-size: 32rpx;
             text-align: center;
             line-height: 88rpx;
@@ -350,9 +350,8 @@
 }
 .more {
     width: 100%;
-    height: 436rpx;
-    background: rgba(236, 237, 238, 1);
-    box-shadow: 0 -1rpx 0 0 rgba(0,0,0,0.1);
+    height: 460rpx;
+    background:  #f7f8fc;
     padding: 8rpx 20rpx;
     box-sizing: border-box;
     .more-list {

@@ -83,7 +83,7 @@
       <!-- 新增：web-view 返回按钮 -->
       <view class="webview-header" v-if="showWebview">
         <cover-view class="cover-back-btn" @click="goBackToList" v-if="showWebview">
-          <cover-image src="/static/icons/common/back.png" class="cover-back-icon"></cover-image>
+          <cover-image src="/static/icons/common/left.png" class="cover-back-icon"></cover-image>
         </cover-view>
         <web-view :src="webviewUrl"></web-view>
       </view>

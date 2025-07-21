@@ -37,8 +37,6 @@
 <script>
 import { dateTime, spaceTime, fileNameTime } from '@/commons/js/utils.js'; // 导入 dateTime 函数
 import Submit from '@/componets/submit'
-// const innerAudioContext = uni.createInnerAudioContext()
-
 export default {
     data() {
         return {
@@ -109,9 +107,6 @@ export default {
                 this.socket.emit('leaveChatRoomServer', this.uid, this.id);
             } catch (e) {}
             uni.navigateBack({ delta: 1 });
-        },
-        goUserHome(fromId) {
-            // 可跳转到用户详情页
         },
         goGroupHome() {
             console.log('goGroupHome')
@@ -315,7 +310,6 @@ export default {
         },
         groupIndexServerListener(data) {
             const { msg, userId, groupId, name, imgurl } = data
-            console.log('-------------')
             if (groupId == this.id && userId !== this.uid) {
                 this.scrollAnimation = true
                 let nowTime = new Date();
@@ -392,7 +386,7 @@ page {
 }
 .content {
     height: 100%;
-    background: rgba(244, 244, 244 ,1)
+    background-color: #f7f8fc;
 }
 /* 内容区下移，避免被导航栏遮挡 */
 .page-content {
@@ -417,7 +411,6 @@ page {
     .chat-main {
         padding-left: $uni-spacing-col-base;
         padding-right: $uni-spacing-col-base;
-        padding-top: 220rpx;
         display: flex;
         flex-direction: column;        
     }
@@ -471,6 +464,7 @@ page {
                     display: -webkit-box;
                     -webkit-box-orient: vertical;
                     -webkit-line-clamp: 1;
+                    line-clamp: 1;
                     overflow: hidden;
                 }
                 .map-address {
@@ -480,6 +474,7 @@ page {
                     display: -webkit-box;
                     -webkit-box-orient: vertical;
                     -webkit-line-clamp: 1;
+                    line-clamp: 1;
                     overflow: hidden;
                 }
                 .map-img {

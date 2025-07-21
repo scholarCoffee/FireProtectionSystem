@@ -18,7 +18,7 @@
                         <image :src="userInfo.avatarUrl" class="user-img"></image>
                     </view>
                     <view class="more" >
-                        <image src="/static/icons/common/arrow-right.png" mode="aspectFit"></image>
+                        <image src="/static/icons/common/right.png" mode="aspectFit"></image>
                     </view>
                 </view>
             </view>
@@ -27,7 +27,7 @@
                     <view class="title">昵称：</view>
                     <view class="cont">{{ userInfo.nickName }}</view>
                     <view class="more">
-                        <image src="/static/icons/common/arrow-right.png" mode="aspectFit"></image>
+                        <image src="/static/icons/common/right.png" mode="aspectFit"></image>
                     </view>
                 </view>
             </view>

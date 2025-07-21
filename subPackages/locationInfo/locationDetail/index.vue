@@ -26,7 +26,7 @@
           
           <!-- 地址详情 -->
           <view class="address-detail">
-            <image src="/static/icons/location/location.png" class="location-icon" />
+            <image src="/static/icons/location/showLocation.png" class="location-icon" />
             <text>{{ locationObj.addressExt }}</text>
           </view>
           
@@ -34,7 +34,7 @@
           <view class="panorama-view" @click="goToExternalLink(locationObj.allSenceLink)">
             <image src="/static/icons/location/panorama.png" class="location-icon"/>
             <text>720全云景</text>
-            <image src="/static/icons/common/arrow-right.png" class="arrow-icon" />
+            <image src="/static/icons/common/right.png" class="arrow-icon" />
           </view>
           
           <!-- 分割线 -->
@@ -72,7 +72,7 @@
               <text class="label">可出行大门：</text>
               <view class="gate-item" v-for="(gate, index) in locationObj.enterGateList" :key="index">
                 <!-- 勾选框 -->
-                <image src="/static/icons/common/location-checked.png" class="check-icon"/>
+                <image src="/static/icons/common/checked.png" class="check-icon"/>
                 <!-- 大门名称 -->
                 <text class="gate-name">{{ gate.name }}</text>
               </view>
