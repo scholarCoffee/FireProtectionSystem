@@ -23,7 +23,7 @@
             <view class="groups-container" v-if="groupsList.length > 0">
                 <view class="group-item" 
                       v-for="(group, index) in groupsList" 
-                      :key="group.id" 
+                      :key="group._id" 
                       @tap="goToChatRoom(group)">
                     <!-- 左侧头像与未读提示 -->
                     <view class="group-left">
@@ -343,7 +343,7 @@
                 }
                 
                 uni.navigateTo({
-                    url: `/subPackages/chatInfo/chatRoom/index?id=${id}&name=${name}&imgurl=${imgUrl}&chatType=1`
+                    url: `/subPackages/chatInfo/chatRoom/index?id=${id}&nickName=${name}&avatarUrl=${imgUrl}&chatType=1`
                 });
             },
             // 微信一键登录新版，强制获取头像昵称

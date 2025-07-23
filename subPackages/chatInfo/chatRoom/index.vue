@@ -5,7 +5,7 @@
                 <view class="chat-main" :style="{ 'padding-bottom': inputh + 'px'}">
                     <view class="chat-ls" v-for="(item, index) in chatMessage" :key="index" :id="'chatMessage' + item.id">     
                         <view class="chat-time" v-if="item.time != ''">{{ dateTime(item.time) }}</view>
-                        <view class="msg-m msg-left" v-if="item.fromId !== uid"  @tap="goUserHome(item.fromId)">
+                        <view class="msg-m msg-left" v-if="item.fromId !== userInfo.id">
                             <image :src="item.imgurl" class="user-img"></image>
                             <view class="message" v-if="item.types === 0">
                                 <view class="name-text" v-if="isGroup">{{ item.name }}</view>
@@ -17,7 +17,7 @@
                             </view>
                         </view>
                         <view class="msg-m msg-right" v-else>
-                            <image :src="item.imgurl" class="user-img"  @tap="goUserHome(item.fromId)"></image>
+                            <image :src="item.imgurl" class="user-img"></image>
                             <view class="message" v-if="item.types === 0">
                                 <view class="msg-text">{{ item.message }}</view>
                             </view>
@@ -40,14 +40,21 @@ import Submit from '@/componets/submit'
 export default {
     data() {
         return {
-            uid: '', // 当前用户id
-            id: '', // 当前id[一对一好友id或者群id]
-            name: '', // 名称[好友名称或者群名称]
-            imgurl: '', // 头像[好友头像或者群头像]
-            chatType: 0, // 0-好友，1-群
-            uimgurl: '',
-            token: '',
-            uname: '',
+            // 当前登录用户
+            userInfo: {
+                nickName: '', // 用户昵称
+                avatarUrl: '', // 用户头像
+                permissionStatus: 1, // 用户权限
+                id: '' // 用户id
+            },
+            // 聊天室信息[一对一好友或者群]
+            currentUserInfo: {
+                id: '', // 聊天室id
+                nickName: '', // 聊天室名称
+                avatarUrl: '', // 聊天室头像
+                permissionStatus: 1, // 聊天室权限
+            },
+            chatType: 1, // 0-好友，1-群
             chatMessage: [],
             imgMsg: [],
             scrollToView: '',
@@ -62,11 +69,11 @@ export default {
     },
     components: { Submit },
     onLoad(e) {
-        const { id, name, chatType, imgurl } = e || {}
-        this.id = id
-        this.name = name
-        this.chatType = Number(chatType)
-        this.imgurl = this.serverUrl + imgurl
+        const { id, nickName, avatarUrl, chatType } = e || {}
+        this.currentUserInfo.id = id 
+        this.currentUserInfo.nickName = nickName
+        this.currentUserInfo.avatarUrl = avatarUrl
+        this.chatType = Number(chatType) || 1
         if (!this.isGroup) {
             this.receiveSelfSocketMsg()
         } else {
@@ -86,30 +93,40 @@ export default {
         this.socket.off('groupMsgFront', this.groupIndexServerListener)
         clearInterval(this.loadingTimers)
     },
+    // 拦截导航栏后退事件
+    onBackPress(options) {
+        // 判断是否是从导航栏后退按钮触发的
+        if (options.from === 'navigateBack') {
+            // 执行自定义方法
+            this.customBackMethod()
+            // 返回 true 表示拦截默认后退行为
+            // 如果你希望在自定义方法执行后仍然执行后退，可以调用 uni.navigateBack()
+            return true
+        }
+        // 其他情况（如安卓物理返回键）不拦截
+        return false
+    },
     methods: {
-        dateTime,
-        goBack() {
-            uni.navigateBack();
+        // 自定义后退方法
+        customBackMethod() {
+            this.socket.emit('leaveChatRoomServer', this.userInfo.id, this.currentUserInfo.id);
+            // 如果需要继续执行后退操作
+            uni.navigateBack({
+                delta: 1, // 返回的页面层数
+                animationType: 'pop-out', // 动画效果
+                animationDuration: 300
+            })
         },
+        dateTime,
         getStorages() {
             // 获取本地存储的用户信息
             const userInfo = uni.getStorageSync('userInfo');
             if (userInfo) {
-                const { userId, userName, imgUrl, token } = userInfo;
-                this.uid = userId; // 用户ID
-                this.uname = userName; // 用户名
-                this.uimgurl = this.serverUrl + imgUrl; // 头像URL
-                this.token = token; // 用户token
+                const { id, nickName, avatarUrl } = userInfo;
+                this.userInfo.id = id
+                this.userInfo.nickName = nickName
+                this.userInfo.avatarUrl = avatarUrl
             }
-        },
-        backOne() {
-            try {
-                this.socket.emit('leaveChatRoomServer', this.uid, this.id);
-            } catch (e) {}
-            uni.navigateBack({ delta: 1 });
-        },
-        goGroupHome() {
-            console.log('goGroupHome')
         },
         nextPage() {
             if (this.isLoading) {
@@ -127,12 +144,11 @@ export default {
             this.chatMessage = [];
             const url = this.isGroup ? this.serverUrl + '/chat/getGroupMsg' : this.serverUrl + '/chat/getSelfMsg';
             const data = {
-                uid: this.uid,
+                uid: this.userInfo.id,
                 nowPage: this.nowPage,
                 pageSize: this.pageSize,
                 state: 1,
-                token: this.token,
-                ...(this.isGroup ? { gid: this.id } : { fid: this.id })
+                ...(this.isGroup ? { gid: this.currentUserInfo.id } : { fid: this.currentUserInfo.id })
             };
             uni.request({
                 url,
@@ -200,7 +216,7 @@ export default {
             });
         },
         sendMessage(e) {
-           this.receiveMsg(e, this.uid, this.uimgurl, 0)
+           this.receiveMsg(e, this.userInfo.id, this.currentUserInfo.avatarUrl, 0)
         },
         // 接收消息
         receiveMsg(e, id, img, tip) {
@@ -217,7 +233,7 @@ export default {
                     name: 'file',
                     formData: {
                         url: fileNameTime(new Date()),
-                        name: new Date().getTime() + this.uid + Math.ceil(Math.random()*10),
+                        name: new Date().getTime() + this.userInfo.id + Math.ceil(Math.random()*10),
                     },
                     success: (res) => {
                         // 处理返回的数据
@@ -275,7 +291,7 @@ export default {
         },
         friendIndexServerListener(data, fromid) {
             const { msg, userId } = data
-            if (userId == this.id && userId !== this.uid) {
+            if (userId == this.id && userId !== this.userInfo.id) {
                 console.log('')
                 this.scrollAnimation = true
                 let nowTime = new Date();
@@ -310,7 +326,7 @@ export default {
         },
         groupIndexServerListener(data) {
             const { msg, userId, groupId, name, imgurl } = data
-            if (groupId == this.id && userId !== this.uid) {
+            if (groupId == this.id && userId !== this.userInfo.id) {
                 this.scrollAnimation = true
                 let nowTime = new Date();
                 let t = spaceTime(this.oldTime, nowTime);
@@ -343,14 +359,14 @@ export default {
         // 聊天数据发送给后端
         sendSocket(e) {
             if(!this.isGroup) {
-                this.socket.emit('msgServer', e, this.uid, this.id)
+                this.socket.emit('msgServer', e, this.userInfo.id, this.id)
             } else {
                 this.socket.emit('groupMsgServer', {
                     msg: e,
-                    userId: this.uid, // 信息来源：当前用户
-                    groupId: this.id, // 当前群id
-                    name: this.uname, // 当前用户名称
-                    imgurl: this.uimgurl, // 当前用户头像
+                    userId: this.userInfo.id, // 信息来源：当前用户
+                    groupId: this.currentUserInfo.id, // 当前群id
+                    name: this.currentUserInfo.nickName, // 当前用户名称
+                    imgurl: this.currentUserInfo.avatarUrl, // 当前用户头像
                 })
             }
         },

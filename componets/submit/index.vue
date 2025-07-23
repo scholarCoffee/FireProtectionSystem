@@ -41,6 +41,7 @@
     </view>
 </template>
 <script>
+    import { chatSubmitList } from '@/commons/mock'
     import emoji from './../emoji/index.vue'
     const recorderManager = uni.getRecorderManager()
     export default {
@@ -50,27 +51,7 @@
         },
         data() {
             return {
-                moreList: [{
-                    imgUrl: '/static/icons/chat/img.png',
-                    key: 1,
-                    text: '图片'
-                }, {
-                    imgUrl: '/static/icons/chat/photo.png',
-                    key: 2,
-                    text: '拍照'
-                }, {
-                    imgUrl: '/static/icons/chat/chatLocation.png',
-                    key: 3,
-                    text: '位置'
-                }, {
-                    imgUrl: '/static/icons/chat/video.png',
-                    key: 4,
-                    text: '视频'
-                }, {
-                    imgUrl: '/static/icons/chat/file.png',
-                    key: 5,
-                    text: '文件'
-                }],
+                moreList: chatSubmitList,
                 isRecord: false,
                 isEmoji: true,
                 isMore: true,
