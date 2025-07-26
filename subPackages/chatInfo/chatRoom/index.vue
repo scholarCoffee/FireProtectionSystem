@@ -3,21 +3,23 @@
         <view class="page-content">
             <scroll-view class="chat" scroll-y="true" :scroll-with-animation="scrollAnimation" :scroll-into-view="scrollToView" @scrolltoupper="nextPage">
                 <view class="chat-main" :style="{ 'padding-bottom': inputh + 'px'}">
-                    <view class="chat-ls" v-for="(item, index) in chatMessage" :key="index" :id="'chatMessage' + item.id">     
+                    <view class="chat-ls" v-for="(item, index) in chatMessageList" :key="index" :id="'chatMessageList' + item.id">     
                         <view class="chat-time" v-if="item.time != ''">{{ dateTime(item.time) }}</view>
+                        <!-- 消息左边 -->
                         <view class="msg-m msg-left" v-if="item.fromId !== userInfo.id">
-                            <image :src="item.imgurl" class="user-img"></image>
+                            <image :src="item.avatarUrl" class="user-img"></image>
                             <view class="message" v-if="item.types === 0">
-                                <view class="name-text" v-if="isGroup">{{ item.name }}</view>
+                                <view class="name-text" v-if="isGroup">{{ item.nickName }}</view>
                                 <view class="msg-text">{{ item.message }}</view>
                             </view>
                             <view class="message" v-if="item.types === 1">
-                                <view class="name-text" v-if="isGroup">{{ item.name }}</view>
+                                <view class="name-text" v-if="isGroup">{{ item.nickName }}</view>
                                 <image :src="item.message" class="msg-img" @tap="previewImg(item.message)" mode="widthFix"></image>
                             </view>
                         </view>
+                        <!-- 消息右边 -->
                         <view class="msg-m msg-right" v-else>
-                            <image :src="item.imgurl" class="user-img"></image>
+                            <image :src="item.avatarUrl" class="user-img"></image>
                             <view class="message" v-if="item.types === 0">
                                 <view class="msg-text">{{ item.message }}</view>
                             </view>
@@ -55,7 +57,7 @@ export default {
                 permissionStatus: 1, // 聊天室权限
             },
             chatType: 1, // 0-好友，1-群
-            chatMessage: [],
+            chatMessageList: [],
             imgMsg: [],
             scrollToView: '',
             oldTime: 0,
@@ -80,15 +82,12 @@ export default {
             this.receivceGroupSocketMsg()
         }
     },
-    computed: {
-        // 是否群聊
-        isGroup() { return this.chatType == 1 }
-    },
+    computed: { isGroup() { return this.chatType == 1 } },
     onShow() {
         this.getStorages()
-        this.getChatMessage()
+        this.getChatMessageList()
     },
-    beforeDestroy() {
+    onUnload() {
         this.socket.off('msgFront', this.friendIndexServerListener)
         this.socket.off('groupMsgFront', this.groupIndexServerListener)
         clearInterval(this.loadingTimers)
@@ -134,21 +133,21 @@ export default {
                 clearTimeout(this.loadingTimers);
                 this.loadingTimers = setTimeout(() => {
                     this.pageSize += 20;
-                    this.getChatMessage('scrollTop');
+                    this.getChatMessageList('scrollTop');
                 }, 1000);
             }
         },
-        getChatMessage(action) {
+        getChatMessageList(action) {
             // 获取消息列表
             uni.showToast({ title: '加载中...', icon: 'loading', duration: 5000 });
-            this.chatMessage = [];
+            this.chatMessageList = [];
             const url = this.isGroup ? this.serverUrl + '/chat/getGroupMsg' : this.serverUrl + '/chat/getSelfMsg';
             const data = {
-                uid: this.userInfo.id,
+                userId: this.userInfo.id,
                 nowPage: this.nowPage,
                 pageSize: this.pageSize,
                 state: 1,
-                ...(this.isGroup ? { gid: this.currentUserInfo.id } : { fid: this.currentUserInfo.id })
+                ...(this.isGroup ? { groupId: this.currentUserInfo.id } : { friendId: this.currentUserInfo.id })
             };
             uni.request({
                 url,
@@ -162,7 +161,7 @@ export default {
                             let oldTime = data[0].time
                             let msgArr = []
                             for (var i = 0; i < data.length; i++) {
-                                data[i].imgurl = this.serverUrl + data[i].imgurl;
+                                data[i].avatarUrl = this.serverUrl + data[i].avatarUrl;
                                 if (i < data.length) {
                                     let t = spaceTime(oldTime, data[i].time);
                                     if (t) {
@@ -186,7 +185,7 @@ export default {
                                     data[i].time = '';
                                 }
                             }
-                            this.chatMessage = data.concat(this.chatMessage);
+                            this.chatMessageList = data.concat(this.chatMessageList);
                             this.imgMsg = this.imgMsg.concat(msgArr)
                         }
                         this.scrollToBottom(action)
@@ -215,20 +214,27 @@ export default {
                 }
             });
         },
-        sendMessage(e) {
-           this.receiveMsg(e, this.userInfo.id, this.currentUserInfo.avatarUrl, 0)
+        // 发送消息
+        sendMessage(message) {
+           this.receiveMessage(message, this.userInfo.id, this.userInfo.avatarUrl)
         },
-        // 接收消息
-        receiveMsg(e, id, img, tip) {
-            // tip = 0 表示自己发送消息
-            // socket提交
-            if (e.types === 0 || e.types === 3) {
-                this.sendSocket(e)
-            } else if (e.types === 1) {
-                this.imgMsg.push(e.message)
+        /**
+         * 
+         * @param messageInfo 消息信息
+         * @param id 消息发送者id
+         * @param avatarUrl 消息发送者头像
+         */
+        receiveMessage(messageInfo, id, avatarUrl) {
+            const { types } = messageInfo || {}
+            let { message } = messageInfo || {}
+            // 发送消息
+            if (types === 0 || types === 3) {
+                this.sendSocket(messageInfo)
+            } else if (types === 1) {
+                this.imgMsg.push(message)
                 const uploadTask = uni.uploadFile({
                     url: this.serverUrl + '/files/upload', // 仅为示例，非真实的接口地址
-                    filePath: e.message,
+                    filePath: message,
                     fileType: 'image',
                     name: 'file',
                     formData: {
@@ -241,56 +247,53 @@ export default {
                         console.log('上传成功', res)
                         let data = {
                             message: res.data,
-                            types: e.types
+                            types: types
                         }
                         this.sendSocket(data)
                     },
                     fail: (err) => {
                         uni.showToast({
-                            title: '图片上传失败',
+                            title: '图片上传失败' + err,
                             icon: 'none',
                             duration: 2000
                         });
                     }
                 })
-
                 uploadTask.onProgressUpdate((res) => {
                     console.log('上传进度', res.progress)
                 })
             }
-            const { message, types } = e || {}
             this.scrollAnimation = true
-            let len = this.chatMessage.length
+            let len = this.chatMessageList.length
             let nowTime = new Date();
             let t = spaceTime(this.oldTime, nowTime);
             if (t) {
                 this.oldTime = t
             }
             nowTime = t;
-            if (e.types == 3 ) {
-                e.message = JSON.parse(e.message)
+            if (types == 3 ) {
+                message = JSON.parse(message)
             }
             const data = {
                 fromId: id, // 假设 1 表示当前用户
-                message: message,
-                types: types, // 假设 0 表示文本消息
-                time: nowTime,
-                imgurl: img, // 假设当前用户头像
-                id: len
+                message, // 消息内容
+                types, // 假设 0 表示文本消息
+                time: nowTime, // 消息时间
+                avatarUrl: avatarUrl, // 假设当前用户头像
+                id: len // 消息id
             }
             // 添加新消息到消息列表
-            this.chatMessage.push(data);
+            this.chatMessageList.push(data);
             this.$nextTick(() => {
-                this.scrollToView = 'chatMessage' + len;
+                this.scrollToView = 'chatMessageList' + len;
             }); 
-            
         },
         // socekt聊天接受数据
         receiveSelfSocketMsg() {
             this.socket.on('msgFront', this.friendIndexServerListener)
         },
-        friendIndexServerListener(data, fromid) {
-            const { msg, userId } = data
+        friendIndexServerListener(data) {
+            const { messageInfo, userId } = data
             if (userId == this.id && userId !== this.userInfo.id) {
                 console.log('')
                 this.scrollAnimation = true
@@ -299,25 +302,25 @@ export default {
                 if (t) {
                     this.oldTime = t
                 }
-                if (msg.types == 1 || msg.types == 2) {
-                    msg.message = this.serverUrl + msg.message
+                if (messageInfo.types == 1 || messageInfo.types == 2) {
+                    messageInfo.message = this.serverUrl + messageInfo.message
                 }
                 nowTime = t;
                 const data = {
                     fromId: userId, // 假设 1 表示当前用户
-                    message: msg.message,
-                    types: msg.types, // 假设 0 表示文本消息
+                    message: messageInfo.message,
+                    types: messageInfo.types, // 假设 0 表示文本消息
                     time: nowTime,
-                    imgurl: this.imgurl, // 假设当前用户头像
-                    id: this.chatMessage.length
+                    avatarUrl: this.userInfo.avatarUrl, // 假设当前用户头像
+                    id: this.chatMessageList.length
                 }
                 // 添加新消息到消息列表
-                this.chatMessage.push(data);
-                if (msg.types === 1) {
-                    this.imgMsg.push(msg.message)
+                this.chatMessageList.push(data);
+                if (messageInfo.types === 1) {
+                    this.imgMsg.push(messageInfo.message)
                 }
                 this.$nextTick(() => {
-                    this.scrollToView = 'chatMessage' + this.chatMessage[this.chatMessage.length - 1].id
+                    this.scrollToView = 'chatMessageList' + this.chatMessageList[this.chatMessageList.length - 1].id
                 });
             } 
         },
@@ -325,7 +328,7 @@ export default {
             this.socket.on('groupMsgFront', this.groupIndexServerListener)
         },
         groupIndexServerListener(data) {
-            const { msg, userId, groupId, name, imgurl } = data
+            const { messageInfo, userId, groupId, nickName, avatarUrl } = data
             if (groupId == this.id && userId !== this.userInfo.id) {
                 this.scrollAnimation = true
                 let nowTime = new Date();
@@ -333,40 +336,44 @@ export default {
                 if (t) {
                     this.oldTime = t
                 }
-                if (msg.types == 1 || msg.types == 2) {
-                    msg.message = this.serverUrl + msg.message
+                if (messageInfo.types == 1 || messageInfo.types == 2) {
+                    messageInfo.message = this.serverUrl + messageInfo.message
                 }
                 nowTime = t;
                 const data = {
                     fromId: userId, // 假设 1 表示当前用户
-                    name: name, 
-                    message: msg.message,
-                    types: msg.types, // 假设 0 表示文本消息
+                    nickName: nickName, 
+                    message: messageInfo.message,
+                    types: messageInfo.types, // 假设 0 表示文本消息
                     time: nowTime,
-                    imgurl: imgurl, // 假设当前用户头像
-                    id: this.chatMessage.length
+                    avatarUrl: avatarUrl, // 假设当前用户头像
+                    id: this.chatMessageList.length
                 }
                 // 添加新消息到消息列表
-                this.chatMessage.push(data);
+                this.chatMessageList.push(data);
                 if (msg.types === 1) {
                     this.imgMsg.push(msg.message)
                 }
                 this.$nextTick(() => {
-                    this.scrollToView = 'chatMessage' + this.chatMessage[this.chatMessage.length - 1].id
+                    this.scrollToView = 'chatMessageList' + this.chatMessageList[this.chatMessageList.length - 1].id
                 });
             } 
         },
         // 聊天数据发送给后端
-        sendSocket(e) {
+        sendSocket(data) {
             if(!this.isGroup) {
-                this.socket.emit('msgServer', e, this.userInfo.id, this.id)
+                this.socket.emit('msgServer', {
+                    messageInfo: data,
+                    userId: this.userInfo.id, // 信息来源：当前用户
+                    friendId: this.currentUserInfo.id // 当前好友id
+                })
             } else {
                 this.socket.emit('groupMsgServer', {
-                    msg: e,
+                    messageInfo: data,
                     userId: this.userInfo.id, // 信息来源：当前用户
                     groupId: this.currentUserInfo.id, // 当前群id
-                    name: this.currentUserInfo.nickName, // 当前用户名称
-                    imgurl: this.currentUserInfo.avatarUrl, // 当前用户头像
+                    nickName: this.currentUserInfo.nickName, // 当前用户名称
+                    avatarUrl: this.currentUserInfo.avatarUrl // 当前用户头像
                 })
             }
         },
@@ -377,15 +384,15 @@ export default {
         scrollToBottom(action) {
             this.scrollAnimation = true
             if (action === 'scrollTop') {
-                this.scrollToView = 'chatMessage' + this.chatMessage[0].id;
+                this.scrollToView = 'chatMessageList' + this.chatMessageList[0].id;
             } else {
                 setTimeout(() => {
                     this.scrollToView = ''
                     this.scrollAnimation = false
                     this.$nextTick(() => {
-                        const lastItem = this.chatMessage[this.chatMessage.length - 1];
+                        const lastItem = this.chatMessageList[this.chatMessageList.length - 1];
                         if (lastItem) {
-                            this.scrollToView = 'chatMessage' + lastItem.id;
+                            this.scrollToView = 'chatMessageList' + lastItem.id;
                         }
                     });     
                 }, 0);
@@ -446,7 +453,6 @@ page {
                 width: 58rpx;
                 height: 58rpx;
                 border-radius: $uni-border-radius-base;
-                background-color: #fff260;
             }
             .message {
                flex: none;
@@ -537,7 +543,7 @@ page {
             flex-direction: row-reverse;
             .msg-text {
                 margin-right: 16rpx;
-                background-color: rgba(255, 228, 49, 0.8);
+                background-color: #82f1007d;
                 color: #333;
                 border-radius: 20rpx;
             }

@@ -2,26 +2,26 @@
     <view>
         <view class="submit">
             <view class="submit-chat">
-                <view class="bt-img" @tap="onClickRecords">
+                <view class="bt-img" @tap="onClickSpeak">
                     <image :src="speakIcon" class="icon gray"></image>
                 </view>
                 <textarea v-model="msg" auto-height="true" class="chat-send btn" :class="{ displayNone: isRecord}" @input="onClickInput" @focus="focus"></textarea>
                 <view class="record btn" :class="{ displayNone: !isRecord }" @longpress="touchstart" @touchend="touchend" @touchmove="touchmove">按住说话</view>
-                <view class="bt-img emoji-icon" @tap="onClickEmoji">
+                <view class="bt-img emoji-icon" @tap="onShowEmoji">
                     <image src="/static/icons/chat/smile.png" class="icon gray"></image>
                 </view>
-                <view class="bt-img add-icon" @tap="moreFun">
+                <view class="bt-img add-icon" @tap="onClickMore">
                     <image src="/static/icons/chat/add.png" class="icon gray"></image>
                 </view>
             </view>
             <view class="emoji" :class="{ displayNone: isEmoji }">
                 <view class="emoji-send">
-                    <view class="emoji-send-det" @tap="emojiDel">
+                    <view class="emoji-send-det" @tap="onDelEmoji">
                         <image src="/static/icons/chat/delete.png"></image>
                     </view>
-                    <view class="emoji-send-bt" @tap="emojiSend">发送</view>
+                    <view class="emoji-send-bt" @tap="onClickEmojiSend">发送</view>
                 </view>
-                <emoji @emotion="emotion" :height="260"></emoji>
+                <emoji @emotion="onClickEmoji" :height="260"></emoji>
                 </view>
                 <view class="more" :class="{ displayNone: isMore }">
                     <view class="more-list" v-for="(item, index) in moreList" :key="index" @tap="onClickMore(item)">
@@ -73,7 +73,7 @@
                 }).exec()
             },
             // 点击切换音频
-            onClickRecords() {
+            onClickSpeak() {
                 this.isEmoji = true
                 this.isMore = true
                 if(this.isRecord) {
@@ -84,7 +84,7 @@
                 this.isRecord = !this.isRecord
             },
             // 点击表情
-            onClickEmoji() {
+            onShowEmoji() {
                 this.isEmoji = !this.isEmoji
                 this.isMore = true
                 this.isRecord = false
@@ -93,9 +93,11 @@
                     this.getElementHeight(0)
                 }, 0)
             },
-            emotion(e) {
-                this.msg = this.msg + e
+            // 点击表情
+            onClickEmoji(data) {
+                this.msg = this.msg + data
             },
+            // 点击更多
             onClickMore(item) {
               const { key } = item || {}
               switch(key) {
@@ -214,18 +216,18 @@
                     this.send(this.msg, 0)
                 }
             },
-            emojiDel() {
+            onDelEmoji() {
                 if (this.msg?.length > 0) {
                     this.msg = this.msg.substring(0, this.msg.length - 1)
                 }
             },
-            emojiSend() {
+            onClickEmojiSend() {
                 if (this.msg?.length > 0) {
                     this.send(this.msg, 0)
                 }
             },
             // 更多
-            moreFun() {
+            onClickMore() {
                 this.isMore = !this.isMore
                 this.isRecord = false
                 this.speakIcon = "/static/icons/chat/beforeSpeak.png"

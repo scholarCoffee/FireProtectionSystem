@@ -4,7 +4,7 @@
         'height': height + 'px',
     }">
 		<view class="emoji-line" v-for="(line, i ) in emoji" :key="i">
-            <view class="emoji-line-item" v-for="(item, index) in line" :key="index" @tap="clickEmoji(item)">{{ item }}</view>
+            <view class="emoji-line-item" v-for="(item, index) in line" :key="index" @tap="onClickEmoji(item)">{{ item }}</view>
         </view>
 	</view>
 </template>
@@ -38,9 +38,8 @@
             }
 		},
         methods: {
-            clickEmoji(e) {
-                this.$emit('emotion', e)
-
+            onClickEmoji(data) {
+                this.$emit('emotion', data)
             }
         }
 	}

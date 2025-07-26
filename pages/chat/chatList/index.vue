@@ -23,19 +23,20 @@
             <view class="groups-container" v-if="groupsList.length > 0">
                 <view class="group-item" 
                       v-for="(group, index) in groupsList" 
-                      :key="group._id" 
+                      :key="group.groupId" 
                       @tap="goToChatRoom(group)">
                     <!-- 左侧头像与未读提示 -->
                     <view class="group-left">
                         <text class="unread-tip" v-if="group.tip > 0">{{ group.tip }}</text>
-                        <image :src="group.imgUrl" class="group-avatar"></image>
-                        <view class="group-tag"></view> <!-- 群组标识 -->
+                        <image :src="group.groupAvatar" class="group-avatar"></image>
+                        <!-- 群组标识 -->
+                        <view class="group-tag"></view> 
                     </view>
                     
                     <!-- 右侧信息 -->
                     <view class="group-right">
                         <view class="group-top">
-                            <text class="group-name">{{ group.name }}</text>
+                            <text class="group-name">{{ group.groupName }}</text>
                             <text class="msg-time">{{ changeTime(group.lastTime) }}</text>
                         </view>
                         <text class="last-msg">{{ group.message }}</text>
@@ -65,7 +66,6 @@
                     id: ''
                 },
                 permissionStatus: 0, // 权限状态
-                socket: null, // 显式定义socket
                 isLoggedIn: false, // 用户是否登录
             }
         },
@@ -84,13 +84,50 @@
             this.loadGroups(); // 下拉刷新
         },
         onUnload() {
-            // 移除socket监听（增加空值检查）
-            if (this.socket) {
-                this.socket.off('groupMsgFront', this.handleGroupMsg);
-                this.socket.off('leaveChatRoomFront', this.handleLeaveRoom);
-            }
+            // 断开socket连接
+            this.socket.off('groupMsgFront', this.groupMsgListener)
+            this.socket.off('leaveChatRoomFront', this.leaveChatRoomMsgListener)
         },
         methods: {
+            // 接受群组
+            groupMsgListener(data) {
+                const { messageInfo, userId, groupId, nickName, avatarUrl } = data || {}
+                let nmsg = ''
+                if (messageInfo.types === 0) {
+                    nmsg = messageInfo.message
+                } else if (messageInfo.types === 1) {
+                    nmsg = '[图片]'
+                } else if (messageInfo.types === 2) {
+                    nmsg = '[音频]'
+                } else if (messageInfo.types === 3) {
+                    nmsg = '[位置]'
+                }
+                for(let i = 0 ; i < this.groupsList.length ; i++) {
+                    if (this.groupsList[i].groupId === groupId) {
+                        let e = this.groupsList[i]
+                        e.lastTime = new Date()
+                        if (userId == this.userInfo.id) {
+                            e.message = nmsg
+                        } else {
+                            e.message = nickName + ': ' + nmsg
+                        }
+                        e.tip++
+                        this.groupsList.splice(i, 1)
+                        this.groupsList.unshift(e)
+                        break
+                    }
+                }
+            },
+            leaveChatRoomMsgListener(uid, groupId) {
+                // 离开聊天室更新聊天tip
+                for(let i = 0 ; i < this.groupsList.length ; i++) {
+                    if (this.groupsList[i].groupId === groupId) {
+                        let e = this.groupsList[i]
+                        e.tip = 0
+                        this.groupsList.splice(i, 1, e)
+                    }
+                }
+            },
             // 检查登录状态
             checkLoginStatus() {
                 // #ifndef MP-WEIXIN
@@ -102,59 +139,16 @@
                     permissionStatus: 1 // 默认有权限
                 };
                 uni.setStorageSync('userInfo', mockUserInfo);
+
                 // #endif
                 this.getStorages();
                 
             },
             // 初始化socket连接
             initSocket() {
-                // 创建socket实例（假设使用uni-app的WebSocket）
-                this.socket = uni.connectSocket({
-                    url: this.serverUrl + '/socket', // 替换为实际socket地址
-                    success: () => {
-                        console.log('Socket连接成功');
-                    },
-                    fail: (err) => {
-                        console.error('Socket连接失败:', err);
-                    }
-                });
-                
-                // 监听socket连接成功
-                this.socket.onOpen(() => {
-                    console.log('Socket已连接');
-                    this.getStorages(); // 连接成功后获取用户信息并登录
-                    this.socket.send({
-                        data: JSON.stringify({
-                            type: 'login',
-                            uid: this.userInfo.id
-                        })
-                    });
-                });
-                
-                // 监听群消息
-                this.socket.onMessage((res) => {
-                    try {
-                        const data = JSON.parse(res.data);
-                        if (data.type === 'groupMsg') {
-                            this.handleGroupMsg(data);
-                        } else if (data.type === 'leaveChatRoom') {
-                            this.handleLeaveRoom(data);
-                        }
-                    } catch (err) {
-                        console.error('解析Socket消息失败:', err);
-                    }
-                });
-                
-                // 监听错误和关闭
-                this.socket.onError((err) => {
-                    console.error('Socket错误:', err);
-                });
-                
-                this.socket.onClose(() => {
-                    console.log('Socket已关闭');
-                });
+                this.socket.on('groupMsgFront', this.groupMsgListener)
+                this.socket.on('leaveChatRoomFront', this.leaveChatRoomMsgListener)
             },
-
             // 获取本地存储的用户信息
             getStorages() {
                 const userInfo = uni.getStorageSync('userInfo');
@@ -177,7 +171,6 @@
                     clearUnreadCount();
                 }
             },
-
             // 加载群聊列表
             loadGroups() {
                 uni.showLoading({
@@ -190,11 +183,24 @@
                     url: this.serverUrl + '/group/getGroupList',
                     method: 'POST',
                     data: { permissionStatus: this.userInfo.permissionStatus, uid: this.userInfo.id },
-                    success: (res) => {
+                    success: async (res) => {
                         const { code, data } = res.data || {};
                         if (code === 200 && Array.isArray(data) && data.length > 0) {
                             // 调用后台接口，获取群列表最后消息
-                            this.getGroupLastMsg(data);
+                            try {                                
+                                const groupList = await Promise.all(data.map(item => {    
+                                    return this.getGroupLastMsg(item)
+                                }))
+                                this.groupsList = this.formatGroups(groupList);
+                            } catch (error) {
+                                this.groupsList = [];
+                                uni.showToast({
+                                    title: '获取群聊列表失败',
+                                    icon: 'none',
+                                    duration: 2000
+                                });
+                            }
+                            
                         } else {
                             this.groupsList = [];
                             uni.showToast({
@@ -220,40 +226,43 @@
             },
 
             // 获取群列表最后消息
-            getGroupLastMsg(data) {
-                uni.request({
-                    url: this.serverUrl + '/group/getLastGroupMsg',
-                    method: 'POST',
-                    data: { groupList: data, uid: this.userInfo.id },
-                    success: (res) => {
-                        const { code, data } = res.data || {};
-                        if (code === 200 && Array.isArray(data)) {
-                            this.groupsList = this.formatGroups(data);
-                            // 更新tabBar未读数
-                            this.updateTabBarBadge();
+            getGroupLastMsg(groupInfo) {
+                return new Promise((resolve, reject) => {
+                    uni.request({
+                        url: this.serverUrl + '/group/getLastGroupMsg',
+                        method: 'POST',
+                        data: { groupInfo: groupInfo, userId: this.userInfo.id },
+                        success: (res) => {
+                            const { code, data } = res.data || {};
+                            if (code === 200) {
+                                resolve({
+                                    ...data.groupMessageInfo
+                                });
+                            }
+                        },
+                        fail: (err) => {
+                            reject(err);
                         }
-                    },
-                    fail: (err) => {
-                        uni.showToast({
-                            title: '获取群列表最后消息失败:' + err,
-                            icon: 'none',
-                            duration: 2000
-                        });
-                    }
-                });
+                    });
+                })
             },
             // 格式化群聊数据
             formatGroups(groups) {
-                return groups.map(group => ({
-                    id: group._id,
-                    name: group.markname || group.name || '未命名群组',
-                    imgUrl: group.imgUrl ? (this.serverUrl + group.imgUrl) : '/static/icons/chat/defautl-group.png',
-                    lastTime: group?.groupMessageInfo?.lastTime ? new Date(group?.groupMessageInfo?.lastTime) : new Date(),
-                    message: group?.groupMessageInfo?.message ? `${group.name || '群成员'}: ${group?.groupMessageInfo?.message}` : '暂无消息',
-                    tip: group?.groupMessageInfo?.tip || 0
-                }));
+                return groups.map(group => {
+                    // 加入群组监听
+                    this.socket.emit('groupServer', group.groupId)
+                    return {
+                        groupId: group.groupId,
+                        sendMsgName: group.sendMsgName || '群成员',
+                        sendMsgAvatar: group.sendMsgAvatar,
+                        groupName: group.groupName,
+                        groupAvatar: group.groupAvatar ? (this.serverUrl + group.groupAvatar) : '/static/icons/chat/defautl-group.png',
+                        lastTime: group?.lastTime ? new Date(group?.lastTime) : new Date(),
+                        message: group?.message ? `${group.sendMsgName || '群成员'}: ${group?.message}` : '暂无消息',
+                        tip: group?.tip || 0
+                    }
+                })
             },
-
             // 处理新群消息
             handleGroupMsg(data) {
                 if (!data || !data.groupId || !this.hasChatPermission) return;
@@ -328,12 +337,12 @@
 
             // 进入群聊房间
             goToChatRoom(group) {
-                if (!group || !group.id || !this.hasChatPermission) return;
+                if (!group || !group.groupId || !this.hasChatPermission) return;
                 
-                const { id, name, imgUrl } = group;
+                const { groupId, groupName, groupAvatar } = group;
                 
                 // 清除该群的未读消息数
-                const index = this.groupsList.findIndex(g => g.id === id);
+                const index = this.groupsList.findIndex(g => g.groupId === groupId);
                 if (index > -1 && this.groupsList[index].tip > 0) {
                     const oldTip = this.groupsList[index].tip;
                     this.groupsList[index].tip = 0;
@@ -343,7 +352,7 @@
                 }
                 
                 uni.navigateTo({
-                    url: `/subPackages/chatInfo/chatRoom/index?id=${id}&nickName=${name}&avatarUrl=${imgUrl}&chatType=1`
+                    url: `/subPackages/chatInfo/chatRoom/index?id=${groupId}&nickName=${groupName}&avatarUrl=${groupAvatar}&chatType=1`
                 });
             },
             // 微信一键登录新版，强制获取头像昵称
@@ -504,6 +513,7 @@
             position: absolute;
             top: -6rpx;
             right: -6rpx;
+            z-index: 100;
             min-width: 36rpx;
             height: 36rpx;
             line-height: 36rpx;
