@@ -1,19 +1,19 @@
 <template>
-    <view class="content">
+    <view class="content" @keyboardheightchange="onKeyboardHeightChange">
         <view class="page-content">
-            <scroll-view class="chat" scroll-y="true" :scroll-with-animation="scrollAnimation" :scroll-into-view="scrollToView" @scrolltoupper="nextPage">
-                <view class="chat-main" :style="{ 'padding-bottom': inputh + 'px'}">
+            <scroll-view class="chat" scroll-y="true" :scroll-with-animation="scrollAnimation" @tap="onClickChatContent" :scroll-into-view="scrollToView" @scrolltoupper="nextPage" :style="{ 'height': chatHeight + 'px' }">
+                <view class="chat-main">
                     <view class="chat-ls" v-for="(item, index) in chatMessageList" :key="index" :id="'chatMessageList' + item.id">     
                         <view class="chat-time" v-if="item.time != ''">{{ dateTime(item.time) }}</view>
                         <!-- 消息左边 -->
                         <view class="msg-m msg-left" v-if="item.fromId !== userInfo.id">
                             <image :src="item.avatarUrl" class="user-img"></image>
                             <view class="message" v-if="item.types === 0">
-                                <view class="name-text" v-if="isGroup">{{ item.nickName }}</view>
+                                <view class="name-text">{{ item.nickName }}</view>
                                 <view class="msg-text">{{ item.message }}</view>
                             </view>
                             <view class="message" v-if="item.types === 1">
-                                <view class="name-text" v-if="isGroup">{{ item.nickName }}</view>
+                                <view class="name-text">{{ item.nickName }}</view>
                                 <image :src="item.message" class="msg-img" @tap="previewImg(item.message)" mode="widthFix"></image>
                             </view>
                         </view>
@@ -31,7 +31,7 @@
                 </view>
             </scroll-view>
             <view class="submit-container">
-                <Submit @currentHeight="currentHeight" @sendMsg="sendMessage"></Submit>
+                <Submit ref="submit" @currentHeight="currentHeight" @sendMsg="sendMessage"></Submit>
             </view>
         </view>
     </view>
@@ -44,10 +44,10 @@ export default {
         return {
             // 当前登录用户
             userInfo: {
+                id: '', // 用户id
                 nickName: '', // 用户昵称
                 avatarUrl: '', // 用户头像
-                permissionStatus: 1, // 用户权限
-                id: '' // 用户id
+                permissionStatus: 1 // 用户权限
             },
             // 聊天室信息[一对一好友或者群]
             currentUserInfo: {
@@ -61,7 +61,8 @@ export default {
             imgMsg: [],
             scrollToView: '',
             oldTime: 0,
-            inputh: '96',
+            inputh: '54',
+            chatHeight: 0, // 聊天框动态高度
             nowPage: 1,
             pageSize: 20,
             loadingTimers: '',
@@ -86,6 +87,10 @@ export default {
     onShow() {
         this.getStorages()
         this.getChatMessageList()
+        // 确保聊天框高度正确
+        this.$nextTick(() => {
+            this.initChatHeight();
+        });
     },
     onUnload() {
         this.socket.off('msgFront', this.friendIndexServerListener)
@@ -108,13 +113,36 @@ export default {
     methods: {
         // 自定义后退方法
         customBackMethod() {
-            this.socket.emit('leaveChatRoomServer', this.userInfo.id, this.currentUserInfo.id);
+            this.socket.emit('leaveChatRoomServer', this.userInfo.id, this.currentUserInfo.id, this.chatType);
             // 如果需要继续执行后退操作
             uni.navigateBack({
                 delta: 1, // 返回的页面层数
                 animationType: 'pop-out', // 动画效果
                 animationDuration: 300
             })
+        },
+        onClickChatContent() {
+            // 点击聊天内容，隐藏键盘
+            this.$refs.submit.hideSubmit()
+        },
+        // 监听键盘高度变化
+        onKeyboardHeightChange(e) {
+            const { height } = e.detail;
+            if (height > 0) {
+                // 键盘弹出，调整聊天框高度
+                const systemInfo = uni.getSystemInfoSync();
+                const windowHeight = systemInfo.windowHeight;
+                this.chatHeight = windowHeight - height - this.inputh;
+            } else {
+                // 键盘隐藏，恢复聊天框高度
+                this.initChatHeight();
+            }
+            // 滚动到底部
+            this.$nextTick(() => {
+                setTimeout(() => {
+                    this.scrollToBottom();
+                }, 100);
+            });
         },
         dateTime,
         getStorages() {
@@ -160,7 +188,7 @@ export default {
                         if (data.length > 0) {
                             let oldTime = data[0].time
                             let msgArr = []
-                            for (var i = 0; i < data.length; i++) {
+                            for (let i = 0; i < data.length; i++) {
                                 data[i].avatarUrl = this.serverUrl + data[i].avatarUrl;
                                 if (i < data.length) {
                                     let t = spaceTime(oldTime, data[i].time);
@@ -185,7 +213,15 @@ export default {
                                     data[i].time = '';
                                 }
                             }
-                            this.chatMessageList = data.concat(this.chatMessageList);
+                            if(action === 'scrollTop') {
+                                this.chatMessageList = data.concat(this.chatMessageList);
+                            } else {
+                                this.chatMessageList = data
+                            }
+                            this.chatMessageList = this.chatMessageList.map((item, index) => {
+                                item.id = index + 1
+                                return item
+                            })
                             this.imgMsg = this.imgMsg.concat(msgArr)
                         }
                         this.scrollToBottom(action)
@@ -280,12 +316,12 @@ export default {
                 types, // 假设 0 表示文本消息
                 time: nowTime, // 消息时间
                 avatarUrl: avatarUrl, // 假设当前用户头像
-                id: len // 消息id
+                id: len + 1// 消息数量
             }
             // 添加新消息到消息列表
             this.chatMessageList.push(data);
             this.$nextTick(() => {
-                this.scrollToView = 'chatMessageList' + len;
+                this.scrollToBottom(); // 滚动到底部
             }); 
         },
         // socekt聊天接受数据
@@ -294,8 +330,7 @@ export default {
         },
         friendIndexServerListener(data) {
             const { messageInfo, userId } = data
-            if (userId == this.id && userId !== this.userInfo.id) {
-                console.log('')
+            if (userId == this.currentUserInfo.id && userId !== this.userInfo.id) {
                 this.scrollAnimation = true
                 let nowTime = new Date();
                 let t = spaceTime(this.oldTime, nowTime);
@@ -312,7 +347,7 @@ export default {
                     types: messageInfo.types, // 假设 0 表示文本消息
                     time: nowTime,
                     avatarUrl: this.userInfo.avatarUrl, // 假设当前用户头像
-                    id: this.chatMessageList.length
+                    id: this.chatMessageList.length + 1
                 }
                 // 添加新消息到消息列表
                 this.chatMessageList.push(data);
@@ -320,7 +355,7 @@ export default {
                     this.imgMsg.push(messageInfo.message)
                 }
                 this.$nextTick(() => {
-                    this.scrollToView = 'chatMessageList' + this.chatMessageList[this.chatMessageList.length - 1].id
+                    this.scrollToBottom(); // 滚动到底部
                 });
             } 
         },
@@ -329,13 +364,14 @@ export default {
         },
         groupIndexServerListener(data) {
             const { messageInfo, userId, groupId, nickName, avatarUrl } = data
-            if (groupId == this.id && userId !== this.userInfo.id) {
+            if (groupId == this.currentUserInfo.id && userId !== this.userInfo.id) {
                 this.scrollAnimation = true
                 let nowTime = new Date();
                 let t = spaceTime(this.oldTime, nowTime);
                 if (t) {
                     this.oldTime = t
                 }
+                // 图片消息
                 if (messageInfo.types == 1 || messageInfo.types == 2) {
                     messageInfo.message = this.serverUrl + messageInfo.message
                 }
@@ -347,15 +383,15 @@ export default {
                     types: messageInfo.types, // 假设 0 表示文本消息
                     time: nowTime,
                     avatarUrl: avatarUrl, // 假设当前用户头像
-                    id: this.chatMessageList.length
+                    id: this.chatMessageList.length + 1
                 }
                 // 添加新消息到消息列表
                 this.chatMessageList.push(data);
-                if (msg.types === 1) {
-                    this.imgMsg.push(msg.message)
+                if (messageInfo.types === 1) {
+                    this.imgMsg.push(messageInfo.message)
                 }
                 this.$nextTick(() => {
-                    this.scrollToView = 'chatMessageList' + this.chatMessageList[this.chatMessageList.length - 1].id
+                    this.scrollToBottom(); // 滚动到底部
                 });
             } 
         },
@@ -365,7 +401,8 @@ export default {
                 this.socket.emit('msgServer', {
                     messageInfo: data,
                     userId: this.userInfo.id, // 信息来源：当前用户
-                    friendId: this.currentUserInfo.id // 当前好友id
+                    friendId: this.currentUserInfo.id, // 当前好友id
+                    time: new Date() // 消息时间
                 })
             } else {
                 this.socket.emit('groupMsgServer', {
@@ -373,29 +410,50 @@ export default {
                     userId: this.userInfo.id, // 信息来源：当前用户
                     groupId: this.currentUserInfo.id, // 当前群id
                     nickName: this.currentUserInfo.nickName, // 当前用户名称
-                    avatarUrl: this.currentUserInfo.avatarUrl // 当前用户头像
+                    avatarUrl: this.currentUserInfo.avatarUrl, // 当前用户头像
+                    time: new Date() // 消息时间
                 })
             }
         },
+        // 初始化聊天框高度
+        initChatHeight() {
+            const systemInfo = uni.getSystemInfoSync();
+            const windowHeight = systemInfo.windowHeight;
+            // 默认输入框高度96px，减去状态栏高度
+            const statusBarHeight = systemInfo.statusBarHeight || 0;
+            this.chatHeight = windowHeight - 54 - statusBarHeight;
+        },
+        // 处理输入框高度变化
         currentHeight(value) {
-            this.inputh = value
-            this.scrollToBottom()
+            this.inputh = value;
+            // 动态调整聊天框高度
+            const systemInfo = uni.getSystemInfoSync();
+            const windowHeight = systemInfo.windowHeight;
+            const statusBarHeight = systemInfo.statusBarHeight || 0;
+            
+            // 计算聊天框高度：窗口高度 - 输入框高度 - 状态栏高度
+            this.chatHeight = windowHeight - value - statusBarHeight;
+            this.scrollToBottom();
         },
         scrollToBottom(action) {
             this.scrollAnimation = true
             if (action === 'scrollTop') {
-                this.scrollToView = 'chatMessageList' + this.chatMessageList[0].id;
+                // 向上加载历史消息，滚动到第一条消息
+                this.$nextTick(() => {
+                    if (this.chatMessageList.length > 0) {
+                        this.scrollToView = 'chatMessageList' + this.chatMessageList[0].id;
+                    }
+                });
             } else {
-                setTimeout(() => {
-                    this.scrollToView = ''
-                    this.scrollAnimation = false
-                    this.$nextTick(() => {
+                // 发送新消息或接收消息，滚动到底部
+                this.$nextTick(() => {
+                    setTimeout(() => {
                         const lastItem = this.chatMessageList[this.chatMessageList.length - 1];
                         if (lastItem) {
                             this.scrollToView = 'chatMessageList' + lastItem.id;
                         }
-                    });     
-                }, 0);
+                    }, 150); // 增加延迟确保DOM完全渲染
+                });
             }
             clearInterval(this.loadingTimers)
             this.isLoading = true
@@ -419,7 +477,7 @@ page {
   margin-top: 0;
 }
 .chat {
-    height: 100%; // 减去头部高度
+    // 高度通过动态计算，不再使用固定高度
     .padbt {
         height: var(--status-bar-height);
         width: 100%;
@@ -435,7 +493,8 @@ page {
         padding-left: $uni-spacing-col-base;
         padding-right: $uni-spacing-col-base;
         display: flex;
-        flex-direction: column;        
+        flex-direction: column;
+        min-height: 100%; // 确保内容区域至少占满容器高度
     }
     .chat-ls {
         .chat-time {

@@ -127,6 +127,8 @@
                         this.groupsList.splice(i, 1, e)
                     }
                 }
+                // 清除该群的未读消息数
+                // clearUnreadCount(groupId)
             },
             // 检查登录状态
             checkLoginStatus() {
@@ -139,7 +141,6 @@
                     permissionStatus: 1 // 默认有权限
                 };
                 uni.setStorageSync('userInfo', mockUserInfo);
-
                 // #endif
                 this.getStorages();
                 
@@ -168,7 +169,7 @@
                 } else {
                     this.isLoggedIn = false;    
                     // 清除未读数
-                    clearUnreadCount();
+                    // clearUnreadCount();
                 }
             },
             // 加载群聊列表
@@ -182,7 +183,7 @@
                 uni.request({
                     url: this.serverUrl + '/group/getGroupList',
                     method: 'POST',
-                    data: { permissionStatus: this.userInfo.permissionStatus, uid: this.userInfo.id },
+                    data: { permissionStatus: this.userInfo.permissionStatus, userId: this.userInfo.id },
                     success: async (res) => {
                         const { code, data } = res.data || {};
                         if (code === 200 && Array.isArray(data) && data.length > 0) {
@@ -263,68 +264,6 @@
                     }
                 })
             },
-            // 处理新群消息
-            handleGroupMsg(data) {
-                if (!data || !data.groupId || !this.hasChatPermission) return;
-                
-                const { msg, userId, groupId, name } = data;
-                let content = '';
-                
-                // 格式化消息内容
-                if (msg && typeof msg.types === 'number') {
-                    switch (msg.types) {
-                        case 0: content = msg.message || ''; break;
-                        case 1: content = '[图片]'; break;
-                        case 2: content = '[音频]'; break;
-                        case 3: content = '[位置]'; break;
-                        default: content = '[未知消息]';
-                    }
-                }
-
-                // 更新群聊列表
-                const index = this.groupsList.findIndex(g => g.id === groupId);
-                if (index > -1) {
-                    // 已存在的群聊：更新信息并置顶
-                    const group = { ...this.groupsList[index] };
-                    group.lastTime = new Date();
-                    group.message = userId === this.userInfo.id ? content : `${name || '群成员'}: ${content}`;
-                    group.tip = (group.tip || 0) + 1;
-                    
-                    // 使用不可变数据模式更新数组
-                    this.groupsList = [group, ...this.groupsList.filter((_, i) => i !== index)];
-                    
-                    // 更新tabBar未读数
-                    this.updateTabBarBadge();
-                } else {
-                    // 新群聊（理论上不会出现，因为初始化时已加载所有群）
-                    console.warn('收到未知群组的消息:', groupId);
-                }
-            },
-
-            // 处理离开群聊
-            handleLeaveRoom(data) {
-                if (!data || !data.groupId || !this.hasChatPermission) return;
-                
-                const { uid, groupId } = data;
-                if (uid !== this.userInfo.id) return; // 只处理当前用户
-                
-                // 清除未读提示
-                const index = this.groupsList.findIndex(g => g.id === groupId);
-                if (index > -1) {
-                    this.groupsList[index].tip = 0;
-                    // 触发更新
-                    this.groupsList = [...this.groupsList];
-                    // 更新tabBar未读数
-                    this.updateTabBarBadge();
-                }
-            },
-
-            // 更新tabBar未读数
-            updateTabBarBadge() {
-                const totalUnread = this.groupsList.reduce((sum, group) => sum + (group.tip || 0), 0);
-                setUnreadCount(totalUnread);
-            },
-
             // 时间格式化（增加错误处理）
             changeTime(time) {
                 try {
@@ -338,19 +277,7 @@
             // 进入群聊房间
             goToChatRoom(group) {
                 if (!group || !group.groupId || !this.hasChatPermission) return;
-                
                 const { groupId, groupName, groupAvatar } = group;
-                
-                // 清除该群的未读消息数
-                const index = this.groupsList.findIndex(g => g.groupId === groupId);
-                if (index > -1 && this.groupsList[index].tip > 0) {
-                    const oldTip = this.groupsList[index].tip;
-                    this.groupsList[index].tip = 0;
-                    this.groupsList = [...this.groupsList];
-                    // 减少对应的未读数
-                    reduceUnreadCount(oldTip);
-                }
-                
                 uni.navigateTo({
                     url: `/subPackages/chatInfo/chatRoom/index?id=${groupId}&nickName=${groupName}&avatarUrl=${groupAvatar}&chatType=1`
                 });

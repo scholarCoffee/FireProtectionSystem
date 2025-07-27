@@ -64,6 +64,13 @@
             }
         },
         methods: {
+            hideSubmit() {
+                uni.hideKeyboard()
+                this.isEmoji = true
+                this.isMore = true
+                this.isRecord = false
+                this.speakIcon = "/static/icons/chat/beforeSpeak.png"
+            },
             // 获取模块高度
             getElementHeight(value) {
                 const query = uni.createSelectorQuery().in(this)
@@ -204,9 +211,6 @@
                 this.isMore = true
                 this.isRecord = false
                 this.speakIcon = "/static/icons/chat/beforeSpeak.png"
-                setTimeout(() => {
-                    this.getElementHeight(0)
-                }, 10)
             },
             // 点击输入框
             onClickInput(e) {
