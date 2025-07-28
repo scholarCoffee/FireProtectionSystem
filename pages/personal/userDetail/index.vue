@@ -78,6 +78,18 @@
             }
         },
         onShow() {
+            // #ifndef MP-WEIXIN
+            // 非微信小程序：生成假数据
+            if (!uni.getStorageSync('userInfo')) {
+                const mockUserInfo = {
+                    id: '687a6f59e83419906c0699f4',
+                    nickName: '测试用户-小创',
+                    avatarUrl: '/static/icons/chat/person-avatar.png',
+                    permissionStatus: 1 // 默认有权限
+                };
+                uni.setStorageSync('userInfo', mockUserInfo);
+            }
+            // #endif
             this.getStorages(); // 获取本地存储的用户信息
         },
         methods: {

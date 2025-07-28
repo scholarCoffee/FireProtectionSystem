@@ -91,7 +91,7 @@
         methods: {
             // 接受群组
             groupMsgListener(data) {
-                const { messageInfo, userId, groupId, nickName, avatarUrl } = data || {}
+                const { messageInfo, userId, groupId, userName } = data || {}
                 let nmsg = ''
                 if (messageInfo.types === 0) {
                     nmsg = messageInfo.message
@@ -109,7 +109,7 @@
                         if (userId == this.userInfo.id) {
                             e.message = nmsg
                         } else {
-                            e.message = nickName + ': ' + nmsg
+                            e.message = userName + ': ' + nmsg
                         }
                         e.tip++
                         this.groupsList.splice(i, 1)
@@ -134,16 +134,17 @@
             checkLoginStatus() {
                 // #ifndef MP-WEIXIN
                 // 非微信小程序：生成假数据
-                const mockUserInfo = {
-                    id: '687a6f59e83419906c0699f3',
-                    nickName: '测试用户-小北',
-                    avatarUrl: '/static/icons/chat/person-avatar.png',
-                    permissionStatus: 1 // 默认有权限
-                };
-                uni.setStorageSync('userInfo', mockUserInfo);
+                if (!uni.getStorageSync('userInfo')) {
+                    const mockUserInfo = {
+                        id: '687a6f59e83419906c0699f4',
+                        nickName: '测试用户-小创',
+                        avatarUrl: '/static/icons/chat/person-avatar.png',
+                        permissionStatus: 1 // 默认有权限
+                    };
+                    uni.setStorageSync('userInfo', mockUserInfo);
+                }
                 // #endif
                 this.getStorages();
-                
             },
             // 初始化socket连接
             initSocket() {

@@ -100,26 +100,16 @@ export default {
     // 拦截导航栏后退事件
     onBackPress(options) {
         // 判断是否是从导航栏后退按钮触发的
-        if (options.from === 'navigateBack') {
+        if (['backbutton', 'navigateBack'].includes(options.from)) {
             // 执行自定义方法
             this.customBackMethod()
-            // 返回 true 表示拦截默认后退行为
-            // 如果你希望在自定义方法执行后仍然执行后退，可以调用 uni.navigateBack()
-            return true
         }
-        // 其他情况（如安卓物理返回键）不拦截
         return false
     },
     methods: {
         // 自定义后退方法
         customBackMethod() {
             this.socket.emit('leaveChatRoomServer', this.userInfo.id, this.currentUserInfo.id, this.chatType);
-            // 如果需要继续执行后退操作
-            uni.navigateBack({
-                delta: 1, // 返回的页面层数
-                animationType: 'pop-out', // 动画效果
-                animationDuration: 300
-            })
         },
         onClickChatContent() {
             // 点击聊天内容，隐藏键盘
@@ -363,7 +353,7 @@ export default {
             this.socket.on('groupMsgFront', this.groupIndexServerListener)
         },
         groupIndexServerListener(data) {
-            const { messageInfo, userId, groupId, nickName, avatarUrl } = data
+            const { messageInfo, userId, groupId, userName, userAvatar } = data
             if (groupId == this.currentUserInfo.id && userId !== this.userInfo.id) {
                 this.scrollAnimation = true
                 let nowTime = new Date();
@@ -378,11 +368,11 @@ export default {
                 nowTime = t;
                 const data = {
                     fromId: userId, // 假设 1 表示当前用户
-                    nickName: nickName, 
+                    nickName: userName, // 当前用户名称
                     message: messageInfo.message,
                     types: messageInfo.types, // 假设 0 表示文本消息
                     time: nowTime,
-                    avatarUrl: avatarUrl, // 假设当前用户头像
+                    avatarUrl: userAvatar, // 假设当前用户头像
                     id: this.chatMessageList.length + 1
                 }
                 // 添加新消息到消息列表
@@ -401,13 +391,19 @@ export default {
                 this.socket.emit('msgServer', {
                     messageInfo: data,
                     userId: this.userInfo.id, // 信息来源：当前用户
+                    userName: this.userInfo.nickName, // 当前用户名称
+                    userAvatar: this.userInfo.avatarUrl, // 当前用户头像
                     friendId: this.currentUserInfo.id, // 当前好友id
+                    friendName: this.currentUserInfo.nickName, // 当前好友名称
+                    friendAvatar: this.currentUserInfo.avatarUrl, // 当前好友头像
                     time: new Date() // 消息时间
                 })
             } else {
                 this.socket.emit('groupMsgServer', {
                     messageInfo: data,
                     userId: this.userInfo.id, // 信息来源：当前用户
+                    userName: this.userInfo.nickName, // 当前用户名称
+                    userAvatar: this.userInfo.avatarUrl, // 当前用户头像
                     groupId: this.currentUserInfo.id, // 当前群id
                     nickName: this.currentUserInfo.nickName, // 当前用户名称
                     avatarUrl: this.currentUserInfo.avatarUrl, // 当前用户头像
