@@ -54,7 +54,7 @@
 </template>
 
 <script>
-    import { dateTime, setUnreadCount, reduceUnreadCount, clearUnreadCount } from '@/commons/js/utils.js';
+    import { dateTime, clearUnreadCount, addUnreadCount, reduceUnreadCount } from '@/commons/js/utils.js';
     export default {
         data() {
             return {
@@ -117,18 +117,20 @@
                         break
                     }
                 }
+                // 增加未读消息数
+                addUnreadCount()
             },
-            leaveChatRoomMsgListener(uid, groupId) {
+            leaveChatRoomMsgListener(uid, groupId, type, tip) {
                 // 离开聊天室更新聊天tip
                 for(let i = 0 ; i < this.groupsList.length ; i++) {
                     if (this.groupsList[i].groupId === groupId) {
                         let e = this.groupsList[i]
                         e.tip = 0
                         this.groupsList.splice(i, 1, e)
+                        // 减少未读消息数
+                        reduceUnreadCount(tip)
                     }
                 }
-                // 清除该群的未读消息数
-                // clearUnreadCount(groupId)
             },
             // 检查登录状态
             checkLoginStatus() {
@@ -181,6 +183,7 @@
                     duration: 1500
                 });
                 this.groupsList = [];
+                clearUnreadCount()
                 uni.request({
                     url: this.serverUrl + '/group/getGroupList',
                     method: 'POST',
@@ -253,6 +256,7 @@
                 return groups.map(group => {
                     // 加入群组监听
                     this.socket.emit('groupServer', group.groupId)
+                    addUnreadCount(group.tip || 0)
                     return {
                         groupId: group.groupId,
                         sendMsgName: group.sendMsgName || '群成员',
