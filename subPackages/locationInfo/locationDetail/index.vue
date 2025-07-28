@@ -43,6 +43,7 @@
           <!-- 显示类型 -->
           <view class="info-row">
             <text class="label">单位类型：</text>
+            <image :src="showImgUrl(locationObj.type)" class="location-icon" />
             <text class="value">{{ getLocationTypeName() }}</text>
           </view>
           
@@ -50,18 +51,20 @@
           <view class="info-row" v-for="phoneItem in locationObj.phoneList" :key="phoneItem.phone">
             <view class="phone-content">
               <view class="phone-name">
+                <image src="/static/icons/location/userPhone.png" class="user-phone-icon" />
                 <text class="label">{{ phoneItem.type === 1 ? '单位负责人：' : '消防负责人：' }}</text>
                 <text>{{ phoneItem.name }}</text>
               </view>
               <view class="phone-number">
-                <image src="/static/icons/common/phone.png" class="phone-icon" @tap="callPhone(phoneItem.phone)"/>
                 <text>{{ phoneItem.phone }}</text>
+                <image src="/static/icons/common/phone.png" class="phone-icon" @tap="callPhone(phoneItem.phone)"/>
               </view>
             </view>
           </view>
                 
           <!-- 消防安全描述 -->
           <view class="info-row">
+            <image src="/static/icons/location/safe.png" class="location-icon" />
             <text class="label">安全描述：</text>
             <text class="value">{{ locationObj.safeLevelDesc || '暂无描述' }}</text>
           </view>
@@ -102,6 +105,11 @@ export default {
     safeLevelClass() {
       const map = { 1: 'safety-excellent', 2: 'safety-good', 3: 'safety-normal', 4: 'safety-danger' };
       return map[this.locationObj.safeLevelId] || '';
+    },
+    showImgUrl() {
+      return (type) => {
+        return type === 1 ? '/static/icons/location/community.png' : type === 2 ? '/static/icons/location/factory.png' : '/static/icons/location/shop.png';
+      }
     }
   },
   methods: {
@@ -256,11 +264,19 @@ export default {
 .phone-number {
   display: flex;
   align-items: center;
+  color: #2196F3;
 }
-.phone-icon {
+.user-phone-icon {
+  top: 2px;
   width: 16px;
   height: 16px;
   margin-right: 5px;
+}
+.phone-icon {
+  top: 1px;
+  width: 16px;
+  height: 16px;
+  margin-left: 5px;
 } 
 
 /* 出行大门样式 */

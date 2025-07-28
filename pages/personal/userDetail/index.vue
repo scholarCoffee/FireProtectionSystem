@@ -31,6 +31,18 @@
                     </view>
                 </view>
             </view>
+            <view class="column">
+                <view class="row" @tap="handlePhoneBinding">
+                    <view class="title">手机：</view>
+                    <view class="cont">
+                        <text v-if="userInfo.phone" class="phone-text">{{ formatPhone(userInfo.phone) }}</text>
+                        <text v-else class="phone-placeholder">未绑定手机号</text>
+                    </view>
+                    <view class="more">
+                        <image src="/static/icons/common/right.png" mode="aspectFit"></image>
+                    </view>
+                </view>
+            </view>
             <view class="bt2" @tap="onQuitLogin">退出登录</view>
         </view>
         <!-- 昵称修改弹窗 -->
@@ -55,6 +67,48 @@
                 </view>
             </view>
         </view>
+        
+        <!-- 手机号绑定弹窗 -->
+        <view v-if="showPhoneModal" class="modal-overlay" @tap="closePhoneModal">
+            <view class="modal-content" @tap.stop>
+                <view class="modal-header">
+                    <text class="modal-title">{{ userInfo.phone ? '修改手机号' : '绑定手机号' }}</text>
+                </view>
+                <view class="modal-body">
+                    <view class="phone-input-container">
+                        <input 
+                            type="number" 
+                            v-model="phoneValue" 
+                            class="phone-input"
+                            placeholder="请输入手机号"
+                            maxlength="11"
+                            focus
+                        />
+                        <button 
+                            v-if="!userInfo.phone" 
+                            class="send-code-btn" 
+                            :disabled="countdown > 0"
+                            @tap="sendVerifyCode"
+                        >
+                            {{ countdown > 0 ? `${countdown}s` : '获取验证码' }}
+                        </button>
+                    </view>
+                    <view v-if="!userInfo.phone" class="verify-code-container">
+                        <input 
+                            type="number" 
+                            v-model="verifyCode" 
+                            class="verify-code-input"
+                            placeholder="请输入验证码"
+                            maxlength="6"
+                        />
+                    </view>
+                </view>
+                <view class="modal-footer">
+                    <button class="modal-btn cancel-btn" @tap="closePhoneModal">取消</button>
+                    <button class="modal-btn confirm-btn" @tap="confirmPhoneBinding">确认</button>
+                </view>
+            </view>
+        </view>
     </view>
 </template>
 
@@ -67,14 +121,19 @@
                     nickName: '', 
                     avatarUrl: '',
                     permissionStatus: 1,
-                    id: ''
+                    id: '',
+                    phone: ''
                 },
                 isLoggedIn: false, // 用户是否已登录
                 showModifyModal: false, // 是否显示修改弹窗
                 modifyValue: '', // 修改的值
                 modifyType: '', // 修改类型
                 modifyTitle: '', // 修改标题
-                tempFilePaths: ''
+                tempFilePaths: '',
+                showPhoneModal: false, // 是否显示手机绑定弹窗
+                phoneValue: '', // 手机号输入值
+                verifyCode: '', // 验证码输入值
+                countdown: 0 // 验证码倒计时
             }
         },
         onShow() {
@@ -308,6 +367,217 @@
                         });
                     }
                 });
+            },
+            // 处理手机号绑定
+            handlePhoneBinding() {
+                // #ifdef MP-WEIXIN
+                // 微信小程序：使用getPhoneNumber接口
+                if (this.userInfo.phone) {
+                    // 如果已绑定手机号，询问是否重新绑定
+                    uni.showModal({
+                        title: '提示',
+                        content: '您已绑定手机号，是否重新绑定？',
+                        success: (res) => {
+                            if (res.confirm) {
+                                this.bindWechatPhone();
+                            }
+                        }
+                    });
+                } else {
+                    // 未绑定手机号，直接绑定
+                    this.bindWechatPhone();
+                }
+                // #endif
+                
+                // #ifndef MP-WEIXIN
+                // 非微信小程序：显示手动输入弹窗
+                this.phoneValue = this.userInfo.phone || '';
+                this.verifyCode = '';
+                this.showPhoneModal = true;
+                // #endif
+            },
+            
+            // 绑定微信手机号
+            bindWechatPhone() {
+                uni.showLoading({ title: '获取手机号中...' });
+                
+                // 调用微信小程序获取手机号接口
+                uni.getPhoneNumber({
+                    success: (res) => {
+                        if (res.code) {
+                            // 将code发送到后端解密获取手机号
+                            this.getPhoneNumberFromServer(res.code);
+                        } else {
+                            uni.hideLoading();
+                            uni.showToast({
+                                title: '获取手机号失败',
+                                icon: 'none',
+                                duration: 2000
+                            });
+                        }
+                    },
+                    fail: (err) => {
+                        uni.hideLoading();
+                        console.error('获取手机号失败:', err);
+                        uni.showToast({
+                            title: '用户拒绝授权或获取失败',
+                            icon: 'none',
+                            duration: 2000
+                        });
+                    }
+                });
+            },
+            
+            // 从服务器获取手机号
+            getPhoneNumberFromServer(code) {
+                uni.request({
+                    url: this.serverUrl + '/user/getPhoneNumber',
+                    method: 'POST',
+                    data: {
+                        code: code,
+                        userId: this.userInfo.id
+                    },
+                    success: (res) => {
+                        uni.hideLoading();
+                        if (res.data && res.data.code === 200) {
+                            const phoneNumber = res.data.data.phoneNumber;
+                            // 更新本地数据
+                            this.userInfo.phone = phoneNumber;
+                            const userInfo = uni.getStorageSync('userInfo');
+                            if (userInfo) {
+                                userInfo.phone = phoneNumber;
+                                uni.setStorageSync('userInfo', userInfo);
+                            }
+                            
+                            // 同步到后端存储
+                            this.updateUserInfoToServer(
+                                { id: this.userInfo.id, phone: phoneNumber, type: 'phone' },
+                                '手机号绑定成功'
+                            );
+                            
+                            uni.showToast({
+                                title: '手机号绑定成功',
+                                icon: 'success',
+                                duration: 2000
+                            });
+                        } else {
+                            uni.showToast({
+                                title: res.data.msg || '绑定失败',
+                                icon: 'none',
+                                duration: 2000
+                            });
+                        }
+                    },
+                    fail: (err) => {
+                        uni.hideLoading();
+                        console.error('服务器请求失败:', err);
+                        uni.showToast({
+                            title: '网络错误，绑定失败',
+                            icon: 'none',
+                            duration: 2000
+                        });
+                    }
+                });
+            },
+            
+            // 关闭手机绑定弹窗
+            closePhoneModal() {
+                this.showPhoneModal = false;
+                this.phoneValue = '';
+                this.verifyCode = '';
+            },
+            
+            // 发送验证码
+            sendVerifyCode() {
+                if (!this.phoneValue || this.phoneValue.length !== 11) {
+                    uni.showToast({
+                        title: '请输入正确的手机号',
+                        icon: 'none',
+                        duration: 2000
+                    });
+                    return;
+                }
+                
+                // 开始倒计时
+                this.countdown = 60;
+                const timer = setInterval(() => {
+                    this.countdown--;
+                    if (this.countdown <= 0) {
+                        clearInterval(timer);
+                    }
+                }, 1000);
+                
+                // 模拟发送验证码
+                uni.showToast({
+                    title: '验证码已发送',
+                    icon: 'success',
+                    duration: 2000
+                });
+                
+                // 这里可以调用实际的发送验证码接口
+                // uni.request({
+                //     url: this.serverUrl + '/sms/send',
+                //     method: 'POST',
+                //     data: { phone: this.phoneValue },
+                //     success: (res) => {
+                //         if (res.data.code === 200) {
+                //             uni.showToast({
+                //                 title: '验证码已发送',
+                //                 icon: 'success',
+                //                 duration: 2000
+                //             });
+                //         }
+                //     }
+                // });
+            },
+            
+            // 确认手机绑定
+            confirmPhoneBinding() {
+                if (!this.phoneValue || this.phoneValue.length !== 11) {
+                    uni.showToast({
+                        title: '请输入正确的手机号',
+                        icon: 'none',
+                        duration: 2000
+                    });
+                    return;
+                }
+                
+                if (!this.userInfo.phone && (!this.verifyCode || this.verifyCode.length !== 6)) {
+                    uni.showToast({
+                        title: '请输入验证码',
+                        icon: 'none',
+                        duration: 2000
+                    });
+                    return;
+                }
+                
+                uni.showLoading({ title: '绑定中...' });
+                
+                // 模拟绑定过程
+                setTimeout(() => {
+                    // 更新本地数据
+                    this.userInfo.phone = this.phoneValue;
+                    const userInfo = uni.getStorageSync('userInfo');
+                    if (userInfo) {
+                        userInfo.phone = this.phoneValue;
+                        uni.setStorageSync('userInfo', userInfo);
+                    }
+                    
+                    // 同步到后端
+                    this.updateUserInfoToServer(
+                        { id: this.userInfo.id, phone: this.phoneValue, type: 'phone' },
+                        '手机号绑定成功'
+                    );
+                    
+                    this.closePhoneModal();
+                    uni.hideLoading();
+                }, 1000);
+            },
+            
+            // 格式化手机号
+            formatPhone(phone) {
+                if (!phone) return '';
+                return phone.replace(/(\d{3})\d{4}(\d{4})/, '$1****$2');
             }
         }
     }
@@ -446,6 +716,16 @@
             text-overflow: ellipsis;
             white-space: nowrap;
             padding-right: 20rpx;
+            
+            .phone-text {
+                color: #333;
+                font-weight: 500;
+            }
+            
+            .phone-placeholder {
+                color: #999;
+                font-style: italic;
+            }
         }
         
         .more {
@@ -541,6 +821,71 @@
 }
 
 .modify-input {
+    width: 100%;
+    height: 80rpx;
+    padding: 0 20rpx;
+    border: 2rpx solid #e0e0e0;
+    border-radius: 8rpx;
+    font-size: 28rpx;
+    color: #333;
+    background: #fafafa;
+    box-sizing: border-box;
+    
+    &:focus {
+        border-color: #07c160;
+        background: #fff;
+    }
+}
+
+.phone-input-container {
+    display: flex;
+    align-items: center;
+    margin-bottom: 20rpx;
+}
+
+.phone-input {
+    flex: 1;
+    height: 80rpx;
+    padding: 0 20rpx;
+    border: 2rpx solid #e0e0e0;
+    border-radius: 8rpx;
+    font-size: 28rpx;
+    color: #333;
+    background: #fafafa;
+    box-sizing: border-box;
+    margin-right: 20rpx;
+    
+    &:focus {
+        border-color: #07c160;
+        background: #fff;
+    }
+}
+
+.send-code-btn {
+    width: 200rpx;
+    height: 80rpx;
+    background: #07c160;
+    color: #fff;
+    border: none;
+    border-radius: 8rpx;
+    font-size: 24rpx;
+    font-weight: 500;
+    
+    &:disabled {
+        background: #ccc;
+        color: #999;
+    }
+    
+    &:active:not(:disabled) {
+        background: #06ad56;
+    }
+}
+
+.verify-code-container {
+    margin-bottom: 20rpx;
+}
+
+.verify-code-input {
     width: 100%;
     height: 80rpx;
     padding: 0 20rpx;
