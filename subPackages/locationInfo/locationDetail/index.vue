@@ -11,10 +11,6 @@
               : '/static/icons/location/showShop.png'" 
             class="detail-img" 
           />
-          <!-- 安全等级标签 -->
-          <view class="safety-tag" :class="safeLevelClass">
-            <text>{{ locationObj.safeLevelName }}</text>
-          </view>
         </view>
 
         <!-- 信息卡片 -->
@@ -22,6 +18,7 @@
           <!-- 地址名称 -->
           <view class="address-name">
             <text>{{ locationObj.addressName }}</text>
+            <image src="/static/icons/location/copy.png" class="location-icon" @tap="copyAddressName" />
           </view>
           
           <!-- 地址详情 -->
@@ -29,22 +26,52 @@
             <image src="/static/icons/location/showLocation.png" class="location-icon" />
             <text>{{ locationObj.addressExt }}</text>
           </view>
-          
-          <!-- 720全云景 -->
-          <view class="panorama-view" @click="goToExternalLink(locationObj.allSenceLink)">
-            <image src="/static/icons/location/panorama.png" class="location-icon"/>
-            <text>720全云景</text>
-            <image src="/static/icons/common/right.png" class="arrow-icon" />
+                    
+          <!-- 单位类型和720全云景 -->
+          <view class="type-panorama-row">
+            <!-- 单位类型卡片 -->
+            <view class="type-card">
+              <view class="type-header">
+                <image :src="showImgUrl(locationObj.type)" class="type-icon" />
+                <text class="type-title">单位类型</text>
+              </view>
+              <view class="type-content">
+                <text class="type-value">{{ getLocationTypeName() }}</text>
+              </view>
+            </view>
+            
+            <!-- 720全云景卡片 -->
+            <view class="panorama-card" @click="goToExternalLink(locationObj.allSenceLink)">
+              <view class="panorama-header">
+                <image src="/static/icons/location/panorama.png" class="panorama-icon" />
+                <text class="panorama-title">720全云景</text>
+              </view>
+              <view class="panorama-content">
+                <text class="panorama-desc">查看全景</text>
+                <image src="/static/icons/common/right.png" class="arrow-icon" />
+              </view>
+            </view>
           </view>
           
-          <!-- 分割线 -->
-          <view class="divider" />
-          
-          <!-- 显示类型 -->
-          <view class="info-row">
-            <text class="label">单位类型：</text>
-            <image :src="showImgUrl(locationObj.type)" class="location-icon" />
-            <text class="value">{{ getLocationTypeName() }}</text>
+          <!-- 安全等级卡片 -->
+          <view class="safety-card-full" @tap="goToSafetyDetail">
+                          <view class="safety-header">
+                <view class="safety-info">
+                  <view class="score-display">
+                    <text class="score-number">{{ locationObj.safetyScore || 0 }}</text>
+                    <text class="score-unit">分</text>
+                  </view>
+                </view>
+                <view class="safety-badge" :class="safeLevelClass">
+                  <text class="badge-text">{{ locationObj.safeLevelName }}</text>
+                </view>
+              </view>
+            <view class="score-progress">
+              <view class="progress-track">
+                <view class="progress-fill" :style="{ width: (locationObj.safetyScore || 0) + '%' }"></view>
+              </view>
+              <text class="progress-text">安全评分</text>
+            </view>
           </view>
           
           <!-- 显示电话号码 -->
@@ -61,13 +88,9 @@
               </view>
             </view>
           </view>
-                
-          <!-- 消防安全描述 -->
-          <view class="info-row">
-            <image src="/static/icons/location/safe.png" class="location-icon" />
-            <text class="label">安全描述：</text>
-            <text class="value">{{ locationObj.safeLevelDesc || '暂无描述' }}</text>
-          </view>
+
+          <!-- 分割线 -->
+          <view class="divider" />
 
           <!-- 出行大门 -->
           <view class="info-row gate-list">
@@ -134,7 +157,7 @@ export default {
     },
     getLocationTypeName() {
       // 直接用locationObj.type判断
-      const typeMap = { 1: '小区', 2: '厂房', 3: '商铺' };
+      const typeMap = { 1: '高层小区', 2: '重点单位', 3: '沿街商铺' };
       return typeMap[this.locationObj.type] || '未知类型';
     },
     callPhone(phone) {
@@ -144,6 +167,38 @@ export default {
     },
     goToExternalLink(link) {
       uni.navigateTo({ url: '/subPackages/common/webview/index?url=' + link });
+    },
+    goToSafetyDetail() {
+      uni.navigateTo({ 
+        url: '/subPackages/locationInfo/safetyDetail/index?addressId=' + this.addressId 
+      });
+    },
+    copyAddressName() {
+      if (this.locationObj.addressName) {
+        uni.setClipboardData({
+          data: this.locationObj.addressName,
+          success: () => {
+            uni.showToast({
+              title: '已复制地址',
+              icon: 'success',
+              duration: 1500
+            });
+          },
+          fail: () => {
+            uni.showToast({
+              title: '复制失败',
+              icon: 'none',
+              duration: 1500
+            });
+          }
+        });
+      } else {
+        uni.showToast({
+          title: '暂无地址名称',
+          icon: 'none',
+          duration: 1500
+        });
+      }
     },
   }
 };
@@ -180,10 +235,22 @@ export default {
   font-size: 12px;
   color: #FFF;
 }
-.safety-excellent { background-color: #00B42A; }
-.safety-good { background-color: #FF7D00; }
-.safety-normal { background-color: #FFB400; }
-.safety-danger { background-color: #F53F3F; }
+.safety-excellent { 
+  background: linear-gradient(135deg, #00B42A, #52C41A);
+  box-shadow: 0 2px 8px rgba(0, 180, 42, 0.3);
+}
+.safety-good { 
+  background: linear-gradient(135deg, #1890FF, #40A9FF);
+  box-shadow: 0 2px 8px rgba(24, 144, 255, 0.3);
+}
+.safety-normal { 
+  background: linear-gradient(135deg, #FF7D00, #FFA940);
+  box-shadow: 0 2px 8px rgba(255, 125, 0, 0.3);
+}
+.safety-danger { 
+  background: linear-gradient(135deg, #F53F3F, #FF4D4F);
+  box-shadow: 0 2px 8px rgba(245, 63, 63, 0.3);
+}
 
 /* 信息卡片 */
 .info-card {
@@ -192,12 +259,15 @@ export default {
   border-radius: 8px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
   overflow: hidden;
+  margin-bottom: 50px;
 }
 .address-name {
   padding: 15px 15px 10px;
   font-size: 18px;
   font-weight: bold;
   color: #333;
+  display: flex;
+  align-items: center;
 }
 .address-detail {
   display: flex;
@@ -211,27 +281,19 @@ export default {
   height: 16px;
   margin-right: 5px;
 }
-.panorama-view {
-  display: flex;
-  align-items: center;
-  padding: 15px;
-  color: #1296DB;
-  font-size: 14px;
+
+/* 复制图标特殊样式 */
+.address-name .location-icon {
+  margin-right: 0;
+  padding: 8px;
+  border-radius: 4px;
+  transition: background-color 0.2s ease;
 }
-.panorama-icon {
-  width: 20px;
-  height: 20px;
-  margin-right: 8px;
-  background-color: #1296DB;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+
+.address-name .location-icon:active {
+  background-color: rgba(0, 0, 0, 0.1);
 }
-.panorama-icon image {
-  width: 14px;
-  height: 14px;
-}
+
 .arrow-icon {
   width: 16px;
   height: 16px;
@@ -278,6 +340,255 @@ export default {
   height: 16px;
   margin-left: 5px;
 } 
+
+/* 单位类型和720全云景样式 - 美团风格 */
+.type-panorama-row {
+  display: flex;
+  gap: 12px;
+  padding: 15px;
+}
+
+.type-card {
+  flex: 1;
+  background: linear-gradient(135deg, #F8F9FA, #FFFFFF);
+  border-radius: 12px;
+  padding: 16px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.type-card::before {
+  content: '';
+  position: absolute;
+  top: -10px;
+  right: -10px;
+  width: 40px;
+  height: 40px;
+  background: rgba(0, 0, 0, 0.03);
+  border-radius: 50%;
+}
+
+.type-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.type-icon {
+  width: 20px;
+  height: 20px;
+  opacity: 0.7;
+}
+
+.type-title {
+  font-size: 14px;
+  color: #666;
+  font-weight: 500;
+}
+
+.type-content {
+  display: flex;
+  align-items: center;
+}
+
+.type-value {
+  font-size: 16px;
+  color: #333;
+  font-weight: 600;
+}
+
+/* 720全云景卡片 */
+.panorama-card {
+  flex: 1;
+  background: linear-gradient(135deg, #1890FF, #40A9FF);
+  border-radius: 12px;
+  padding: 16px;
+  box-shadow: 0 4px 12px rgba(24, 144, 255, 0.2);
+  position: relative;
+  overflow: hidden;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.panorama-card::before {
+  content: '';
+  position: absolute;
+  top: -10px;
+  right: -10px;
+  width: 40px;
+  height: 40px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 50%;
+}
+
+.panorama-card:active {
+  transform: scale(0.98);
+  box-shadow: 0 2px 8px rgba(24, 144, 255, 0.3);
+}
+
+.panorama-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.panorama-icon {
+  width: 20px;
+  height: 20px;
+  filter: brightness(0) invert(1);
+}
+
+.panorama-title {
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.9);
+  font-weight: 500;
+}
+
+.panorama-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.panorama-desc {
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.8);
+  font-weight: 500;
+}
+
+/* 安全等级卡片 - 全宽 */
+.safety-card-full {
+  background: linear-gradient(135deg, #FF8A65, #FFAB91);
+  border-radius: 12px;
+  padding: 16px;
+  margin: 0 15px 15px 15px;
+  box-shadow: 0 6px 20px rgba(255, 138, 101, 0.25);
+  position: relative;
+  overflow: hidden;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.safety-card-full::before {
+  content: '';
+  position: absolute;
+  top: -10px;
+  right: -10px;
+  width: 40px;
+  height: 40px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 50%;
+}
+
+.safety-card-full:active {
+  transform: scale(0.98);
+  box-shadow: 0 2px 8px rgba(255, 138, 101, 0.4);
+}
+
+
+
+.safety-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.safety-info {
+  display: flex;
+  align-items: center;
+}
+
+.safety-badge {
+  padding: 6px 18px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.25);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  margin-right: 8px;
+}
+
+
+
+.badge-text {
+  font-size: 12px;
+  color: #FFFFFF;
+  font-weight: bold;
+}
+
+.arrow-icon {
+  width: 16px;
+  height: 16px;
+  filter: brightness(0) invert(1);
+  opacity: 0.8;
+}
+
+
+
+.score-display {
+  display: flex;
+  align-items: baseline;
+  gap: 2px;
+}
+
+.score-number {
+  font-size: 32px;
+  color: #FFFFFF;
+  font-weight: bold;
+  line-height: 1;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.score-unit {
+  font-size: 16px;
+  color: rgba(255, 255, 255, 0.9);
+  font-weight: 600;
+}
+
+.score-progress {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.progress-track {
+  height: 10px;
+  background: rgba(255, 255, 255, 0.25);
+  border-radius: 5px;
+  overflow: hidden;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);
+  position: relative;
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #FFFFFF, rgba(255, 255, 255, 0.9));
+  border-radius: 5px;
+  transition: width 0.5s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  position: relative;
+}
+
+.progress-fill::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 4px;
+  height: 100%;
+  background: rgba(255, 255, 255, 0.8);
+  border-radius: 2px;
+}
+
+.progress-text {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.8);
+  font-weight: 500;
+}
 
 /* 出行大门样式 */
 .gate-list {

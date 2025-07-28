@@ -4,7 +4,7 @@
             "path": "pages/location/currentLocaltion/index",
             "style": {
                 "navigationStyle": "default",
-                "navigationBarTitleText": "单位信息",
+                "navigationBarTitleText": "作战信息",
                 "enablePullDownRefresh": false
             }
         },
@@ -13,6 +13,13 @@
             "style": {
                 "navigationStyle": "default",
                 "navigationBarTitleText": "聊天列表"
+            }
+        },
+        {
+            "path": "pages/data/command/index",
+            "style": {
+                "navigationStyle": "default",
+                "navigationBarTitleText": "数据指挥"
             }
         },
         {
@@ -45,6 +52,13 @@
                         "navigationStyle": "default",
                         "navigationBarTitleText": "单位详情"
                     }
+                },
+                {
+                    "path": "safetyDetail/index",
+                    "style": {
+                        "navigationStyle": "default",
+                        "navigationBarTitleText": "安全详情"
+                    }
                 }
             ]
         },
@@ -70,11 +84,12 @@
     "tabBar": {
         "color": "#707070",
         "backgroundColor": "#F8F8F8",
+        "selectedColor": "#1296db",
         "borderStyle": "white",
         "list": [
             {
                 "pagePath": "pages/location/currentLocaltion/index",
-                "text": "单位",
+                "text": "作战对象",
                 "iconPath": "static/icons/location/location.png",
                 "selectedIconPath": "static/icons/location/location-active.png"
             },
@@ -83,6 +98,12 @@
                 "text": "聊天",
                 "iconPath": "static/icons/chat/chat.png",
                 "selectedIconPath": "static/icons/chat/chat-active.png"
+            },
+            {
+                "pagePath": "pages/data/command/index",
+                "text": "数据指挥",
+                "iconPath": "static/icons/data/manage.png",
+                "selectedIconPath": "static/icons/data/manage-active.png"
             },
             {
                 "pagePath": "pages/personal/userDetail/index",

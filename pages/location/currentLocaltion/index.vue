@@ -57,7 +57,7 @@
                   <image src="/static/icons/common/phone.png" class="phone-icon" @click="onClickShowPhone(item)" />
                 </view>
                 <view class="card-desc">
-                  <text>{{ item.addressExt }}</text>
+                  <text>{{ item.safetyScore || 0 }}分</text>
                 </view>
                 <button class="card-btn" @click="goToExternalLink(item.allSenceLink)">一键查看</button>
               </view>
@@ -325,7 +325,7 @@ export default {
   justify-content: space-around;
   align-items: center;
   background-color: #FFFFFF;
-  padding: 12px 0 8px 0;
+  padding: 0;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
   border-bottom: 1px solid #f0f0f0;
 }
@@ -338,10 +338,6 @@ export default {
   padding: 4px 8px;
   border-radius: 6px;
   transition: all 0.3s ease;
-}
-.tab-item.active {
-  color: #1296db;
-  background-color: rgba(18, 150, 219, 0.1);
 }
 .tab-icon {
   width: 20px;
@@ -447,8 +443,9 @@ body, html {
   font-weight: 600;
 }
 .card-desc {
-  color: #888;
-  font-size: 13px;
+  color: #FF6B35;
+  font-size: 16px;
+  font-weight: bold;
   margin-bottom: 8px;
   max-width: 100%;
   overflow: hidden;
@@ -456,6 +453,7 @@ body, html {
   white-space: nowrap;
   display: inline-block;
   vertical-align: middle;
+  text-shadow: 0 1px 2px rgba(255, 107, 53, 0.1);
 }
 
 /* 电话列表样式 */

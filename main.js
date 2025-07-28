@@ -10,8 +10,8 @@ Vue.config.productionTip = false
 //     rejectUnauthorized: false, // 开发环境下忽略证书验证（生产环境建议移除）
 //     timeout: 10000 // 设置连接超时时间（毫秒）
 // });
-Vue.prototype.serverUrl = 'http://172.17.121.229:3000' 
-Vue.prototype.socket = io('http://172.17.121.229:8002')
+Vue.prototype.serverUrl = 'http://172.20.10.2:3000' 
+Vue.prototype.socket = io('http://172.20.10.2:8002')
 App.mpType = 'app'
 const app = new Vue({
   ...App
