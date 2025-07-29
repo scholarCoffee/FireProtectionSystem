@@ -67,48 +67,6 @@
                 </view>
             </view>
         </view>
-        
-        <!-- 手机号绑定弹窗 -->
-        <view v-if="showPhoneModal" class="modal-overlay" @tap="closePhoneModal">
-            <view class="modal-content" @tap.stop>
-                <view class="modal-header">
-                    <text class="modal-title">{{ userInfo.phone ? '修改手机号' : '绑定手机号' }}</text>
-                </view>
-                <view class="modal-body">
-                    <view class="phone-input-container">
-                        <input 
-                            type="number" 
-                            v-model="phoneValue" 
-                            class="phone-input"
-                            placeholder="请输入手机号"
-                            maxlength="11"
-                            focus
-                        />
-                        <button 
-                            v-if="!userInfo.phone" 
-                            class="send-code-btn" 
-                            :disabled="countdown > 0"
-                            @tap="sendVerifyCode"
-                        >
-                            {{ countdown > 0 ? `${countdown}s` : '获取验证码' }}
-                        </button>
-                    </view>
-                    <view v-if="!userInfo.phone" class="verify-code-container">
-                        <input 
-                            type="number" 
-                            v-model="verifyCode" 
-                            class="verify-code-input"
-                            placeholder="请输入验证码"
-                            maxlength="6"
-                        />
-                    </view>
-                </view>
-                <view class="modal-footer">
-                    <button class="modal-btn cancel-btn" @tap="closePhoneModal">取消</button>
-                    <button class="modal-btn confirm-btn" @tap="confirmPhoneBinding">确认</button>
-                </view>
-            </view>
-        </view>
     </view>
 </template>
 
@@ -399,6 +357,43 @@
             
             // 绑定微信手机号
             bindWechatPhone() {
+                // 使用uni-app官方推荐的获取手机号流程
+                // 1. 先获取用户授权
+                uni.getSetting({
+                    success: (res) => {
+                        if (res.authSetting['scope.phoneNumber']) {
+                            // 用户已授权，直接获取手机号
+                            this.getPhoneNumber();
+                        } else {
+                            // 用户未授权，引导用户授权
+                            uni.showModal({
+                                title: '授权提示',
+                                content: '需要获取您的手机号，请在弹窗中点击"允许"',
+                                showCancel: false,
+                                success: () => {
+                                    // 引导用户到设置页面授权
+                                    uni.openSetting({
+                                        success: (settingRes) => {
+                                            if (settingRes.authSetting['scope.phoneNumber']) {
+                                                this.getPhoneNumber();
+                                            } else {
+                                                uni.showToast({
+                                                    title: '需要手机号授权才能绑定',
+                                                    icon: 'none',
+                                                    duration: 2000
+                                                });
+                                            }
+                                        }
+                                    });
+                                }
+                            });
+                        }
+                    }
+                });
+            },
+            
+            // 获取手机号
+            getPhoneNumber() {
                 uni.showLoading({ title: '获取手机号中...' });
                 
                 // 调用微信小程序获取手机号接口
@@ -419,50 +414,89 @@
                     fail: (err) => {
                         uni.hideLoading();
                         console.error('获取手机号失败:', err);
-                        uni.showToast({
-                            title: '用户拒绝授权或获取失败',
-                            icon: 'none',
-                            duration: 2000
-                        });
+                        if (err.errMsg && err.errMsg.includes('deny')) {
+                            uni.showToast({
+                                title: '用户拒绝授权获取手机号',
+                                icon: 'none',
+                                duration: 2000
+                            });
+                        } else {
+                            uni.showToast({
+                                title: '获取手机号失败，请重试',
+                                icon: 'none',
+                                duration: 2000
+                            });
+                        }
                     }
                 });
             },
             
             // 从服务器获取手机号
             getPhoneNumberFromServer(code) {
+                // 按照uni-app官方推荐的方式处理手机号获取
                 uni.request({
                     url: this.serverUrl + '/user/getPhoneNumber',
                     method: 'POST',
                     data: {
                         code: code,
-                        userId: this.userInfo.id
+                        userId: this.userInfo.id,
+                        // 可以添加其他必要的参数
+                        timestamp: Date.now()
+                    },
+                    header: {
+                        'content-type': 'application/json',
+                        // 可以添加认证头
+                        'Authorization': uni.getStorageSync('token') || ''
                     },
                     success: (res) => {
                         uni.hideLoading();
-                        if (res.data && res.data.code === 200) {
+                        console.log('获取手机号响应:', res);
+                        
+                        if (res.statusCode === 200 && res.data && res.data.code === 200) {
                             const phoneNumber = res.data.data.phoneNumber;
-                            // 更新本地数据
-                            this.userInfo.phone = phoneNumber;
-                            const userInfo = uni.getStorageSync('userInfo');
-                            if (userInfo) {
-                                userInfo.phone = phoneNumber;
-                                uni.setStorageSync('userInfo', userInfo);
+                            
+                            if (phoneNumber) {
+                                // 更新本地数据
+                                this.userInfo.phone = phoneNumber;
+                                const userInfo = uni.getStorageSync('userInfo');
+                                if (userInfo) {
+                                    userInfo.phone = phoneNumber;
+                                    uni.setStorageSync('userInfo', userInfo);
+                                }
+                                
+                                // 同步到后端存储
+                                this.updateUserInfoToServer(
+                                    { id: this.userInfo.id, phone: phoneNumber, type: 'phone' },
+                                    '手机号绑定成功'
+                                );
+                                
+                                uni.showToast({
+                                    title: '手机号绑定成功',
+                                    icon: 'success',
+                                    duration: 2000
+                                });
+                            } else {
+                                uni.showToast({
+                                    title: '获取手机号失败，请重试',
+                                    icon: 'none',
+                                    duration: 2000
+                                });
+                            }
+                        } else {
+                            // 处理不同的错误情况
+                            let errorMsg = '绑定失败';
+                            if (res.data && res.data.msg) {
+                                errorMsg = res.data.msg;
+                            } else if (res.statusCode === 401) {
+                                errorMsg = '登录已过期，请重新登录';
+                            } else if (res.statusCode === 403) {
+                                errorMsg = '没有权限获取手机号';
+                            } else if (res.statusCode >= 500) {
+                                errorMsg = '服务器错误，请稍后重试';
                             }
                             
-                            // 同步到后端存储
-                            this.updateUserInfoToServer(
-                                { id: this.userInfo.id, phone: phoneNumber, type: 'phone' },
-                                '手机号绑定成功'
-                            );
-                            
                             uni.showToast({
-                                title: '手机号绑定成功',
-                                icon: 'success',
-                                duration: 2000
-                            });
-                        } else {
-                            uni.showToast({
-                                title: res.data.msg || '绑定失败',
+                                title: errorMsg,
                                 icon: 'none',
                                 duration: 2000
                             });
@@ -471,8 +505,19 @@
                     fail: (err) => {
                         uni.hideLoading();
                         console.error('服务器请求失败:', err);
+                        
+                        // 根据错误类型显示不同的提示
+                        let errorMsg = '网络错误，绑定失败';
+                        if (err.errMsg) {
+                            if (err.errMsg.includes('timeout')) {
+                                errorMsg = '请求超时，请检查网络';
+                            } else if (err.errMsg.includes('fail')) {
+                                errorMsg = '网络连接失败，请重试';
+                            }
+                        }
+                        
                         uni.showToast({
-                            title: '网络错误，绑定失败',
+                            title: errorMsg,
                             icon: 'none',
                             duration: 2000
                         });

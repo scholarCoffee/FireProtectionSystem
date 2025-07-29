@@ -55,7 +55,7 @@
           
           <!-- 安全等级卡片 -->
           <view class="safety-card-full" @tap="goToSafetyDetail">
-                          <view class="safety-header">
+            <view class="safety-header">
                 <view class="safety-info">
                   <view class="score-display">
                     <text class="score-number">{{ locationObj.safetyScore || 0 }}</text>

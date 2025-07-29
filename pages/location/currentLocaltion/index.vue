@@ -57,7 +57,8 @@
                   <image src="/static/icons/common/phone.png" class="phone-icon" @click="onClickShowPhone(item)" />
                 </view>
                 <view class="card-desc">
-                  <text>{{ item.safetyScore || 0 }}分</text>
+                  <text class="card-desc-score">{{ item.safeLevelScore || 0 }}</text>
+                  <text>分</text>
                 </view>
                 <button class="card-btn" @click="goToExternalLink(item.allSenceLink)">一键查看</button>
               </view>
@@ -222,7 +223,7 @@ export default {
       this.fetchLocationList({ page: 1, pageSize: this.pageSize, type: index + 1 });
     },
     getSafeLevelClass(safeLevelId) {
-      const map = { 1: 'excellent', 2: 'good', 3: 'normal', 4: 'danger' };
+      const map = { 1: 'excellent', 2: 'good', 3: 'danger' };
       return map[safeLevelId] || '';
     },
     callPhone(phone) {
@@ -325,7 +326,7 @@ export default {
   justify-content: space-around;
   align-items: center;
   background-color: #FFFFFF;
-  padding: 0;
+  padding: 4px 0;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
   border-bottom: 1px solid #f0f0f0;
 }
@@ -435,7 +436,6 @@ body, html {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 8px;
 }
 .card-title text {
   flex: 1;
@@ -444,9 +444,7 @@ body, html {
 }
 .card-desc {
   color: #FF6B35;
-  font-size: 16px;
-  font-weight: bold;
-  margin-bottom: 8px;
+  font-size: 12px;
   max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -454,6 +452,12 @@ body, html {
   display: inline-block;
   vertical-align: middle;
   text-shadow: 0 1px 2px rgba(255, 107, 53, 0.1);
+}
+
+.card-desc-score {
+  font-size: 24px;
+  font-weight: bold;
+  margin-right: 1px;
 }
 
 /* 电话列表样式 */
