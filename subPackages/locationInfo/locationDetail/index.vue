@@ -58,7 +58,7 @@
             <view class="safety-header">
                 <view class="safety-info">
                   <view class="score-display">
-                    <text class="score-number">{{ locationObj.safetyScore || 0 }}</text>
+                    <text class="score-number">{{ locationObj.safeLevelScore || 0 }}</text>
                     <text class="score-unit">分</text>
                   </view>
                 </view>
@@ -68,7 +68,7 @@
               </view>
             <view class="score-progress">
               <view class="progress-track">
-                <view class="progress-fill" :style="{ width: (locationObj.safetyScore || 0) + '%' }"></view>
+                <view class="progress-fill" :style="{ width: (locationObj.safeLevelScore || 0) + '%' }"></view>
               </view>
               <text class="progress-text">安全评分</text>
             </view>
@@ -169,9 +169,18 @@ export default {
       uni.navigateTo({ url: '/subPackages/common/webview/index?url=' + link });
     },
     goToSafetyDetail() {
-      uni.navigateTo({ 
-        url: '/subPackages/locationInfo/safetyDetail/index?addressId=' + this.addressId 
-      });
+      if (this.locationObj.fireSafetyScore) {
+        uni.navigateTo({ 
+          url: '/subPackages/locationInfo/safetyDetail/index?safeId=' + this.locationObj.safeId                          
+        });
+      } else {
+        uni.showToast({
+          title: '暂无安全评分',
+          icon: 'none',
+          duration: 1500
+        });
+      }
+
     },
     copyAddressName() {
       if (this.locationObj.addressName) {

@@ -12,78 +12,59 @@
     <view class="safety-header">
       <view class="safety-overview">
         <view class="safety-level">
-          <text class="level-label">安全等级</text>
-          <view class="level-tag" :class="safetyData.safetyCssClass" :style="{ backgroundColor: safetyData.safetyCssColor }">
-            <text>{{ safetyData.safetyLevel }}</text>
+          <view class="level-tag" :class="safetyLevelInfo.cssClass" :style="{ backgroundColor: safetyLevelInfo.cssColor }">
+            <text>{{ safetyLevelInfo.level }}</text>
           </view>
         </view>
         <view class="safety-score">
-          <text class="score-label">安全分数</text>
           <text class="score-value">{{ safetyData.totalScore || 0 }}分</text>
         </view>
       </view>
       <view class="safety-progress">
         <view class="progress-bar">
-          <view class="progress-fill" :style="{ width: progressPercent + '%', backgroundColor: safetyData.safetyCssColor }"></view>
+          <view class="progress-fill" :style="{ width: progressPercent + '%', backgroundColor: safetyLevelInfo.cssColor }"></view>
         </view>
         <text class="progress-text">{{ safetyData.totalScore || 0 }}/{{ safetyData.maxPossibleScore || 100 }}分</text>
       </view>
     </view>
-
+    <!-- 筛选区 -->
+    <view class="filter-bar">
+      <view class="filter-group">
+        <text :class="['filter-btn', filterScore === null ? 'active' : '']" @tap="setFilterScore(null)">全部</text>
+        <text :class="['filter-btn', filterScore === 0 ? 'active' : '']" @tap="setFilterScore(0)">0分</text>
+        <text :class="['filter-btn', filterScore === 5 ? 'active' : '']" @tap="setFilterScore(5)">5分</text>
+        <text :class="['filter-btn', filterScore === 10 ? 'active' : '']" @tap="setFilterScore(10)">10分</text>
+      </view>
+      <view class="sort-group">
+        <text :class="['sort-btn', sortOrder === 'desc' ? 'active' : '']" @tap="setSortOrder('desc')">降序</text>
+        <text :class="['sort-btn', sortOrder === 'asc' ? 'active' : '']" @tap="setSortOrder('asc')">升序</text>
+      </view>
+    </view>
     <!-- 评分明细 -->
     <view class="score-details">
-      <view class="section-title">
-        <text>评分明细</text>
-      </view>
-      
       <view class="detail-list">
-        <view class="detail-item" v-for="(category, index) in categoryDetails" :key="index">
+        <view class="detail-item" v-for="(itemConf, index) in filteredAndSortedScoreItems" :key="itemConf.id">
           <view class="item-header">
             <view class="item-title">
-              <image :src="getCategoryIcon(category.id)" class="category-icon" />
-              <text>{{ category.name }}</text>
+              <image :src="getCategoryIcon(itemConf.id)" class="category-icon" />
+              <text>{{ itemConf.name }}</text>
             </view>
             <view class="item-score">
-              <text class="score">{{ category.score }}分</text>
-              <text class="total">/{{ category.maxScore }}分</text>
+              <text class="score">{{ getScoreLabelByConf(itemConf) }}</text>
             </view>
           </view>
-          
-          <view class="item-progress">
-            <view class="progress-bar">
-              <view class="progress-fill" :style="{ width: (category.score / category.maxScore * 100) + '%', backgroundColor: safetyData.safetyCssColor }"></view>
-            </view>
-          </view>
-          
-          <view class="item-details" v-if="category.items && category.items.length > 0">
-            <view class="sub-item" v-for="(item, subIndex) in category.items" :key="subIndex">
+          <view class="item-details">
+            <view class="sub-item">
               <view class="sub-item-left">
-                <text class="sub-title">{{ item.name }}</text>
-                <text class="sub-option">{{ item.option }}</text>
+                <text class="sub-title">{{ itemConf.description || '' }}</text>
+                <text class="sub-option">{{ getOptionLabel(itemConf) }}</text>
               </view>
-              <text class="sub-score">{{ item.score }}分</text>
+              <text class="sub-score">{{ getScoreLabelByConf(itemConf) }}</text>
             </view>
           </view>
         </view>
       </view>
     </view>
-
-    <!-- 安全建议 -->
-    <view class="safety-suggestions" v-if="safetySuggestions.length > 0">
-      <view class="section-title">
-        <text>安全建议</text>
-      </view>
-      
-      <view class="suggestion-list">
-        <view class="suggestion-item" v-for="(suggestion, index) in safetySuggestions" :key="index">
-          <view class="suggestion-icon">
-            <text>{{ index + 1 }}</text>
-          </view>
-          <text class="suggestion-text">{{ suggestion }}</text>
-        </view>
-      </view>
-    </view>
-    
     <!-- 底部间距 -->
     <view class="bottom-spacing"></view>
   </view>
@@ -93,7 +74,7 @@
 export default {
   data() {
     return {
-      addressId: null,
+      safeId: null,
       loading: false,
       safetyData: {
         safeId: '',
@@ -111,36 +92,25 @@ export default {
         createTime: null,
         updateTime: null
       },
-      // 评分配置数据
-      scoreConfig: {
-        categories: [
-          { id: 'waterSource', name: '水源配置', description: '天然水源和消火栓配置' },
-          { id: 'roadAccess', name: '道路通行', description: '消防车辆通行条件' },
-          { id: 'fireFacilities', name: '消防设施', description: '消火栓等消防设备' },
-          { id: 'controlSystem', name: '控制系统', description: '消防控制室设备' },
-          { id: 'evacuation', name: '疏散设施', description: '电梯和楼梯间' },
-          { id: 'buildingLayout', name: '建筑布局', description: '建筑单元连通性' },
-          { id: 'emergencyManagement', name: '应急管理', description: '应急人员配置' }
-        ],
-        scoreItems: [
-          { id: 'naturalWaterSource', name: '单位周边100m范围内有无天然水源', category: 'waterSource', weight: 10 },
-          { id: 'outdoorHydrant', name: '单位周边50m内有无室外消火栓', category: 'waterSource', weight: 10 },
-          { id: 'vehicleAccess', name: '单位内部车辆是否能通行', category: 'roadAccess', weight: 10 },
-          { id: 'buildingHydrant', name: '单位内部建筑消火栓是否都有水', category: 'fireFacilities', weight: 10 },
-          { id: 'outdoorHydrantWater', name: '单位内部室外消火栓是否有水', category: 'fireFacilities', weight: 10 },
-          { id: 'controlRoom', name: '单位消防控制室使用情况', category: 'controlSystem', weight: 10 },
-          { id: 'fireElevator', name: '单位内部消防电梯情况', category: 'evacuation', weight: 10 },
-          { id: 'stairwellType', name: '单位内部楼梯间类型', category: 'evacuation', weight: 10 },
-          { id: 'unitConnection', name: '单位各单元之间连通情况', category: 'buildingLayout', weight: 10 },
-          { id: 'emergencyTeam', name: '单位是否存在处置小分队', category: 'emergencyManagement', weight: 10 }
-        ]
-      }
+      config: {
+        configVersion: '',
+        configName: '',
+        description: '',
+        scoreConfig: {
+          maxScore: 100,
+          safetyLevels: [],
+        },
+        scoreItems: [],
+        categories: []
+      },
+      filterScore: null, // 分数筛选
+      sortOrder: 'desc', // 排序方式
     };
   },
   
   onLoad(data) {
-    const { addressId } = data || {};
-    this.addressId = addressId;
+    const { safeId } = data || {};
+    this.safeId = safeId;
     this.fetchSafetyDetail();
   },
   
@@ -148,63 +118,68 @@ export default {
     progressPercent() {
       return this.safetyData.scorePercentage || 0;
     },
-    
+    // 动态评分明细，按config.categories顺序分组
     categoryDetails() {
-      const categories = {};
-      
-      // 初始化分类
-      this.scoreConfig.categories.forEach(category => {
-        categories[category.id] = {
-          ...category,
-          score: 0,
-          maxScore: 0,
-          items: []
-        };
+      if (!this.config.categories.length) return [];
+      const categories = this.config.categories.map(cat => ({
+        ...cat,
+        score: 0,
+        maxScore: 0,
+        items: []
+      }));
+      // 评分项配置
+      const itemConfigMap = {};
+      (this.config.scoreItems || []).forEach(item => {
+        itemConfigMap[item.id] = item;
       });
-      
-      // 计算每个分类的分数
-      this.scoreConfig.scoreItems.forEach(item => {
-        const category = categories[item.category];
-        if (category) {
-          category.maxScore += item.weight;
-          
-          const scoreItem = this.safetyData.scoreItems[item.id];
-          if (scoreItem) {
-            category.score += scoreItem.score;
-            category.items.push({
-              name: item.name,
-              score: scoreItem.score,
-              option: scoreItem.option
-            });
-          }
+      // 评分项分组
+      Object.keys(this.safetyData.scoreItems || {}).forEach(itemId => {
+        const itemScore = this.safetyData.scoreItems[itemId];
+        const itemConf = itemConfigMap[itemId];
+        if (!itemConf) return;
+        const catIdx = categories.findIndex(c => c.name === itemConf.category || c.id === itemConf.category);
+        if (catIdx > -1) {
+          categories[catIdx].maxScore += itemConf.weight;
+          categories[catIdx].score += itemScore.score;
+          categories[catIdx].items.push({
+            name: itemConf.name,
+            score: itemScore.score,
+            option: itemScore.option
+          });
         }
       });
-      
-      return Object.values(categories);
+      return categories;
     },
-    
-    safetySuggestions() {
-      const suggestions = [];
+    // 动态安全等级样式
+    safetyLevelInfo() {
+      const levels = (this.config.scoreConfig && this.config.scoreConfig.safetyLevels) || [];
       const score = this.safetyData.totalScore || 0;
-      
-      // 根据分数生成建议
-      if (score < 60) {
-        suggestions.push('安全等级较差，建议立即进行全面的消防安全检查');
-        suggestions.push('加强消防设施维护，确保所有设备正常运行');
-        suggestions.push('完善应急预案，定期组织消防演练');
-        suggestions.push('增加消防设备配置，提高安全防护能力');
-      } else if (score < 80) {
-        suggestions.push('安全等级一般，建议加强薄弱环节的改进');
-        suggestions.push('定期检查消防设备，确保设备完好有效');
-        suggestions.push('加强员工消防安全培训，提高安全意识');
-        suggestions.push('完善消防管理制度，建立长效机制');
-      } else {
-        suggestions.push('安全等级优秀，继续保持良好的消防安全管理');
-        suggestions.push('定期进行消防安全检查，确保安全水平持续提升');
-        suggestions.push('加强消防知识宣传，提高全员安全意识');
+      for (const lv of levels) {
+        if (score >= lv.minScore && score <= lv.maxScore) {
+          return lv;
+        }
       }
-      
-      return suggestions;
+      return levels[0] || { level: '一般', cssClass: 'safety-normal', cssColor: '#faad14' };
+    },
+    filteredAndSortedScoreItems() {
+      // 只根据scoreItems罗列，不分组
+      let arr = (this.config.scoreItems || []).map(conf => {
+        // 取实际得分
+        const scoreObj = (this.safetyData.scoreItems || {})[conf.id] || {};
+        return {
+          ...conf,
+          actualScore: scoreObj.score,
+          actualOption: scoreObj.option
+        };
+      });
+      if (this.filterScore !== null) {
+        arr = arr.filter(i => i.actualScore === this.filterScore);
+      }
+      arr = arr.slice().sort((a, b) => {
+        if (this.sortOrder === 'desc') return (b.actualScore || 0) - (a.actualScore || 0);
+        return (a.actualScore || 0) - (b.actualScore || 0);
+      });
+      return arr;
     }
   },
   
@@ -215,31 +190,24 @@ export default {
       
       // 这里调用接口获取安全详情数据
       uni.request({
-        url: this.serverUrl + '/location/safety-detail',
+        url: this.serverUrl + '/fireSafetyScore/detail',
         method: 'GET',
-        data: { addressId: this.addressId },
+        data: { safeId: this.safeId },
         success: (res) => {
           if (res.data && res.data.code === 200) {
-            this.safetyData = res.data.data || this.safetyData;
+            // 兼容后端返回结构
+            const detail = res.data.data.detail || res.data.data;
+            const config = res.data.data.config || {};
+            this.safetyData = detail;
+            this.config = config;
             uni.showToast({
               title: '数据加载成功',
               icon: 'success',
               duration: 1500
             });
-          } else {
-            // 使用模拟数据
-            this.loadMockData();
-            uni.showToast({
-              title: '使用模拟数据',
-              icon: 'none',
-              duration: 2000
-            });
           }
         },
         fail: (err) => {
-          console.error('获取安全详情失败:', err);
-          // 使用模拟数据
-          this.loadMockData();
           uni.showToast({
             title: '网络错误，使用模拟数据',
             icon: 'none',
@@ -251,51 +219,24 @@ export default {
           uni.hideLoading();
         }
       });
+    },   
+    getCategoryIcon(id) {
+      // 兼容原有逻辑
+      return '/static/icons/location/' + id + '.png';
     },
-    
-    loadMockData() {
-      // 模拟数据，根据JSON文件中的示例
-      this.safetyData = {
-        safeId: 'SAFE002',
-        addressId: this.addressId || '654321',
-        addressName: '江苏省苏州市姑苏区虎丘山风景区',
-        totalScore: 85,
-        maxPossibleScore: 100,
-        scorePercentage: 85,
-        safetyLevel: '一般',
-        safetyColor: '黄色',
-        safetyCssClass: 'safety-normal',
-        safetyCssColor: '#faad14',
-        scoreItems: {
-          naturalWaterSource: { score: 10, option: '有', itemId: 'naturalWaterSource' },
-          outdoorHydrant: { score: 10, option: '有', itemId: 'outdoorHydrant' },
-          vehicleAccess: { score: 5, option: '小型消防车能通行', itemId: 'vehicleAccess' },
-          buildingHydrant: { score: 10, option: '都有水', itemId: 'buildingHydrant' },
-          outdoorHydrantWater: { score: 10, option: '全部有水', itemId: 'outdoorHydrantWater' },
-          controlRoom: { score: 5, option: '只能启动1个', itemId: 'controlRoom' },
-          fireElevator: { score: 5, option: '部分消防电梯', itemId: 'fireElevator' },
-          stairwellType: { score: 10, option: '都是防烟楼梯间', itemId: 'stairwellType' },
-          unitConnection: { score: 10, option: '都能连通', itemId: 'unitConnection' },
-          emergencyTeam: { score: 10, option: '是', itemId: 'emergencyTeam' }
-        },
-        configVersion: '1.0.0',
-        createTime: new Date(),
-        updateTime: new Date()
-      };
+    setFilterScore(score) {
+      this.filterScore = score;
     },
-    
-    getCategoryIcon(category) {
-      const iconMap = {
-        waterSource: '/static/icons/location/safe.png',
-        roadAccess: '/static/icons/location/safe.png',
-        fireFacilities: '/static/icons/location/safe.png',
-        controlSystem: '/static/icons/location/safe.png',
-        evacuation: '/static/icons/location/safe.png',
-        buildingLayout: '/static/icons/location/safe.png',
-        emergencyManagement: '/static/icons/location/safe.png'
-      };
-      return iconMap[category] || '/static/icons/location/safe.png';
-    }
+    setSortOrder(order) {
+      this.sortOrder = order;
+    },
+    getScoreLabelByConf(itemConf) {
+      if (itemConf.actualScore !== undefined) return (itemConf.actualScore || 0) + '分';
+      return '0分';
+    },
+    getOptionLabel(itemConf) {
+      return itemConf.actualOption || '';
+    },
   }
 };
 </script>
@@ -348,17 +289,16 @@ export default {
   to { transform: rotate(360deg); }
 }
 
-/* 顶部安全等级卡片 */
+/* 恢复最初主色调：安全等级色为主，卡片白色，分数/进度条用原色 */
 .safety-header {
-  background: linear-gradient(135deg, #FF6B35, #FF8E53);
+  background: linear-gradient(134deg, #2196f3, #1890ff);
   margin: 10px;
   border-radius: 16px;
-  padding: 24px;
-  box-shadow: 0 8px 24px rgba(255, 107, 53, 0.25);
+  padding: 12px 24px;
+  box-shadow: 0 8px 24px #2196f370;
   position: relative;
   overflow: hidden;
 }
-
 .safety-header::before {
   content: '';
   position: absolute;
@@ -369,7 +309,6 @@ export default {
   background: rgba(255, 255, 255, 0.1);
   border-radius: 50%;
 }
-
 .safety-overview {
   display: flex;
   justify-content: space-between;
@@ -433,7 +372,7 @@ export default {
 
 .progress-fill {
   height: 100%;
-  background: linear-gradient(90deg, #FFFFFF, rgba(255, 255, 255, 0.9));
+  background: linear-gradient(90deg, #fff, #ffffff);
   border-radius: 4px;
   transition: width 0.3s ease;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
@@ -442,18 +381,17 @@ export default {
 .progress-text {
   font-size: 12px;
   color: rgba(255, 255, 255, 0.8);
-  text-align: center;
+  text-align: left;
 }
 
-/* 评分明细 */
+/* 评分明细卡片 */
 .score-details {
   background-color: #FFF;
   margin: 10px;
   border-radius: 8px;
-  padding: 20px;
+  padding: 5px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
 }
-
 .section-title {
   font-size: 16px;
   font-weight: bold;
@@ -462,13 +400,11 @@ export default {
   padding-bottom: 10px;
   border-bottom: 1px solid #f0f0f0;
 }
-
 .detail-list {
   display: flex;
   flex-direction: column;
   gap: 15px;
 }
-
 .detail-item {
   padding: 18px;
   background: linear-gradient(135deg, #FFFFFF, #F8F9FA);
@@ -477,19 +413,16 @@ export default {
   border: 1px solid rgba(0, 0, 0, 0.05);
   transition: all 0.3s ease;
 }
-
 .detail-item:hover {
   transform: translateY(-2px);
   box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12);
 }
-
 .item-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
   margin-bottom: 10px;
 }
-
 .item-title {
   display: flex;
   align-items: center;
@@ -498,47 +431,45 @@ export default {
   font-weight: bold;
   color: #333;
 }
-
 .category-icon {
   width: 16px;
   height: 16px;
 }
-
 .item-score {
   display: flex;
   align-items: center;
   gap: 2px;
 }
-
 .score {
-  font-size: 16px;
+  font-size: 18px;
   font-weight: bold;
-  color: #333;
+  color:#FF6B35;
 }
-
 .total {
   font-size: 12px;
   color: #999;
 }
-
 .item-progress {
   margin-bottom: 10px;
 }
-
 .item-progress .progress-bar {
   height: 6px;
+  background: #f0f0f0;
+  border-radius: 4px;
+  overflow: hidden;
 }
-
 .item-progress .progress-fill {
   background: linear-gradient(90deg, #1890FF, #40A9FF);
+  border-radius: 4px;
+  transition: width 0.3s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
-
 .item-details {
   display: flex;
   flex-direction: column;
   gap: 8px;
+  margin-top: 8px;
 }
-
 .sub-item {
   display: flex;
   justify-content: space-between;
@@ -550,38 +481,29 @@ export default {
   transition: all 0.2s ease;
   margin-bottom: 8px;
 }
-
 .sub-item:hover {
   background: linear-gradient(135deg, #E3F2FD, #F8F9FA);
   transform: translateX(2px);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
-
-.sub-item-left {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 4px;
-  flex: 1;
-  margin-right: 12px;
-}
-
 .sub-title {
   font-size: 13px;
   color: #333;
   font-weight: 500;
   line-height: 1.4;
 }
-
 .sub-option {
   font-size: 11px;
-  color: #666;
+  color: #1890FF;
   background: rgba(24, 144, 255, 0.1);
   padding: 2px 6px;
   border-radius: 4px;
   display: inline-block;
+  word-break: break-all;
+  white-space: pre-line;
+  max-width: 100%;
+  line-height: 1.6;
 }
-
 .sub-score {
   font-size: 14px;
   color: #1890FF;
@@ -635,6 +557,32 @@ export default {
   color: #333;
   line-height: 1.5;
   flex: 1;
+}
+
+/* 筛选区 */
+.filter-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 16px 0 16px;
+  margin-bottom: 2px;
+}
+.filter-group, .sort-group {
+  display: flex;
+  gap: 8px;
+}
+.filter-btn, .sort-btn {
+  font-size: 14px;
+  color: #666;
+  background: #f5f5f5;
+  border-radius: 4px;
+  padding: 3px 12px;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+}
+.filter-btn.active, .sort-btn.active {
+  color: #fff;
+  background: #1890FF;
 }
 
 /* 底部间距 */
