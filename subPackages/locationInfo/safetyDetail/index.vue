@@ -1,5 +1,5 @@
 <template>
-  <view class="safety-detail-container">
+  <scroll-view class="safety-detail-container" scroll-y="true" @scroll="handleScroll" :scroll-top="scrollTop">
     <!-- 加载状态 -->
     <view v-if="loading" class="loading-container">
       <view class="loading-content">
@@ -27,56 +27,91 @@
         <text class="progress-text">{{ safetyData.totalScore || 0 }}/{{ safetyData.maxPossibleScore || 100 }}分</text>
       </view>
     </view>
+    
     <!-- 筛选区 -->
-    <view class="filter-bar">
-      <view class="filter-group">
-        <text :class="['filter-btn', filterScore === null ? 'active' : '']" @tap="setFilterScore(null)">全部</text>
-        <text :class="['filter-btn', filterScore === 0 ? 'active' : '']" @tap="setFilterScore(0)">0分</text>
-        <text :class="['filter-btn', filterScore === 5 ? 'active' : '']" @tap="setFilterScore(5)">5分</text>
-        <text :class="['filter-btn', filterScore === 10 ? 'active' : '']" @tap="setFilterScore(10)">10分</text>
+    <view class="filter-bar" :class="{ 'filter-bar-fixed': isFilterFixed }">
+      <view class="filter-header" @tap="toggleFilter">
+        <view class="filter-header-left">
+          <image src="/static/icons/location/filter.png" class="filter-icon" />
+          <text class="filter-title">筛选条件</text>
+        </view>
+        <image :src="isFilterExpanded ? '/static/icons/common/up.png' : '/static/icons/common/down.png'" class="filter-arrow" />
       </view>
-      <view class="sort-group">
-        <text :class="['sort-btn', sortOrder === 'desc' ? 'active' : '']" @tap="setSortOrder('desc')">降序</text>
-        <text :class="['sort-btn', sortOrder === 'asc' ? 'active' : '']" @tap="setSortOrder('asc')">升序</text>
-      </view>
-    </view>
-    <!-- 评分明细 -->
-    <view class="score-details">
-      <view class="detail-list">
-        <view class="detail-item" v-for="(itemConf, index) in filteredAndSortedScoreItems" :key="itemConf.id">
-          <view class="item-header">
-            <view class="item-title">
-              <image :src="getCategoryIcon(itemConf.id)" class="category-icon" />
-              <text>{{ itemConf.name }}</text>
-            </view>
-            <view class="item-score">
-              <text class="score">{{ getScoreLabelByConf(itemConf) }}</text>
-            </view>
+      <view class="filter-content" v-if="isFilterExpanded">
+        <view class="filter-section">
+          <text class="filter-section-title">分数筛选</text>
+          <view class="filter-group">
+            <text :class="['filter-btn', filterScore === null ? 'active' : '']" @tap="setFilterScore(null)">全部</text>
+            <text :class="['filter-btn', filterScore === 0 ? 'active' : '']" @tap="setFilterScore(0)">0分</text>
+            <text :class="['filter-btn', filterScore === 5 ? 'active' : '']" @tap="setFilterScore(5)">5分</text>
+            <text :class="['filter-btn', filterScore === 10 ? 'active' : '']" @tap="setFilterScore(10)">10分</text>
           </view>
-          <!-- 新增：进度条展示得分/总分 -->
-          <view class="item-progress">
-            <view class="progress-bar">
-              <view class="progress-fill" :style="{ width: getScorePercent(itemConf) + '%', backgroundColor: safetyLevelInfo.cssColor }"></view>
-            </view>
-            <view class="progress-score-text">
-              <text>{{ itemConf.actualScore || 0 }}/{{ itemConf.weight || 10 }}分</text>
-            </view>
-          </view>
-          <view class="item-details">
-            <view class="sub-item">
-              <view class="sub-item-left">
-                <text class="sub-title">{{ itemConf.description || '' }}</text>
-                <text class="sub-option">{{ getOptionLabel(itemConf) }}</text>
-              </view>
-              <text class="sub-score">{{ getScoreLabelByConf(itemConf) }}</text>
-            </view>
+        </view>
+        <view class="filter-section">
+          <text class="filter-section-title">排序方式</text>
+          <view class="sort-group">
+            <text :class="['sort-btn', sortOrder === 'desc' ? 'active' : '']" @tap="setSortOrder('desc')">降序</text>
+            <text :class="['sort-btn', sortOrder === 'asc' ? 'active' : '']" @tap="setSortOrder('asc')">升序</text>
           </view>
         </view>
       </view>
     </view>
+    
+    <!-- 占位元素，防止固定时内容跳动 -->
+    <view class="filter-placeholder" v-if="isFilterFixed"></view>
+    
+    <!-- 评分明细 -->
+    <view class="score-details">
+      <view class="detail-list">
+        <!-- 有数据时显示列表 -->
+        <view v-if="filteredAndSortedScoreItems.length > 0">
+          <view class="detail-item" v-for="(itemConf, index) in filteredAndSortedScoreItems" :key="itemConf.id">
+            <view class="item-header">
+              <view class="item-title">
+                <image :src="getCategoryIcon(itemConf.id)" class="category-icon" />
+                <text>{{ itemConf.name }}</text>
+              </view>
+              <view class="item-score">
+                <text class="score">{{ getScoreLabelByConf(itemConf) }}</text>
+              </view>
+            </view>
+            <view class="item-details">
+              <view class="sub-item">
+                <view class="sub-item-left">
+                  <view class="sub-item-left-top">
+                    <view class="sub-title">{{ itemConf.description || '' }}</view>
+                    <view class="sub-option">{{ getOptionLabel(itemConf) }}</view>
+                  </view>
+                  <view class="sub-score">{{ getScoreLabelByConf(itemConf) }}</view>
+                </view>
+                <!-- 进度条移到sub-item下方 -->
+                <view class="item-progress">
+                  <view class="progress-bar">
+                    <view class="progress-fill" :style="{ width: getScorePercent(itemConf) + '%', backgroundColor: safetyLevelInfo.cssColor }"></view>
+                  </view>
+                  <view class="progress-score-text">
+                    <text>{{ itemConf.actualScore || 0 }}/{{ itemConf.weight || 10 }}分</text>
+                  </view>
+                </view>
+              </view>
+            </view>
+          </view>
+        </view>
+        <!-- 无数据时显示空状态 -->
+        <view v-else class="empty-state">
+          <image src="/static/icons/common/no-data.png" class="empty-icon" />
+          <text class="empty-title">暂无数据</text>
+          <text class="empty-desc">当前筛选条件下没有找到相关评分项</text>
+          <view class="empty-action" @tap="clearFilter">
+            <text class="action-btn">清除筛选</text>
+          </view>
+        </view>
+      </view>
+    </view>
+    
     <!-- 底部间距 -->
     <view class="bottom-spacing"></view>
-  </view>
+  </scroll-view>
 </template>
 
 <script>
@@ -114,6 +149,9 @@ export default {
       },
       filterScore: null, // 分数筛选
       sortOrder: 'desc', // 排序方式
+      isFilterExpanded: false, // 筛选区展开状态
+      isFilterFixed: false, // 筛选区是否固定
+      scrollTop: 0, // 滚动位置
     };
   },
   
@@ -209,16 +247,11 @@ export default {
             const config = res.data.data.config || {};
             this.safetyData = detail;
             this.config = config;
-            uni.showToast({
-              title: '数据加载成功',
-              icon: 'success',
-              duration: 1500
-            });
           }
         },
         fail: (err) => {
           uni.showToast({
-            title: '网络错误，使用模拟数据',
+            title: '查询数据出错，请稍后重试',
             icon: 'none',
             duration: 2000
           });
@@ -267,6 +300,29 @@ export default {
     getScorePercent(itemConf) {
       if (itemConf.weight === 0) return 0; // 避免除以0
       return (itemConf.actualScore / itemConf.weight) * 100;
+    },
+    toggleFilter() {
+      this.isFilterExpanded = !this.isFilterExpanded;
+    },
+    clearFilter() {
+      this.filterScore = null;
+      this.sortOrder = 'desc';
+      uni.showToast({
+        title: '已清除筛选条件',
+        icon: 'success',
+        duration: 1500
+      });
+    },
+    handleScroll(e) {
+      console.log('滚动事件触发:', e.detail.scrollTop);
+      const scrollTop = e.detail.scrollTop;
+      this.scrollTop = scrollTop;
+      
+      // 筛选区距离顶部的距离（调整阈值）
+      const filterOffsetTop = 150; // 降低触发阈值
+      const shouldFix = scrollTop > filterOffsetTop;
+      console.log('滚动位置:', scrollTop, '是否固定:', shouldFix);
+      this.isFilterFixed = shouldFix;
     }
   }
 };
@@ -274,13 +330,12 @@ export default {
 
 <style scoped>
 .safety-detail-container {
-  min-height: 100vh;
   height: 100vh;
   background-color: #f5f5f5;
-  padding-bottom: 100px;
   overflow-y: auto;
   overflow-x: hidden;
   box-sizing: border-box;
+  padding-bottom: 0;
 }
 
 /* 加载状态 */
@@ -322,11 +377,11 @@ export default {
 
 /* 恢复最初主色调：安全等级色为主，卡片白色，分数/进度条用原色 */
 .safety-header {
-  background: linear-gradient(134deg, #2196f3, #1890ff);
+  background: linear-gradient(135deg, #667eea 0%, #007aff 100%);
   margin: 10px;
   border-radius: 16px;
   padding: 12px 24px;
-  box-shadow: 0 8px 24px #2196f370;
+  box-shadow: 0 8px 24px rgba(102, 126, 234, 0.25);
   position: relative;
   overflow: hidden;
 }
@@ -346,19 +401,16 @@ export default {
   align-items: center;
   margin-bottom: 20px;
 }
-
 .safety-level {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
   gap: 8px;
 }
-
 .level-label {
   font-size: 14px;
   color: rgba(255, 255, 255, 0.8);
 }
-
 .level-tag {
   padding: 6px 14px;
   border-radius: 20px;
@@ -368,61 +420,49 @@ export default {
   background: rgba(255, 255, 255, 0.2);
   backdrop-filter: blur(10px);
 }
-
 .safety-score {
   display: flex;
   flex-direction: column;
   align-items: flex-end;
   gap: 8px;
 }
-
 .score-label {
   font-size: 14px;
   color: rgba(255, 255, 255, 0.8);
 }
-
 .score-value {
   font-size: 36px;
   font-weight: bold;
   color: #FFFFFF;
   text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
-
 .safety-progress {
   display: flex;
   flex-direction: column;
   gap: 8px;
 }
-
 .progress-bar {
   height: 8px;
-  background-color: hsla(0, 0%, 100%, .6);
+  background-color: rgba(255, 255, 255, 0.2);
   border-radius: 4px;
   overflow: hidden;
 }
-
 .progress-fill {
   height: 100%;
-  background: linear-gradient(90deg, #fff, #ffffff);
+  background: linear-gradient(90deg, #FFFFFF, rgba(255, 255, 255, 0.9));
   border-radius: 4px;
   transition: width 0.3s ease;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
-
 .progress-text {
   font-size: 12px;
   color: rgba(255, 255, 255, 0.8);
-  text-align: right;
-  font-weight: bold;
+  text-align: left;
 }
 
 /* 评分明细卡片 */
 .score-details {
-  background-color: #FFF;
   margin: 10px;
-  border-radius: 8px;
-  padding: 5px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
 }
 .section-title {
   font-size: 16px;
@@ -444,6 +484,7 @@ export default {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
   border: 1px solid rgba(0, 0, 0, 0.05);
   transition: all 0.3s ease;
+  margin-bottom: 10px;
 }
 .detail-item:hover {
   transform: translateY(-2px);
@@ -475,7 +516,7 @@ export default {
 .score {
   font-size: 18px;
   font-weight: bold;
-  color:#FF6B35;
+  color: #FF8A65;
 }
 .total {
   font-size: 12px;
@@ -490,20 +531,6 @@ export default {
   border-radius: 4px;
   overflow: hidden;
 }
-.item-progress .progress-fill {
-  background: linear-gradient(90deg, #1890FF, #40A9FF);
-  border-radius: 4px;
-  transition: width 0.3s ease;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-}
-.item-progress .progress-score-text {
-  display: flex;
-  justify-content: flex-end;
-  font-weight: bold;
-  margin-top: 4px;
-  font-size: 12px;
-  color: rgba(0, 0, 0, 0.6);
-}
 .item-details {
   display: flex;
   flex-direction: column;
@@ -511,7 +538,6 @@ export default {
   margin-top: 8px;
 }
 .sub-item {
-  display: flex;
   justify-content: space-between;
   align-items: flex-start;
   padding: 12px 16px;
@@ -526,16 +552,22 @@ export default {
   transform: translateX(2px);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
+.sub-item-left {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  gap: 4px;
+}
 .sub-title {
-  font-size: 13px;
-  color: #333;
+  font-size: 12px;
+  color: #353535;
   font-weight: 500;
   line-height: 1.4;
 }
 .sub-option {
   font-size: 11px;
-  color: #1890FF;
-  background: rgba(24, 144, 255, 0.1);
+  color: #fff;
+  background: #007affd1;;
   padding: 2px 6px;
   border-radius: 4px;
   display: inline-block;
@@ -546,93 +578,204 @@ export default {
 }
 .sub-score {
   font-size: 14px;
-  color: #1890FF;
+  color: #007affd1;;
   font-weight: bold;
-  background: rgba(24, 144, 255, 0.1);
+  background: rgba(102, 126, 234, 0.1);
   padding: 4px 8px;
   border-radius: 6px;
   min-width: 40px;
   text-align: center;
-}
-
-/* 安全建议 */
-.safety-suggestions {
-  background-color: #FFF;
-  margin: 10px;
-  border-radius: 8px;
-  padding: 20px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
-}
-
-.suggestion-list {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.suggestion-item {
-  display: flex;
-  align-items: flex-start;
-  gap: 12px;
-}
-
-.suggestion-icon {
-  width: 24px;
-  height: 24px;
-  background: linear-gradient(135deg, #FF6B35, #FF8E53);
-  color: #FFF;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 12px;
-  font-weight: bold;
-  flex-shrink: 0;
+  align-self: flex-start;
   margin-top: 2px;
-  box-shadow: 0 2px 8px rgba(255, 107, 53, 0.3);
 }
-
-.suggestion-text {
-  font-size: 14px;
-  color: #333;
-  line-height: 1.5;
-  flex: 1;
+.item-progress {
+  width: 100%;
+  margin: 8px 0;
 }
-
+.item-progress .progress-bar {
+  height: 6px;
+  background: #f0f0f0;
+  border-radius: 4px;
+  overflow: hidden;
+  margin-bottom: 4px;
+}
+.item-progress .progress-fill {
+  height: 100%;
+  background: linear-gradient(135deg, #667eea 0%, #007aff 100%);
+  border-radius: 4px;
+  transition: width 0.3s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+.progress-score-text {
+  font-size: 11px;
+  color: #ffa700;
+  font-weight: bold;
+  text-align: right;
+}
 /* 筛选区 */
 .filter-bar {
+  background: #fff;
+  border-radius: 16px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+  margin: 10px;
+  overflow: hidden;
+  border: 1px solid rgba(0,0,0,0.04);
+  transition: all 0.3s ease;
+  z-index: 100;
+}
+.filter-bar-fixed {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  margin: 0;
+  border-radius: 0;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.15);
+  z-index: 1000;
+  width: 100%;
+  background: #fff;
+}
+.filter-placeholder {
+  height: 60px; /* 减小占位高度 */
+  width: 100%;
+}
+.filter-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 10px 16px 0 16px;
-  margin-bottom: 2px;
+  padding: 12px 16px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+.filter-header:active {
+  background-color: #f8f9fa;
+}
+.filter-header-left {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.filter-icon {
+  width: 16px;
+  height: 16px;
+  opacity: 0.7;
+}
+.filter-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: #333;
+}
+.filter-arrow {
+  width: 14px;
+  height: 14px;
+  transition: transform 0.3s ease;
+}
+.filter-content {
+  padding: 0 16px 16px 16px;
+  border-top: 1px solid #f0f0f0;
+  animation: slideDown 0.3s ease;
+}
+.filter-section {
+  margin-bottom: 12px;
+}
+.filter-section:last-child {
+  margin-bottom: 0;
+}
+.filter-section-title {
+  font-size: 13px;
+  font-weight: 500;
+  color: #666;
+  margin-bottom: 6px;
+  display: block;
 }
 .filter-group, .sort-group {
   display: flex;
-  gap: 8px;
+  gap: 6px;
+  flex-wrap: wrap;
 }
 .filter-btn, .sort-btn {
-  font-size: 14px;
+  font-size: 13px;
   color: #666;
-  background: #f5f5f5;
-  border-radius: 4px;
-  padding: 3px 12px;
+  background: #f8f9fa;
+  border-radius: 16px;
+  padding: 6px 12px;
   cursor: pointer;
-  transition: background 0.2s, color 0.2s;
+  transition: all 0.3s ease;
+  border: 1px solid transparent;
+  font-weight: 500;
 }
 .filter-btn.active, .sort-btn.active {
   color: #fff;
-  background: #1890FF;
+  background: #667eea;
+  border-color: #667eea;
+  box-shadow: 0 2px 6px rgba(102, 126, 234, 0.3);
+}
+.filter-btn.score-0.active {
+  background: #95a5a6;
+  border-color: #95a5a6;
+  box-shadow: 0 2px 6px rgba(149, 165, 166, 0.3);
+}
+.filter-btn.score-5.active {
+  background: #3498db;
+  border-color: #3498db;
+  box-shadow: 0 2px 6px rgba(52, 152, 219, 0.3);
+}
+.filter-btn.score-10.active {
+  background: #e67e22;
+  border-color: #e67e22;
+  box-shadow: 0 2px 6px rgba(230, 126, 34, 0.3);
+}
+.filter-btn:hover, .sort-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 
-/* 底部间距 */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  text-align: center;
+}
+.empty-icon {
+  width: 80px;
+  height: 80px;
+  opacity: 0.5;
+  margin-bottom: 16px;
+}
+.empty-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #666;
+  margin-bottom: 8px;
+}
+.empty-desc {
+  font-size: 14px;
+  color: #999;
+  margin-bottom: 20px;
+  line-height: 1.5;
+}
+.empty-action {
+  margin-top: 8px;
+}
+.action-btn {
+  background: #667eea;
+  color: #fff;
+  padding: 8px 20px;
+  border-radius: 20px;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.3s ease;
+}
+.action-btn:active {
+  transform: scale(0.95);
+  background: #5a6fd8;
+}
 .bottom-spacing {
-  height: 60px;
+  height: 100px;
   width: 100%;
+  background: transparent;
+  min-height: 100px;
 }
-
-/* 安全等级颜色 */
-.safety-excellent { background-color: #52c41a; }
-.safety-normal { background-color: #faad14; }
-.safety-poor { background-color: #ff4d4f; }
 </style> 

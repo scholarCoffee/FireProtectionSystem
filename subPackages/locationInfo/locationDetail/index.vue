@@ -80,7 +80,7 @@
               <view class="phone-name">
                 <image src="/static/icons/location/userPhone.png" class="user-phone-icon" />
                 <text class="label">{{ phoneItem.type === 1 ? '单位负责人：' : '消防负责人：' }}</text>
-                <text>{{ phoneItem.name }}</text>
+                <text class="phone-text">{{ phoneItem.name }}</text>
               </view>
               <view class="phone-number">
                 <text>{{ phoneItem.phone }}</text>
@@ -282,7 +282,7 @@ export default {
   display: flex;
   align-items: center;
   padding: 0 15px 0 15px;
-  font-size: 14px;
+  font-size: 12px;
   color: #666;
 }
 .location-icon {
@@ -322,6 +322,9 @@ export default {
 .label {
   color: #999;
   min-width: 70px;
+}
+.phone-text {
+  font-size: 12px;
 }
 .value {
   color: #333;
@@ -404,9 +407,9 @@ export default {
 }
 
 .type-value {
-  font-size: 16px;
+  font-size: 14px;
   color: #333;
-  font-weight: 600;
+  font-weight: 500;
 }
 
 /* 720全云景卡片 */
@@ -498,8 +501,6 @@ export default {
   box-shadow: 0 2px 8px rgba(255, 138, 101, 0.4);
 }
 
-
-
 .safety-header {
   display: flex;
   justify-content: space-between;
@@ -521,11 +522,9 @@ export default {
   margin-right: 8px;
 }
 
-
-
 .badge-text {
-  font-size: 12px;
-  color: #FFFFFF;
+  font-size: 14px;
+  color: #fff;
   font-weight: bold;
 }
 
@@ -594,8 +593,8 @@ export default {
 }
 
 .progress-text {
-  font-size: 11px;
-  color: rgba(255, 255, 255, 0.8);
+  font-size: 12px;
+  color: #fff;
   font-weight: 500;
 }
 
