@@ -231,7 +231,25 @@ export default {
     },   
     getCategoryIcon(id) {
       // 兼容原有逻辑
-      return '/static/icons/location/' + id + '.png';
+      switch (id) {
+        case 'naturalWaterSource':
+        case 'outdoorHydrantWater':
+        case 'buildingHydrant':
+          return '/static/icons/location/waterSource.png';
+        case 'unitConnection':
+          return '/static/icons/location/evacuation.png';
+        case 'vehicleAccess':
+          return '/static/icons/location/roadAccess.png';
+        case 'outdoorHydrant':
+          return '/static/icons/location/fireFacilities.png';
+        case 'controlRoom':
+        case 'fireElevator':
+          return '/static/icons/location/controlSystem.png';
+        case 'stairwellType':
+        case 'emergencyTeam':
+          return '/static/icons/location/emergencyManagement.png';
+        default:
+      }
     },
     setFilterScore(score) {
       this.filterScore = score;
