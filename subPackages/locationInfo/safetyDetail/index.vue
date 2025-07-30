@@ -53,6 +53,15 @@
               <text class="score">{{ getScoreLabelByConf(itemConf) }}</text>
             </view>
           </view>
+          <!-- 新增：进度条展示得分/总分 -->
+          <view class="item-progress">
+            <view class="progress-bar">
+              <view class="progress-fill" :style="{ width: getScorePercent(itemConf) + '%', backgroundColor: safetyLevelInfo.cssColor }"></view>
+            </view>
+            <view class="progress-score-text">
+              <text>{{ itemConf.actualScore || 0 }}/{{ itemConf.weight || 10 }}分</text>
+            </view>
+          </view>
           <view class="item-details">
             <view class="sub-item">
               <view class="sub-item-left">
@@ -237,6 +246,10 @@ export default {
     getOptionLabel(itemConf) {
       return itemConf.actualOption || '';
     },
+    getScorePercent(itemConf) {
+      if (itemConf.weight === 0) return 0; // 避免除以0
+      return (itemConf.actualScore / itemConf.weight) * 100;
+    }
   }
 };
 </script>
@@ -365,7 +378,7 @@ export default {
 
 .progress-bar {
   height: 8px;
-  background-color: #f0f0f0;
+  background-color: hsla(0, 0%, 100%, .6);
   border-radius: 4px;
   overflow: hidden;
 }
@@ -381,7 +394,8 @@ export default {
 .progress-text {
   font-size: 12px;
   color: rgba(255, 255, 255, 0.8);
-  text-align: left;
+  text-align: right;
+  font-weight: bold;
 }
 
 /* 评分明细卡片 */
@@ -463,6 +477,14 @@ export default {
   border-radius: 4px;
   transition: width 0.3s ease;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+.item-progress .progress-score-text {
+  display: flex;
+  justify-content: flex-end;
+  font-weight: bold;
+  margin-top: 4px;
+  font-size: 12px;
+  color: rgba(0, 0, 0, 0.6);
 }
 .item-details {
   display: flex;
