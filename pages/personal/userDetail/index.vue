@@ -32,11 +32,11 @@
                 </view>
             </view>
             <view class="column">
-                <view class="row" @tap="handlePhoneBinding">
+                <view class="row">
                     <view class="title">手机：</view>
                     <view class="cont">
                         <text v-if="userInfo.phone" class="phone-text">{{ formatPhone(userInfo.phone) }}</text>
-                        <text v-else class="phone-placeholder">未绑定手机号</text>
+                        <button v-else open-type="getPhoneNumber" @getphonenumber="onWechatPhoneResult" class="hidden-phone-btn">点击绑定手机号</button>
                     </view>
                     <view class="more">
                         <image src="/static/icons/common/right.png" mode="aspectFit"></image>
@@ -109,11 +109,12 @@
                 // 获取本地存储的用户信息
                 const userInfo = uni.getStorageSync('userInfo');
                 if (userInfo) {
-                    const { id, nickName, avatarUrl } = userInfo;
+                    const { id, nickName, avatarUrl, phone } = userInfo;
                     this.userInfo = {
                         id,
                         avatarUrl,
-                        nickName
+                        nickName,
+                        phone
                     }
                     this.isLoggedIn = true; // 用户已登录
                 } else {
@@ -321,172 +322,98 @@
                     }
                 });
             },
-            // 处理手机号绑定
-            handlePhoneBinding() {
-                // 微信小程序：使用getPhoneNumber接口
-                if (this.userInfo.phone) {
-                    // 如果已绑定手机号，询问是否重新绑定
+            
+            // 处理微信返回的手机号信息
+            onWechatPhoneResult(e) {
+                const { encryptedData, iv, errMsg } = e.detail;
+                console.log( encryptedData, iv, errMsg)
+                // 处理“无权限”错误
+                if (errMsg === 'getPhoneNumber:fail no permission') {
                     uni.showModal({
-                        title: '提示',
-                        content: '您已绑定手机号，是否重新绑定？',
-                        success: (res) => {
-                            if (res.confirm) {
-                                this.bindWechatPhone();
-                            }
+                        title: '授权失败',
+                        content: '请点击"点击绑定手机号"按钮，并在弹窗中选择"允许"以完成绑定',
+                        showCancel: false,
+                        success: () => {
+                            // 重新显示按钮，让用户再次尝试
+                            this.$forceUpdate(); // 强制刷新视图，确保按钮可见
                         }
                     });
-                } else {
-                    // 未绑定手机号，直接绑定
-                    this.bindWechatPhone();
+                    return;
                 }
-            },
-            
-            // 绑定微信手机号
-            bindWechatPhone() {
-                // 使用uni-app官方推荐的获取手机号流程
-                // 1. 先获取用户授权
-                uni.getSetting({
-                    success: (res) => {
-                        if (res.authSetting['scope.phoneNumber']) {
-                            // 用户已授权，直接获取手机号
-                            this.getPhoneNumber();
-                        } else {
-                            // 用户未授权，引导用户授权
-                            uni.showModal({
-                                title: '授权提示',
-                                content: '需要获取您的手机号，请在弹窗中点击"允许"',
-                                showCancel: false,
-                                success: () => {
-                                    // 引导用户到设置页面授权
-                                    uni.openSetting({
-                                        success: (settingRes) => {
-                                            if (settingRes.authSetting['scope.phoneNumber']) {
-                                                this.getPhoneNumber();
-                                            } else {
-                                                uni.showToast({
-                                                    title: '需要手机号授权才能绑定',
-                                                    icon: 'none',
-                                                    duration: 2000
-                                                });
-                                            }
+                
+                // 处理用户拒绝授权
+                if (errMsg.includes('fail user deny')) {
+                    uni.showToast({
+                        title: '需要授权才能绑定手机号',
+                        icon: 'none',
+                        duration: 2000
+                    });
+                    return;
+                }
+                
+                // 获取登录凭证code
+                uni.showLoading({ title: '绑定中...' });
+                uni.login({
+                    provider: 'weixin',
+                    success: (loginRes) => {
+                        if (loginRes.code) {
+                            // 调用后端接口解密手机号
+                            uni.request({
+                                url: this.serverUrl + '/whitelistUserService/getPhoneNumber',
+                                method: 'POST',
+                                data: {
+                                    code: loginRes.code,
+                                    encryptedData,
+                                    iv,
+                                    userId: this.userInfo.id
+                                },
+                                success: (res) => {
+                                    uni.hideLoading();
+                                    if (res.data && res.data.code === 200) {
+                                        uni.showToast({
+                                            title: '手机号绑定成功',
+                                            icon: 'success',
+                                            duration: 2000
+                                        });
+                                        // 更新用户信息
+                                        this.userInfo.phone = res.data.data.phone;
+                                        // 更新本地存储
+                                        const userInfo = uni.getStorageSync('userInfo');
+                                        if (userInfo) {
+                                            userInfo.phone = res.data.data.phone;
+                                            uni.setStorageSync('userInfo', userInfo);
                                         }
+                                    } else {
+                                        uni.showToast({
+                                            title: res.data?.msg || '绑定失败',
+                                            icon: 'none',
+                                            duration: 2000
+                                        });
+                                    }
+                                },
+                                fail: (err) => {
+                                    uni.hideLoading();
+                                    console.error('绑定手机号失败', err);
+                                    uni.showToast({
+                                        title: '网络错误，绑定失败',
+                                        icon: 'none',
+                                        duration: 2000
                                     });
                                 }
                             });
-                        }
-                    }
-                });
-            },
-            
-            // 获取手机号
-            getPhoneNumber() {
-                uni.showLoading({ title: '获取手机号中...' });
-                // 调用微信小程序获取手机号接口
-                uni.getPhoneNumber({
-                    success: (res) => {
-                        if (res.code) {
-                            // 将code发送到后端解密获取手机号
-                            this.getPhoneNumberFromServer(res.code);
                         } else {
                             uni.hideLoading();
                             uni.showToast({
-                                title: '获取手机号失败',
+                                title: '获取登录凭证失败',
                                 icon: 'none',
                                 duration: 2000
                             });
                         }
                     },
-                    fail: (err) => {
+                    fail: () => {
                         uni.hideLoading();
-                        console.error('获取手机号失败:', err);
-                        if (err.errMsg && err.errMsg.includes('deny')) {
-                            uni.showToast({
-                                title: '用户拒绝授权获取手机号',
-                                icon: 'none',
-                                duration: 2000
-                            });
-                        } else {
-                            uni.showToast({
-                                title: '获取手机号失败，请重试',
-                                icon: 'none',
-                                duration: 2000
-                            });
-                        }
-                    }
-                });
-            },
-            
-            // 将code发送到后端解密获取手机号
-            getPhoneNumberFromServer(code) {
-                // 按照uni-app官方推荐的方式处理手机号获取
-                uni.request({
-                    url: this.serverUrl + '/whitelistUser/getPhoneNumber',
-                    method: 'POST',
-                    data: {
-                        code: code,
-                        userId: this.userInfo.id,
-                    },
-                    header: {
-                        'content-type': 'application/json',
-                    },
-                    success: (res) => {
-                        uni.hideLoading();
-                        if (res.statusCode === 200 && res.data && res.data.code === 200) {
-                            const phoneNumber = res.data.data.phoneNumber;
-                            if (phoneNumber) {
-                                // 更新本地数据
-                                this.userInfo.phone = phoneNumber;
-                                const userInfo = uni.getStorageSync('userInfo');
-                                if (userInfo) {
-                                    userInfo.phone = phoneNumber;
-                                    uni.setStorageSync('userInfo', userInfo);
-                                }
-                                
-                                // 同步到后端存储
-                                this.updateUserInfoToServer(
-                                    { id: this.userInfo.id, phone: phoneNumber, type: 'phone' },
-                                    '手机号绑定成功'
-                                );
-                            } else {
-                                uni.showToast({
-                                    title: '获取手机号失败，请重试',
-                                    icon: 'none',
-                                    duration: 2000
-                                });
-                            }
-                        } else {
-                            // 处理不同的错误情况
-                            let errorMsg = '绑定失败';
-                            if (res.data && res.data.msg) {
-                                errorMsg = res.data.msg;
-                            } else if (res.statusCode === 401) {
-                                errorMsg = '登录已过期，请重新登录';
-                            } else if (res.statusCode === 403) {
-                                errorMsg = '没有权限获取手机号';
-                            } else if (res.statusCode >= 500) {
-                                errorMsg = '服务器错误，请稍后重试';
-                            }
-                            
-                            uni.showToast({
-                                title: errorMsg,
-                                icon: 'none',
-                                duration: 2000
-                            });
-                        }
-                    },
-                    fail: (err) => {
-                        uni.hideLoading();
-                        // 根据错误类型显示不同的提示
-                        let errorMsg = '网络错误，绑定失败';
-                        if (err.errMsg) {
-                            if (err.errMsg.includes('timeout')) {
-                                errorMsg = '请求超时，请检查网络';
-                            } else if (err.errMsg.includes('fail')) {
-                                errorMsg = '网络连接失败，请重试';
-                            }
-                        }
                         uni.showToast({
-                            title: errorMsg,
+                            title: '获取登录状态失败',
                             icon: 'none',
                             duration: 2000
                         });
@@ -645,6 +572,11 @@
                 color: #999;
                 font-style: italic;
             }
+            
+            .phone-placeholder {
+                color: #999;
+                font-style: italic;
+            }
         }
         
         .more {
@@ -690,14 +622,6 @@
 // 优化小程序按钮
 .bt2 {
     position: relative;    
-    &:after {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-    }
 }
 
 // 弹窗样式
@@ -846,6 +770,29 @@
         &:active {
             background: #f0f9f0;
         }
+    }
+}
+
+// 手机绑定按钮样式
+.hidden-phone-btn {
+    background: transparent;
+    border: none !important;
+    color: #999;
+    font-style: italic;
+    font-size: 30rpx;
+    padding: 0;
+    margin: 0;
+    line-height: 1;
+    text-align: left;
+    position: relative;
+    
+    &:active {
+        opacity: 0.7;
+    }
+    &::after {
+        content: " ";
+        width: 0;
+        height: 0;
     }
 }
 </style>
