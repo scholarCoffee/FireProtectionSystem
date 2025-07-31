@@ -70,7 +70,7 @@
                 userInfo: {
                     nickName: '', 
                     avatarUrl: '',
-                    permissionStatus: 0,
+                    permissionStatus: 2,
                     id: ''
                 },
                 isLoggedIn: false, // 用户是否登录
@@ -144,7 +144,7 @@
                         id: '687a6f59e83419906c0699f4',
                         nickName: '测试用户-小创',
                         avatarUrl: '/static/icons/chat/person-avatar.png',
-                        permissionStatus: 0 // 默认无权限
+                        permissionStatus: 2 // 默认无权限
                     };
                     uni.setStorageSync('userInfo', mockUserInfo);
                 }
@@ -212,7 +212,7 @@
                         } else {
                             this.groupsList = [];
                             uni.showToast({
-                                title: '获取群聊列表失败',
+                                title: '未获取到群聊列表',
                                 icon: 'none',
                                 duration: 2000
                             });

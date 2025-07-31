@@ -420,7 +420,7 @@
             getPhoneNumberFromServer(code) {
                 // 按照uni-app官方推荐的方式处理手机号获取
                 uni.request({
-                    url: this.serverUrl + '/user/getPhoneNumber',
+                    url: this.serverUrl + '/whitelistUser/getPhoneNumber',
                     method: 'POST',
                     data: {
                         code: code,
@@ -447,12 +447,6 @@
                                     { id: this.userInfo.id, phone: phoneNumber, type: 'phone' },
                                     '手机号绑定成功'
                                 );
-                                
-                                uni.showToast({
-                                    title: '手机号绑定成功',
-                                    icon: 'success',
-                                    duration: 2000
-                                });
                             } else {
                                 uni.showToast({
                                     title: '获取手机号失败，请重试',

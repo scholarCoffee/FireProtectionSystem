@@ -162,38 +162,6 @@ export default {
     progressPercent() {
       return this.safetyData.scorePercentage || 0;
     },
-    // 动态评分明细，按config.categories顺序分组
-    categoryDetails() {
-      if (!this.config.categories.length) return [];
-      const categories = this.config.categories.map(cat => ({
-        ...cat,
-        score: 0,
-        maxScore: 0,
-        items: []
-      }));
-      // 评分项配置
-      const itemConfigMap = {};
-      (this.config.scoreItems || []).forEach(item => {
-        itemConfigMap[item.id] = item;
-      });
-      // 评分项分组
-      Object.keys(this.safetyData.scoreItems || {}).forEach(itemId => {
-        const itemScore = this.safetyData.scoreItems[itemId];
-        const itemConf = itemConfigMap[itemId];
-        if (!itemConf) return;
-        const catIdx = categories.findIndex(c => c.name === itemConf.category || c.id === itemConf.category);
-        if (catIdx > -1) {
-          categories[catIdx].maxScore += itemConf.weight;
-          categories[catIdx].score += itemScore.score;
-          categories[catIdx].items.push({
-            name: itemConf.name,
-            score: itemScore.score,
-            option: itemScore.option
-          });
-        }
-      });
-      return categories;
-    },
     // 动态安全等级样式
     safetyLevelInfo() {
       const levels = (this.config.scoreConfig && this.config.scoreConfig.safetyLevels) || [];
