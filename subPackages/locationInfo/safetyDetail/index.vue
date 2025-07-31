@@ -3,7 +3,7 @@
     <!-- 加载状态 -->
     <view v-if="loading" class="loading-container">
       <view class="loading-content">
-        <image :src="serverUrl + '/static/icons/common/loading.png'" class="loading-icon" />
+        <image src="https://www.xiaobei.space/static/icons/common/loading.png" class="loading-icon" />
         <text class="loading-text">正在加载安全详情...</text>
       </view>
     </view>
@@ -32,10 +32,10 @@
     <view class="filter-bar" :class="{ 'filter-bar-fixed': isFilterFixed }">
       <view class="filter-header" @tap="toggleFilter">
         <view class="filter-header-left">
-          <image :src="serverUrl + '/static/icons/location/filter.png'" class="filter-icon" />
+          <image src="https://www.xiaobei.space/static/icons/location/filter.png" class="filter-icon" />
           <text class="filter-title">筛选条件</text>
         </view>
-        <image :src="isFilterExpanded ? serverUrl + '/static/icons/common/up.png' : serverUrl + '/static/icons/common/down.png'" class="filter-arrow" />
+        <image :src="isFilterExpanded ? 'https://www.xiaobei.space/static/icons/common/up.png' : 'https://www.xiaobei.space/static/icons/common/down.png'" class="filter-arrow" />
       </view>
       <view class="filter-content" v-if="isFilterExpanded">
         <view class="filter-section">
@@ -96,7 +96,7 @@
         </view>
         <!-- 无数据时显示空状态 -->
         <view v-else class="empty-state">
-          <image :src="serverUrl + '/static/icons/common/no-data.png'" class="empty-icon" />
+          <image src="https://www.xiaobei.space/static/icons/common/no-data.png" class="empty-icon" />
           <text class="empty-title">暂无数据</text>
           <text class="empty-desc">当前筛选条件下没有找到相关评分项</text>
           <view class="empty-action" @tap="clearFilter">
@@ -233,19 +233,19 @@ export default {
         case 'naturalWaterSource':
         case 'outdoorHydrantWater':
         case 'buildingHydrant':
-          return this.serverUrl + '/static/icons/location/waterSource.png';
+          return 'https://www.xiaobei.space/static/icons/location/waterSource.png';
         case 'unitConnection':
-          return this.serverUrl + '/static/icons/location/evacuation.png';
+          return 'https://www.xiaobei.space/static/icons/location/evacuation.png';
         case 'vehicleAccess':
-          return this.serverUrl + '/static/icons/location/roadAccess.png';
+          return 'https://www.xiaobei.space/static/icons/location/roadAccess.png';
         case 'outdoorHydrant':
-          return this.serverUrl + '/static/icons/location/fireFacilities.png';
+          return 'https://www.xiaobei.space/static/icons/location/fireFacilities.png';
         case 'controlRoom':
         case 'fireElevator':
-          return this.serverUrl + '/static/icons/location/controlSystem.png';
+          return 'https://www.xiaobei.space/static/icons/location/controlSystem.png';
         case 'stairwellType':
         case 'emergencyTeam':
-          return this.serverUrl + '/static/icons/location/emergencyManagement.png';
+          return 'https://www.xiaobei.space/static/icons/location/emergencyManagement.png';
         default:
       }
     },

@@ -1,7 +1,7 @@
 export const locationTabList = [
-    { name: '高层小区', type: 1, icon: '/static/icons/location/community.png', activeIcon: '/static/icons/location/community-active.png' },
-    { name: '重点单位', type: 2, icon: '/static/icons/location/factory.png', activeIcon: '/static/icons/location/factory-active.png' },
-    { name: '沿街商铺', type: 3, icon: '/static/icons/location/shop.png', activeIcon: '/static/icons/location/shop-active.png' }
+    { name: '高层小区', type: 1, icon: 'https://www.xiaobei.space/static/icons/location/community.png', activeIcon: 'https://www.xiaobei.space/static/icons/location/community-active.png' },
+    { name: '重点单位', type: 2, icon: 'https://www.xiaobei.space/static/icons/location/factory.png', activeIcon: 'https://www.xiaobei.space/static/icons/location/factory-active.png' },
+    { name: '沿街商铺', type: 3, icon: 'https://www.xiaobei.space/static/icons/location/shop.png', activeIcon: 'https://www.xiaobei.space/static/icons/location/shop-active.png' }
 ]
 
 // export const chatSubmitList = [{
@@ -26,11 +26,11 @@ export const locationTabList = [
 //     text: '文件'
 // }]
 export const chatSubmitList = [{
-    imgUrl: '/static/icons/chat/img.png',
+    imgUrl: 'https://www.xiaobei.space/static/icons/chat/img.png',
     key: 1,
     text: '图片'
 }, {
-    imgUrl: '/static/icons/chat/photo.png',
+    imgUrl: 'https://www.xiaobei.space/static/icons/chat/photo.png',
     key: 2,
     text: '拍照'
 }]

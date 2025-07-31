@@ -3,7 +3,7 @@
         <!-- 未登录提示 -->
         <view v-if="!isLoggedIn" class="not-logged-in">
             <view class="login-container">
-                <image :src="serverUrl + '/static/icons/person/person.png'" class="login-avatar"></image>
+                <image src="https://www.xiaobei.space/static/icons/person/person.png" class="login-avatar"></image>
                 <text class="login-title">欢迎使用消防作战终端</text>
                 <text class="login-desc">登录后即可查看群聊消息</text>
                 <button class="login-btn" open-type="getUserInfo" @getuserinfo="onGetUserInfo">一键登录</button>
@@ -12,7 +12,7 @@
         <!-- 已登录但未绑定手机号 -->
         <view v-else-if="userInfo.permissionStatus === 0" class="no-permission">
             <view class="permission-container">
-                <image :src="serverUrl + '/static/icons/common/no-data.png'" class="permission-img"></image>
+                <image src="https://www.xiaobei.space/static/icons/common/no-data.png" class="permission-img"></image>
                 <text class="permission-title">当前用户未绑定手机号</text>
                 <text class="permission-desc">请先在个人页绑定手机号</text>
             </view>
@@ -20,7 +20,7 @@
         <!-- 已登录但无权限提示 -->
         <view v-else-if="userInfo.permissionStatus === 1" class="no-permission">
             <view class="permission-container">
-                <image :src="serverUrl + '/static/icons/common/no-data.png'" class="permission-img"></image>
+                <image src="https://www.xiaobei.space/static/icons/common/no-data.png" class="permission-img"></image>
                 <text class="permission-title">当前用户无群聊权限</text>
                 <text class="permission-desc">请联系维护人员开通权限</text>
             </view>
@@ -54,7 +54,7 @@
 
             <!-- 无群聊时显示 -->
             <view class="no-group" v-if="groupsList.length === 0">
-                <image :src="serverUrl + '/static/icons/common/no-data.png'" class="no-group-img"></image>
+                <image src="https://www.xiaobei.space/static/icons/common/no-data.png" class="no-group-img"></image>
                 <text class="no-group-text">暂无群聊</text>
             </view>
         </view>
@@ -143,7 +143,7 @@
                     const mockUserInfo = {
                         id: '687a6f59e83419906c0699f4',
                         nickName: '测试用户-小创',
-                        avatarUrl: this.serverUrl + '/static/icons/chat/person-avatar.png',
+                        avatarUrl: 'https://www.xiaobei.space/static/icons/chat/person-avatar.png',
                         permissionStatus: 2 // 默认无权限
                     };
                     uni.setStorageSync('userInfo', mockUserInfo);
@@ -265,7 +265,7 @@
                         sendMsgName: group.sendMsgName || '群成员',
                         sendMsgAvatar: group.sendMsgAvatar,
                         groupName: group.groupName,
-                        groupAvatar: group.groupAvatar ? (this.serverUrl + group.groupAvatar) : this.serverUrl + '/static/icons/chat/defautl-group.png',
+                        groupAvatar: group.groupAvatar ? (this.serverUrl + group.groupAvatar) : 'https://www.xiaobei.space/static/icons/chat/defautl-group.png',
                         lastTime: group?.lastTime ? new Date(group?.lastTime) : new Date(),
                         message: group?.message ? `${group.sendMsgName || '群成员'}: ${group?.message}` : '暂无消息',
                         tip: group?.tip || 0

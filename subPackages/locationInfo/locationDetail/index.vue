@@ -6,9 +6,9 @@
         <!-- 头部图片区域 -->
         <view class="header-image">
           <image 
-            :src="locationObj.type === 1 ? serverUrl + '/static/icons/location/showCommunity.png' 
-              : locationObj.type === 2 ? serverUrl + '/static/icons/location/showFactory.png' 
-              : serverUrl + '/static/icons/location/showShop.png'" 
+            :src="locationObj.type === 1 ? 'https://www.xiaobei.space/static/icons/location/showCommunity.png' 
+              : locationObj.type === 2 ? 'https://www.xiaobei.space/static/icons/location/showFactory.png' 
+              : 'https://www.xiaobei.space/static/icons/location/showShop.png'" 
             class="detail-img" 
           />
         </view>
@@ -18,12 +18,12 @@
           <!-- 地址名称 -->
           <view class="address-name">
             <text>{{ locationObj.addressName }}</text>
-            <image :src="serverUrl + '/static/icons/location/copy.png'" class="location-icon" @tap="copyAddressName" />
+            <image src="https://www.xiaobei.space/static/icons/location/copy.png" class="location-icon" @tap="copyAddressName" />
           </view>
           
           <!-- 地址详情 -->
           <view class="address-detail">
-            <image :src="serverUrl + '/static/icons/location/showLocation.png'" class="location-icon" />
+            <image src="https://www.xiaobei.space/static/icons/location/showLocation.png" class="location-icon" />
             <text>{{ locationObj.addressExt }}</text>
           </view>
                     
@@ -43,12 +43,12 @@
             <!-- 720全云景卡片 -->
             <view class="panorama-card" @click="goToExternalLink(locationObj.allSenceLink)">
               <view class="panorama-header">
-                <image :src="serverUrl + '/static/icons/location/panorama.png'" class="panorama-icon" />
+                <image src="https://www.xiaobei.space/static/icons/location/panorama.png" class="panorama-icon" />
                 <text class="panorama-title">720全云景</text>
               </view>
               <view class="panorama-content">
                 <text class="panorama-desc">查看全景</text>
-                <image :src="serverUrl + '/static/icons/common/right.png'" class="arrow-icon" />
+                <image src="https://www.xiaobei.space/static/icons/common/right.png" class="arrow-icon" />
               </view>
             </view>
           </view>
@@ -78,13 +78,13 @@
           <view class="info-row" v-for="phoneItem in locationObj.phoneList" :key="phoneItem.phone">
             <view class="phone-content">
               <view class="phone-name">
-                <image :src="serverUrl + '/static/icons/location/userPhone.png'" class="user-phone-icon" />
+                <image src="https://www.xiaobei.space/static/icons/location/userPhone.png" class="user-phone-icon" />
                 <text class="label">{{ phoneItem.type === 1 ? '单位负责人：' : '消防负责人：' }}</text>
                 <text class="phone-text">{{ phoneItem.name }}</text>
               </view>
               <view class="phone-number">
                 <text>{{ phoneItem.phone }}</text>
-                <image :src="serverUrl + '/static/icons/common/phone.png'" class="phone-icon" @tap="callPhone(phoneItem.phone)"/>
+                <image src="https://www.xiaobei.space/static/icons/common/phone.png" class="phone-icon" @tap="callPhone(phoneItem.phone)"/>
               </view>
             </view>
           </view>
@@ -98,7 +98,7 @@
               <text class="label">可出行大门：</text>
               <view class="gate-item" v-for="(gate, index) in locationObj.enterGateList" :key="index">
                 <!-- 勾选框 -->
-                <image :src="serverUrl + '/static/icons/common/checked.png' " class="check-icon"/>
+                <image src="https://www.xiaobei.space/static/icons/common/checked.png" class="check-icon"/>
                 <!-- 大门名称 -->
                 <text class="gate-name">{{ gate.name }}</text>
               </view>
@@ -131,7 +131,7 @@ export default {
     },
     showImgUrl() {
       return (type) => {
-        return type === 1 ? this.serverUrl + '/static/icons/location/community.png' : type === 2 ? this.serverUrl + '/static/icons/location/factory.png' : this.serverUrl + '/static/icons/location/shop.png';
+        return type === 1 ? 'https://www.xiaobei.space/static/icons/location/community.png' : type === 2 ? 'https://www.xiaobei.space/static/icons/location/factory.png' : 'https://www.xiaobei.space/static/icons/location/shop.png';
       }
     }
   },
