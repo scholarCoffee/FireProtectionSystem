@@ -7,7 +7,6 @@ Vue.config.productionTip = false
 // // 修改后
 // Vue.prototype.socket = io('wss://www.xiaobei.space', {
 //     transports: ['websocket'], // 强制使用 WebSocket 协议
-//     rejectUnauthorized: false, // 开发环境下忽略证书验证（生产环境建议移除）
 //     timeout: 10000 // 设置连接超时时间（毫秒）
 // });
 Vue.prototype.serverUrl = 'http://172.17.121.229:3000' 

@@ -5,7 +5,7 @@
             <view class="command-grid">
                 <view class="command-item" @click="goToWebview('data-analysis', '数据分析')">
                     <view class="command-icon">
-                        <image src="/static/icons/data/analysis.png" class="icon-img" />
+                        <image :src="serverUrl + '/static/icons/data/analysis.png'" class="icon-img" />
                     </view>
                     <text class="command-title">数据分析</text>
                     <text class="command-desc">实时数据监控与分析</text>
@@ -13,7 +13,7 @@
                 
                 <view class="command-item" @click="goToWebview('alarm-management', '报警管理')">
                     <view class="command-icon">
-                        <image src="/static/icons/data/alarm.png" class="icon-img" />
+                        <image :src="serverUrl + '/static/icons/data/alarm.png'" class="icon-img" />
                     </view>
                     <text class="command-title">报警管理</text>
                     <text class="command-desc">报警信息处理与统计</text>
@@ -21,7 +21,7 @@
                 
                 <view class="command-item" @click="goToWebview('device-monitor', '设备监控')">
                     <view class="command-icon">
-                        <image src="/static/icons/data/device.png" class="icon-img" />
+                        <image :src="serverUrl + '/static/icons/data/device.png'" class="icon-img" />
                     </view>
                     <text class="command-title">设备监控</text>
                     <text class="command-desc">设备状态实时监控</text>
@@ -29,7 +29,7 @@
                 
                 <view class="command-item" @click="goToWebview('report-system', '报表系统')">
                     <view class="command-icon">
-                        <image src="/static/icons/data/report.png" class="icon-img" />
+                        <image :src="serverUrl + '/static/icons/data/report.png'" class="icon-img" />
                     </view>
                     <text class="command-title">报表系统</text>
                     <text class="command-desc">数据报表生成与导出</text>

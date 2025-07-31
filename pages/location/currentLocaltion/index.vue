@@ -5,7 +5,7 @@
         <!-- 搜索栏 -->
         <view class="search-bar">
           <view class="search-input-container">
-            <image src="/static/icons/location/search.png" class="search-icon" />
+            <image :src="serverUrl + '/static/icons/location/search.png'" class="search-icon" />
             <input 
               type="text" 
               placeholder="输入地址名称查询" 
@@ -23,7 +23,7 @@
             :class="['tab-item', activeTab === index ? 'active' : '']" 
             @click="changeTab(index)"
           >
-            <image :src="activeTab === index ? tab.activeIcon : tab.icon" class="tab-icon" />
+            <image :src="serverUrl + (activeTab === index ? tab.activeIcon : tab.icon)" class="tab-icon" />
             <text :style="{ color: activeTab === index ? '#1296db' : '#707070' }">{{ tab.name }}</text>
           </view>
         </view>
@@ -54,7 +54,7 @@
               <view class="card-info">
                 <view class="card-title" >
                   <text @click="goToDetail(item)">{{ item.addressName.length > 10 ? item.addressName.slice(0, 11) + '…' : item.addressName }}</text>
-                  <image src="/static/icons/common/phone.png" class="phone-icon" @click="onClickShowPhone(item)" />
+                  <image :src="serverUrl + '/static/icons/common/phone.png'" class="phone-icon" @click="onClickShowPhone(item)" />
                 </view>
                 <view class="card-desc">
                   <text class="card-desc-score">{{ item.safeLevelScore || 0 }}</text>
@@ -77,7 +77,7 @@
       <!-- 新增：web-view 返回按钮 -->
       <view class="webview-header" v-if="showWebview">
         <cover-view class="cover-back-btn" @click="goBackToList" v-if="showWebview">
-          <cover-image src="/static/icons/common/left.png" class="cover-back-icon"></cover-image>
+          <cover-image :src="serverUrl + '/static/icons/common/left.png'" class="cover-back-icon"></cover-image>
         </cover-view>
         <web-view :src="webviewUrl"></web-view>
       </view>
@@ -98,7 +98,7 @@
             @click="selectCustomPhone(phoneItem)"
           >
             <view class="phone-item-left">
-              <image src="/static/icons/location/userPhone.png" class="phone-user-icon" />
+              <image :src="serverUrl + '/static/icons/location/userPhone.png'" class="phone-user-icon" />
               <view class="phone-item-info">
                 <text class="phone-item-name">{{ phoneItem.name }}</text>
                 <text class="phone-item-type">{{ phoneItem.type === 1 ? '单位负责人' : '消防负责人' }}</text>
@@ -106,7 +106,7 @@
             </view>
             <view class="phone-item-right">
               <text class="phone-item-number">{{ phoneItem.phone }}</text>
-              <image src="/static/icons/common/phone.png" class="phone-call-icon" />
+              <image :src="serverUrl + '/static/icons/common/phone.png'" class="phone-call-icon" />
             </view>
           </view>
         </view>
@@ -142,9 +142,9 @@ export default {
   computed: {
     showImgUrl() {
       return type => {
-        return type === 1 ? '/static/icons/location/showCommunity.png' : 
-               type === 2 ? '/static/icons/location/showFactory.png' : 
-               '/static/icons/location/showShop.png';
+        return type === 1 ? this.serverUrl + '/static/icons/location/showCommunity.png' : 
+               type === 2 ? this.serverUrl + '/static/icons/location/showFactory.png' : 
+               this.serverUrl + '/static/icons/location/showShop.png';
       }
     }
   },
