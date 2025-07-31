@@ -71,9 +71,6 @@
                 <image :src="getCategoryIcon(itemConf.id)" class="category-icon" />
                 <text>{{ itemConf.name }}</text>
               </view>
-              <view class="item-score">
-                <text class="score">{{ getScoreLabelByConf(itemConf) }}</text>
-              </view>
             </view>
             <view class="item-details">
               <view class="sub-item">
@@ -307,14 +304,8 @@ export default {
     clearFilter() {
       this.filterScore = null;
       this.sortOrder = 'desc';
-      uni.showToast({
-        title: '已清除筛选条件',
-        icon: 'success',
-        duration: 1500
-      });
     },
     handleScroll(e) {
-      console.log('滚动事件触发:', e.detail.scrollTop);
       const scrollTop = e.detail.scrollTop;
       this.scrollTop = scrollTop;
       
@@ -508,16 +499,6 @@ export default {
   width: 16px;
   height: 16px;
 }
-.item-score {
-  display: flex;
-  align-items: center;
-  gap: 2px;
-}
-.score {
-  font-size: 18px;
-  font-weight: bold;
-  color: #FF8A65;
-}
 .total {
   font-size: 12px;
   color: #999;
@@ -608,7 +589,7 @@ export default {
 }
 .progress-score-text {
   font-size: 11px;
-  color: #ffa700;
+  color: #FF8A65;
   font-weight: bold;
   text-align: right;
 }

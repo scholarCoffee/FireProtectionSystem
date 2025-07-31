@@ -535,8 +535,6 @@ export default {
   opacity: 0.8;
 }
 
-
-
 .score-display {
   display: flex;
   align-items: baseline;

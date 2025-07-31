@@ -46,15 +46,13 @@ export default {
             userInfo: {
                 id: '', // 用户id
                 nickName: '', // 用户昵称
-                avatarUrl: '', // 用户头像
-                permissionStatus: 1 // 用户权限
+                avatarUrl: '' // 用户头像
             },
             // 聊天室信息[一对一好友或者群]
             currentUserInfo: {
                 id: '', // 聊天室id
                 nickName: '', // 聊天室名称
-                avatarUrl: '', // 聊天室头像
-                permissionStatus: 1, // 聊天室权限
+                avatarUrl: '' // 聊天室头像
             },
             chatType: 1, // 0-好友，1-群
             chatMessageList: [],

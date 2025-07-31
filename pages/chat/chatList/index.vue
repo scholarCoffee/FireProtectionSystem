@@ -9,8 +9,16 @@
                 <button class="login-btn" open-type="getUserInfo" @getuserinfo="onGetUserInfo">一键登录</button>
             </view>
         </view>
+        <!-- 已登录但未绑定手机号 -->
+        <view v-else-if="userInfo.permissionStatus === 0" class="no-permission">
+            <view class="permission-container">
+                <image src="/static/icons/common/no-data.png" class="permission-img"></image>
+                <text class="permission-title">当前用户未绑定手机号</text>
+                <text class="permission-desc">请先在个人页绑定手机号</text>
+            </view>
+        </view>
         <!-- 已登录但无权限提示 -->
-        <view v-else-if="!hasChatPermission" class="no-permission">
+        <view v-else-if="userInfo.permissionStatus === 1" class="no-permission">
             <view class="permission-container">
                 <image src="/static/icons/common/no-data.png" class="permission-img"></image>
                 <text class="permission-title">当前用户无群聊权限</text>
@@ -62,16 +70,11 @@
                 userInfo: {
                     nickName: '', 
                     avatarUrl: '',
-                    permissionStatus: 1,
+                    permissionStatus: 0,
                     id: ''
                 },
-                permissionStatus: 0, // 权限状态
                 isLoggedIn: false, // 用户是否登录
-            }
-        },
-        computed: {
-            hasChatPermission() {
-                return this.userInfo.permissionStatus === 1;
+                whiteList: [], // 白名单
             }
         },
         onLoad() {
@@ -141,7 +144,7 @@
                         id: '687a6f59e83419906c0699f4',
                         nickName: '测试用户-小创',
                         avatarUrl: '/static/icons/chat/person-avatar.png',
-                        permissionStatus: 1 // 默认有权限
+                        permissionStatus: 0 // 默认无权限
                     };
                     uni.setStorageSync('userInfo', mockUserInfo);
                 }
@@ -166,7 +169,7 @@
                     }
                     this.isLoggedIn = true;
                     // 页面显示时更新未读数
-                    if (this.hasChatPermission) {
+                    if (this.userInfo.permissionStatus === 2) {
                         this.loadGroups(); // 加载群聊列表
                     }
                 } else {
@@ -281,7 +284,7 @@
 
             // 进入群聊房间
             goToChatRoom(group) {
-                if (!group || !group.groupId || !this.hasChatPermission) return;
+                if (!group || !group.groupId) return;
                 const { groupId, groupName, groupAvatar } = group;
                 uni.navigateTo({
                     url: `/subPackages/chatInfo/chatRoom/index?id=${groupId}&nickName=${groupName}&avatarUrl=${groupAvatar}&chatType=1`

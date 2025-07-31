@@ -78,20 +78,15 @@
                 userInfo: {
                     nickName: '', 
                     avatarUrl: '',
-                    permissionStatus: 1,
-                    id: '',
-                    phone: ''
+                    permissionStatus: 0,
+                    id: ''
                 },
                 isLoggedIn: false, // 用户是否已登录
                 showModifyModal: false, // 是否显示修改弹窗
                 modifyValue: '', // 修改的值
                 modifyType: '', // 修改类型
                 modifyTitle: '', // 修改标题
-                tempFilePaths: '',
-                showPhoneModal: false, // 是否显示手机绑定弹窗
-                phoneValue: '', // 手机号输入值
-                verifyCode: '', // 验证码输入值
-                countdown: 0 // 验证码倒计时
+                tempFilePaths: ''
             }
         },
         onShow() {
@@ -328,7 +323,6 @@
             },
             // 处理手机号绑定
             handlePhoneBinding() {
-                // #ifdef MP-WEIXIN
                 // 微信小程序：使用getPhoneNumber接口
                 if (this.userInfo.phone) {
                     // 如果已绑定手机号，询问是否重新绑定
@@ -345,14 +339,6 @@
                     // 未绑定手机号，直接绑定
                     this.bindWechatPhone();
                 }
-                // #endif
-                
-                // #ifndef MP-WEIXIN
-                // 非微信小程序：显示手动输入弹窗
-                this.phoneValue = this.userInfo.phone || '';
-                this.verifyCode = '';
-                this.showPhoneModal = true;
-                // #endif
             },
             
             // 绑定微信手机号
@@ -395,7 +381,6 @@
             // 获取手机号
             getPhoneNumber() {
                 uni.showLoading({ title: '获取手机号中...' });
-                
                 // 调用微信小程序获取手机号接口
                 uni.getPhoneNumber({
                     success: (res) => {
@@ -431,7 +416,7 @@
                 });
             },
             
-            // 从服务器获取手机号
+            // 将code发送到后端解密获取手机号
             getPhoneNumberFromServer(code) {
                 // 按照uni-app官方推荐的方式处理手机号获取
                 uni.request({
@@ -440,21 +425,14 @@
                     data: {
                         code: code,
                         userId: this.userInfo.id,
-                        // 可以添加其他必要的参数
-                        timestamp: Date.now()
                     },
                     header: {
                         'content-type': 'application/json',
-                        // 可以添加认证头
-                        'Authorization': uni.getStorageSync('token') || ''
                     },
                     success: (res) => {
                         uni.hideLoading();
-                        console.log('获取手机号响应:', res);
-                        
                         if (res.statusCode === 200 && res.data && res.data.code === 200) {
                             const phoneNumber = res.data.data.phoneNumber;
-                            
                             if (phoneNumber) {
                                 // 更新本地数据
                                 this.userInfo.phone = phoneNumber;
@@ -504,8 +482,6 @@
                     },
                     fail: (err) => {
                         uni.hideLoading();
-                        console.error('服务器请求失败:', err);
-                        
                         // 根据错误类型显示不同的提示
                         let errorMsg = '网络错误，绑定失败';
                         if (err.errMsg) {
@@ -515,7 +491,6 @@
                                 errorMsg = '网络连接失败，请重试';
                             }
                         }
-                        
                         uni.showToast({
                             title: errorMsg,
                             icon: 'none',
@@ -524,101 +499,6 @@
                     }
                 });
             },
-            
-            // 关闭手机绑定弹窗
-            closePhoneModal() {
-                this.showPhoneModal = false;
-                this.phoneValue = '';
-                this.verifyCode = '';
-            },
-            
-            // 发送验证码
-            sendVerifyCode() {
-                if (!this.phoneValue || this.phoneValue.length !== 11) {
-                    uni.showToast({
-                        title: '请输入正确的手机号',
-                        icon: 'none',
-                        duration: 2000
-                    });
-                    return;
-                }
-                
-                // 开始倒计时
-                this.countdown = 60;
-                const timer = setInterval(() => {
-                    this.countdown--;
-                    if (this.countdown <= 0) {
-                        clearInterval(timer);
-                    }
-                }, 1000);
-                
-                // 模拟发送验证码
-                uni.showToast({
-                    title: '验证码已发送',
-                    icon: 'success',
-                    duration: 2000
-                });
-                
-                // 这里可以调用实际的发送验证码接口
-                // uni.request({
-                //     url: this.serverUrl + '/sms/send',
-                //     method: 'POST',
-                //     data: { phone: this.phoneValue },
-                //     success: (res) => {
-                //         if (res.data.code === 200) {
-                //             uni.showToast({
-                //                 title: '验证码已发送',
-                //                 icon: 'success',
-                //                 duration: 2000
-                //             });
-                //         }
-                //     }
-                // });
-            },
-            
-            // 确认手机绑定
-            confirmPhoneBinding() {
-                if (!this.phoneValue || this.phoneValue.length !== 11) {
-                    uni.showToast({
-                        title: '请输入正确的手机号',
-                        icon: 'none',
-                        duration: 2000
-                    });
-                    return;
-                }
-                
-                if (!this.userInfo.phone && (!this.verifyCode || this.verifyCode.length !== 6)) {
-                    uni.showToast({
-                        title: '请输入验证码',
-                        icon: 'none',
-                        duration: 2000
-                    });
-                    return;
-                }
-                
-                uni.showLoading({ title: '绑定中...' });
-                
-                // 模拟绑定过程
-                setTimeout(() => {
-                    // 更新本地数据
-                    this.userInfo.phone = this.phoneValue;
-                    const userInfo = uni.getStorageSync('userInfo');
-                    if (userInfo) {
-                        userInfo.phone = this.phoneValue;
-                        uni.setStorageSync('userInfo', userInfo);
-                    }
-                    
-                    // 同步到后端
-                    this.updateUserInfoToServer(
-                        { id: this.userInfo.id, phone: this.phoneValue, type: 'phone' },
-                        '手机号绑定成功'
-                    );
-                    
-                    this.closePhoneModal();
-                    uni.hideLoading();
-                }, 1000);
-            },
-            
             // 格式化手机号
             formatPhone(phone) {
                 if (!phone) return '';
