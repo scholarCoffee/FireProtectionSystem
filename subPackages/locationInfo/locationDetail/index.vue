@@ -1,5 +1,5 @@
 <template>
-  <view class="detail-container">
+  <scroll-view class="detail-container" scroll-y="true" :scroll-top="scrollTop" :scroll-with-animation="false" :enhanced="true" :bounces="false">
     <!-- 顶部导航栏下方内容 -->
     <view class="page-content">
       <view>
@@ -17,7 +17,11 @@
         <view class="info-card">
           <!-- 地址名称 -->
           <view class="address-name">
-            <text>{{ locationObj.addressName }}</text>
+            <text class="address-name-text">{{ locationObj.addressName }}</text>
+            <view class="type-value">
+              <image :src="showImgUrl(locationObj.type)" class="type-icon" />
+              <text>{{ getLocationTypeName() }}</text>
+            </view>
             <image src="https://www.xiaobei.space/static/icons/location/copy.png" class="location-icon" @tap="copyAddressName" />
           </view>
           
@@ -32,23 +36,25 @@
             <!-- 单位类型卡片 -->
             <view class="type-card">
               <view class="type-header">
-                <image :src="showImgUrl(locationObj.type)" class="type-icon" />
-                <text class="type-title">单位类型</text>
-              </view>
-              <view class="type-content">
-                <text class="type-value">{{ getLocationTypeName() }}</text>
+                <view class="type-info">
+                  <text class="type-description" @tap="showFullDescription">{{ locationObj.description || '暂无描述' }}</text>
+                </view>
               </view>
             </view>
             
-            <!-- 720全云景卡片 -->
-            <view class="panorama-card" @click="goToExternalLink(locationObj.allSenceLink)">
-              <view class="panorama-header">
-                <image src="https://www.xiaobei.space/static/icons/location/panorama.png" class="panorama-icon" />
-                <text class="panorama-title">720全云景</text>
-              </view>
-              <view class="panorama-content">
-                <text class="panorama-desc">查看全景</text>
-                <image src="https://www.xiaobei.space/static/icons/common/right.png" class="arrow-icon" />
+            <!-- 单位图纸轮播图 -->
+            <view class="drawing-card" @click="showDrawingGallery">
+              <view class="drawing-content">
+                <view class="drawing-preview" v-if="locationObj.imgList && locationObj.imgList.length > 0">
+                  <swiper class="drawing-swiper" :indicator-dots="true" :autoplay="true" :interval="3000" :duration="500" indicator-color="rgba(255, 255, 255, 0.3)" indicator-active-color="#FFFFFF">
+                    <swiper-item v-for="(img, index) in locationObj.imgList" :key="index">
+                      <image :src="`${serverUrl}${img}`" class="drawing-img" mode="aspectFit" />
+                    </swiper-item>
+                  </swiper>
+                </view>
+                <view class="drawing-empty" v-else>
+                  <text class="drawing-empty-text">暂无图纸</text>
+                </view>
               </view>
             </view>
           </view>
@@ -107,7 +113,48 @@
         </view>
       </view>
     </view>
-  </view>
+    
+    <!-- 图纸画廊弹窗 -->
+    <view class="drawing-gallery" v-if="showGallery" @click="hideDrawingGallery">
+      <view class="gallery-content" @click.stop>
+        <view class="gallery-header">
+          <text class="gallery-title">单位图纸</text>
+          <text class="gallery-close" @click="hideDrawingGallery">×</text>
+        </view>
+        <view class="gallery-body">
+          <swiper class="gallery-swiper" :current="currentImageIndex" @change="onSwiperChange">
+            <swiper-item v-for="(img, index) in locationObj.imgList" :key="index">
+              <image :src="`${serverUrl}${img}`" class="gallery-img" mode="aspectFit" />
+            </swiper-item>
+          </swiper>
+          <view class="gallery-indicator">
+            <text class="indicator-text">{{ currentImageIndex + 1 }}/{{ locationObj.imgList.length }}</text>
+          </view>
+        </view>
+        <view class="gallery-controls">
+          <view class="control-btn" @click="prevImage" :class="{ disabled: currentImageIndex === 0 }">
+            <image src="https://www.xiaobei.space/static/icons/common/left.png" class="control-icon" />
+          </view>
+          <view class="control-btn" @click="nextImage" :class="{ disabled: currentImageIndex === locationObj.imgList.length - 1 }">
+            <image src="https://www.xiaobei.space/static/icons/common/right.png" class="control-icon" />
+          </view>
+        </view>
+      </view>
+    </view>
+    
+    <!-- 自定义描述弹窗 -->
+    <view class="custom-modal" v-if="showCustomModal" @click="hideCustomModal">
+      <view class="modal-content" @click.stop>
+        <view class="modal-header">
+          <text class="modal-title">单位描述</text>
+          <text class="modal-close" @click="hideCustomModal">×</text>
+        </view>
+        <view class="modal-body">
+          <text class="modal-text">{{ modalContent }}</text>
+        </view>
+      </view>
+    </view>
+  </scroll-view>
 </template>
 
 <script>
@@ -116,6 +163,11 @@ export default {
     return {
       locationObj: {}, // 接收接口返回的详情数据
       addressId: null, // 用于接收传入的 addressId
+      showGallery: false, // 控制图纸画廊显示
+      currentImageIndex: 0, // 当前图片索引
+      showCustomModal: false, // 控制自定义弹窗显示
+      modalContent: '', // 弹窗内容
+      scrollTop: 0, // 滚动位置
     };
   },
   onLoad(data) {
@@ -131,7 +183,7 @@ export default {
     },
     showImgUrl() {
       return (type) => {
-        return type === 1 ? 'https://www.xiaobei.space/static/icons/location/community.png' : type === 2 ? 'https://www.xiaobei.space/static/icons/location/factory.png' : 'https://www.xiaobei.space/static/icons/location/shop.png';
+        return type === 1 ? this.serverUrl + '/static/icons/location/community-white.png' : type === 2 ? this.serverUrl + '/static/icons/location/factory-white.png' : this.serverUrl + '/static/icons/location/shop-white.png';
       }
     }
   },
@@ -209,6 +261,51 @@ export default {
         });
       }
     },
+    showDrawingGallery() {
+      if (this.locationObj.imgList && this.locationObj.imgList.length > 0) {
+        this.showGallery = true;
+        this.currentImageIndex = 0;
+      } else {
+        uni.showToast({
+          title: '暂无图纸',
+          icon: 'none',
+          duration: 1500
+        });
+      }
+    },
+    hideDrawingGallery() {
+      this.showGallery = false;
+    },
+    onSwiperChange(e) {
+      this.currentImageIndex = e.detail.current;
+    },
+    prevImage() {
+      if (this.currentImageIndex > 0) {
+        this.currentImageIndex--;
+      }
+    },
+    nextImage() {
+      if (this.currentImageIndex < this.locationObj.imgList.length - 1) {
+        this.currentImageIndex++;
+      }
+    },
+    showFullDescription() {
+      if (this.locationObj.description) {
+        // 使用自定义弹窗替代 uni.showModal
+        this.showCustomModal = true;
+        this.modalContent = this.locationObj.description;
+      } else {
+        uni.showToast({
+          title: '暂无描述',
+          icon: 'none',
+          duration: 1500
+        });
+      }
+    },
+    hideCustomModal() {
+      this.showCustomModal = false;
+      this.modalContent = '';
+    },
   }
 };
 </script>
@@ -217,8 +314,10 @@ export default {
 /* 容器样式 - 添加滚动功能 */
 .detail-container {
   height: 100vh;
-  overflow-y: auto;
   background-color: #f5f5f5;
+  -webkit-overflow-scrolling: touch;
+  will-change: scroll-position;
+  transform: translateZ(0);
 }
 
 /* 头部图片区域 */
@@ -229,11 +328,15 @@ export default {
   border-radius: 8px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
   overflow: hidden;
+  transform: translateZ(0);
+  will-change: transform;
 }
 .detail-img {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  transform: translateZ(0);
+  will-change: transform;
 }
 .safety-tag {
   position: absolute;
@@ -269,6 +372,8 @@ export default {
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
   overflow: hidden;
   margin-bottom: 50px;
+  transform: translateZ(0);
+  will-change: transform;
 }
 .address-name {
   padding: 15px 15px 10px;
@@ -276,7 +381,22 @@ export default {
   font-weight: bold;
   color: #333;
   display: flex;
+  justify-content: space-between;
   align-items: center;
+}
+
+.address-name-text {
+  flex: 1;
+  white-space: nowrap;
+  overflow-x: auto;
+  overflow-y: hidden;
+  margin-right: 10px;
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE and Edge */
+}
+
+.address-name-text::-webkit-scrollbar {
+  display: none; /* Chrome, Safari and Opera */
 }
 .address-detail {
   display: flex;
@@ -369,6 +489,8 @@ export default {
   position: relative;
   overflow: hidden;
   border: 1px solid rgba(0, 0, 0, 0.08);
+  transform: translateZ(0);
+  will-change: transform;
 }
 
 .type-card::before {
@@ -389,7 +511,31 @@ export default {
   margin-bottom: 12px;
 }
 
+.type-info {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+}
+
+.type-description {
+  font-size: 12px;
+  color: #666;
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 5;
+  overflow: hidden;
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+
+.type-description:active {
+  color: #1890FF;
+}
+
 .type-icon {
+  margin-right: 2px;
   width: 20px;
   height: 20px;
   opacity: 0.7;
@@ -407,13 +553,20 @@ export default {
 }
 
 .type-value {
-  font-size: 14px;
-  color: #333;
-  font-weight: 500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 12px;
+  border-radius: 16px;
+  background: #07c160;
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(20px);
+  color: #ffffff;
+  font-size: 12px;
 }
 
-/* 720全云景卡片 */
-.panorama-card {
+/* 单位图纸卡片 */
+.drawing-card {
   flex: 1;
   background: linear-gradient(135deg, #1890FF, #40A9FF);
   border-radius: 12px;
@@ -423,9 +576,11 @@ export default {
   overflow: hidden;
   cursor: pointer;
   transition: all 0.3s ease;
+  transform: translateZ(0);
+  will-change: transform;
 }
 
-.panorama-card::before {
+.drawing-card::before {
   content: '';
   position: absolute;
   top: -10px;
@@ -436,39 +591,88 @@ export default {
   border-radius: 50%;
 }
 
-.panorama-card:active {
+.drawing-card:active {
   transform: scale(0.98);
   box-shadow: 0 2px 8px rgba(24, 144, 255, 0.3);
 }
 
-.panorama-header {
+.drawing-header {
   display: flex;
   align-items: center;
   gap: 8px;
   margin-bottom: 12px;
 }
 
-.panorama-icon {
+.drawing-icon {
   width: 20px;
   height: 20px;
   filter: brightness(0) invert(1);
 }
 
-.panorama-title {
+.drawing-title {
   font-size: 14px;
   color: rgba(255, 255, 255, 0.9);
   font-weight: 500;
 }
 
-.panorama-content {
+.drawing-content {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
+  height: 100%;
+  position: relative;
 }
 
-.panorama-desc {
-  font-size: 14px;
+.drawing-preview {
+  flex: 1;
+  height: 100%;
+}
+
+.drawing-swiper {
+  height: 100%;
+  border-radius: 8px;
+  overflow: hidden;
+  position: relative;
+}
+
+/* 自定义指示点样式 */
+.drawing-swiper .uni-swiper-dots {
+  bottom: 8px !important;
+}
+
+.drawing-swiper .uni-swiper-dot {
+  width: 8px !important;
+  height: 8px !important;
+  border-radius: 4px !important;
+  background-color: rgba(255, 255, 255, 0.3) !important;
+  margin: 0 3px !important;
+}
+
+.drawing-swiper .uni-swiper-dot-active {
+  background-color: #FFFFFF !important;
+}
+
+.drawing-img {
+  width: 100%;
+  height: 100%;
+  border-radius: 8px;
+  object-fit: contain;
+  transform: translateZ(0);
+  will-change: transform;
+}
+
+.drawing-count {
+  font-size: 11px;
   color: rgba(255, 255, 255, 0.8);
+  font-weight: 500;
+}
+
+.drawing-empty {
+  flex: 1;
+  margin-right: 12px;
+}
+
+.drawing-empty-text {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.6);
   font-weight: 500;
 }
 
@@ -483,6 +687,8 @@ export default {
   overflow: hidden;
   cursor: pointer;
   transition: all 0.3s ease;
+  transform: translateZ(0);
+  will-change: transform;
 }
 
 .safety-card-full::before {
@@ -632,5 +838,201 @@ export default {
 .page-content {
   padding-top: 0;
   padding-bottom: 20px; /* 添加底部间距，确保内容可以完全滚动 */
+  transform: translateZ(0);
+  will-change: scroll-position;
+}
+
+/* 图纸画廊弹窗 */
+.drawing-gallery {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.6);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.gallery-content {
+  width: 90%;
+  height: 80%;
+  background: #fff;
+  border-radius: 16px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.gallery-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.gallery-title {
+  font-size: 16px;
+  font-weight: bold;
+  color: #333;
+}
+
+.gallery-close {
+  font-size: 24px;
+  color: #999;
+  cursor: pointer;
+  padding: 4px;
+}
+
+.gallery-body {
+  flex: 1;
+  position: relative;
+}
+
+.gallery-swiper {
+  width: 100%;
+  height: 100%;
+}
+
+.gallery-img {
+  width: 100%;
+  height: 100%;
+}
+
+.gallery-indicator {
+  position: absolute;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0, 0, 0, 0.6);
+  color: #fff;
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-size: 14px;
+}
+
+.gallery-controls {
+  display: flex;
+  justify-content: space-between;
+  padding: 16px 20px;
+  background: #f8f9fa;
+}
+
+.control-btn {
+  width: 40px;
+  height: 40px;
+  background: #fff;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.control-btn:active {
+  transform: scale(0.95);
+}
+
+.control-btn.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.control-icon {
+  width: 20px;
+  height: 20px;
+  opacity: 0.7;
+}
+
+/* 自定义弹窗样式 */
+.custom-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.6);
+  z-index: 1001;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal-content {
+  width: 85%;
+  max-height: 70%;
+  background: #fff;
+  border-radius: 12px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 20px;
+  border-bottom: 1px solid #f0f0f0;
+  background: #f8f9fa;
+}
+
+.modal-title {
+  font-size: 16px;
+  font-weight: bold;
+  color: #333;
+}
+
+.modal-close {
+  font-size: 24px;
+  color: #999;
+  cursor: pointer;
+  padding: 4px;
+  line-height: 1;
+}
+
+.modal-body {
+  flex: 1;
+  padding: 20px;
+  overflow-y: auto;
+  max-height: 300px;
+}
+
+.modal-text {
+  font-size: 14px;
+  color: #333;
+  line-height: 1.6;
+  text-align: left;
+  word-wrap: break-word;
+  white-space: pre-wrap;
+}
+
+.modal-footer {
+  padding: 16px 20px;
+  border-top: 1px solid #f0f0f0;
+  background: #f8f9fa;
+  display: flex;
+  justify-content: center;
+}
+
+.modal-btn {
+  padding: 10px 24px;
+  background: #1890FF;
+  color: #fff;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.modal-btn:active {
+  background: #096DD9;
 }
 </style>

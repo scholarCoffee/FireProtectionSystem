@@ -1,5 +1,5 @@
 <template>
-  <scroll-view class="safety-detail-container" scroll-y="true" @scroll="handleScroll" :scroll-top="scrollTop">
+  <scroll-view class="safety-detail-container" scroll-y="true" @scroll="handleScroll" :scroll-top="scrollTop" :scroll-with-animation="false" :enhanced="true" :bounces="false">
     <!-- 加载状态 -->
     <view v-if="loading" class="loading-container">
       <view class="loading-content">
@@ -291,10 +291,11 @@ export default {
 .safety-detail-container {
   height: 100vh;
   background-color: #f5f5f5;
-  overflow-y: auto;
-  overflow-x: hidden;
   box-sizing: border-box;
   padding-bottom: 0;
+  -webkit-overflow-scrolling: touch;
+  will-change: scroll-position;
+  transform: translateZ(0);
 }
 
 /* 加载状态 */
@@ -343,6 +344,8 @@ export default {
   box-shadow: 0 8px 24px rgba(102, 126, 234, 0.25);
   position: relative;
   overflow: hidden;
+  transform: translateZ(0);
+  will-change: transform;
 }
 .safety-header::before {
   content: '';
@@ -422,6 +425,8 @@ export default {
 /* 评分明细卡片 */
 .score-details {
   margin: 10px;
+  transform: translateZ(0);
+  will-change: transform;
 }
 .section-title {
   font-size: 16px;
@@ -444,6 +449,8 @@ export default {
   border: 1px solid rgba(0, 0, 0, 0.05);
   transition: all 0.3s ease;
   margin-bottom: 10px;
+  transform: translateZ(0);
+  will-change: transform;
 }
 .detail-item:hover {
   transform: translateY(-2px);
@@ -495,6 +502,8 @@ export default {
   border: 1px solid rgba(0, 0, 0, 0.05);
   transition: all 0.2s ease;
   margin-bottom: 8px;
+  transform: translateZ(0);
+  will-change: transform;
 }
 .sub-item:hover {
   background: linear-gradient(135deg, #E3F2FD, #F8F9FA);
@@ -571,6 +580,8 @@ export default {
   border: 1px solid rgba(0,0,0,0.04);
   transition: all 0.3s ease;
   z-index: 100;
+  transform: translateZ(0);
+  will-change: transform;
 }
 .filter-bar-fixed {
   position: fixed;
@@ -686,6 +697,8 @@ export default {
   justify-content: center;
   padding: 60px 20px;
   text-align: center;
+  transform: translateZ(0);
+  will-change: transform;
 }
 .empty-icon {
   width: 80px;
@@ -726,5 +739,7 @@ export default {
   width: 100%;
   background: transparent;
   min-height: 100px;
+  transform: translateZ(0);
+  will-change: transform;
 }
 </style> 
