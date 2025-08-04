@@ -45,22 +45,21 @@
             </view>
             
             <!-- 管理后台入口 -->
-            <view class="column">
-                <view class="row" @tap="goToDataManagement">
-                    <view class="title">管理后台：</view>
-                    <view class="cont">
-                        <text class="admin-text">数据管理</text>
+            <view class="column settings-column">
+                <view class="row settings-row" @tap="goToDataManagement">
+                    <view class="settings-content">
+                        <view class="settings-icon-wrapper">
+                            <image :src= "serverUrl + '/static/icons/person/settings.png'" mode="aspectFit" class="settings-icon"></image>
+                        </view>
+                        <text class="settings-text">设置</text>
                     </view>
                     <view class="more">
                         <image src="https://www.xiaobei.space/static/icons/common/right.png" mode="aspectFit"></image>
                     </view>
                 </view>
             </view>
-            
             <view class="bt2" @tap="onQuitLogin">退出登录</view>
         </view>
-        
-
         
         <!-- 昵称修改弹窗 -->
         <view v-if="showModifyModal" class="modal-overlay" @tap="closeModal">
@@ -105,9 +104,6 @@
                 modifyType: '', // 修改类型
                 modifyTitle: '', // 修改标题
                 tempFilePaths: '',
-                
-                // 管理后台相关
-                serverUrl: 'https://www.xiaobei.space' // 服务器地址
             }
         },
         onShow() {
@@ -558,6 +554,20 @@
             }
         }
         
+        &.settings-column {
+            margin-top: 40rpx;
+            border: 2rpx solid #f0f0f0;
+            
+            .settings-row {
+                background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+                border-bottom: none;
+                
+                &:active {
+                    background: linear-gradient(135deg, #e9ecef 0%, #f8f9fa 100%);
+                }
+            }
+        }
+        
         .row {
             display: flex;
             flex-direction: row;
@@ -602,11 +612,37 @@
                 color: #999;
                 font-style: italic;
             }
-            
-            .admin-text {
-                color: #07c160;
-                font-weight: 500;
-            }
+        }
+        
+        .settings-content {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            gap: 20rpx;
+            padding-right: 20rpx;
+        }
+        
+        .settings-icon-wrapper {
+            width: 60rpx;
+            height: 60rpx;
+            background: linear-gradient(135deg, #666 0%, #666 100%);
+            border-radius: 12rpx;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4rpx 12rpx rgba(102, 126, 234, 0.3);
+        }
+        
+        .settings-icon {
+            width: 32rpx;
+            height: 32rpx;
+            filter: brightness(0) invert(1);
+        }
+        
+        .settings-text {
+            font-size: 30rpx;
+            font-weight: 600;
+            color: #333;
         }
         
         .more {
@@ -705,72 +741,7 @@
     box-sizing: border-box;
     
     &:focus {
-        border-color: #07c160;
-        background: #fff;
-    }
-}
-
-.phone-input-container {
-    display: flex;
-    align-items: center;
-    margin-bottom: 20rpx;
-}
-
-.phone-input {
-    flex: 1;
-    height: 80rpx;
-    padding: 0 20rpx;
-    border: 2rpx solid #e0e0e0;
-    border-radius: 8rpx;
-    font-size: 28rpx;
-    color: #333;
-    background: #fafafa;
-    box-sizing: border-box;
-    margin-right: 20rpx;
-    
-    &:focus {
-        border-color: #07c160;
-        background: #fff;
-    }
-}
-
-.send-code-btn {
-    width: 200rpx;
-    height: 80rpx;
-    background: #07c160;
-    color: #fff;
-    border: none;
-    border-radius: 8rpx;
-    font-size: 24rpx;
-    font-weight: 500;
-    
-    &:disabled {
-        background: #ccc;
-        color: #999;
-    }
-    
-    &:active:not(:disabled) {
-        background: #06ad56;
-    }
-}
-
-.verify-code-container {
-    margin-bottom: 20rpx;
-}
-
-.verify-code-input {
-    width: 100%;
-    height: 80rpx;
-    padding: 0 20rpx;
-    border: 2rpx solid #e0e0e0;
-    border-radius: 8rpx;
-    font-size: 28rpx;
-    color: #333;
-    background: #fafafa;
-    box-sizing: border-box;
-    
-    &:focus {
-        border-color: #07c160;
+        border-color: #1296db;
         background: #fff;
     }
 }
@@ -795,7 +766,7 @@
     }
     
     &.confirm-btn {
-        color: #07c160;
+        color: #1296db;
         
         &:active {
             background: #f0f9f0;

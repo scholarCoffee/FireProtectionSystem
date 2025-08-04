@@ -2,19 +2,19 @@ import App from './App'
 import Vue from 'vue'
 import io from './commons/js/weapp.socket.io.js'
 Vue.config.productionTip = false
-// Vue.prototype.serverUrl = 'http://172.17.121.229:3000' 
-// Vue.prototype.socket = io('http://172.17.121.229:8002')
-Vue.prototype.serverUrl = 'https://www.xiaobei.space' 
+Vue.prototype.serverUrl = 'http://192.168.1.3:3000' 
+Vue.prototype.socket = io('http://192.168.1.3:8002')
+// Vue.prototype.serverUrl = 'https://www.xiaobei.space' 
 
-// 明确指定socket.io路径，与Nginx配置匹配
-Vue.prototype.socket = io('wss://www.xiaobei.space', {
-    transports: ['websocket'],
-    timeout: 10000,
-    path: '/socket.io',  // 添加路径配置
-    reconnection: true,  // 开启自动重连
-    reconnectionAttempts: 5,
-    reconnectionDelay: 1000
-});
+// // 明确指定socket.io路径，与Nginx配置匹配
+// Vue.prototype.socket = io('wss://www.xiaobei.space', {
+//     transports: ['websocket'],
+//     timeout: 10000,
+//     path: '/socket.io',  // 添加路径配置
+//     reconnection: true,  // 开启自动重连
+//     reconnectionAttempts: 5,
+//     reconnectionDelay: 1000
+// });
 
 // 添加连接状态监听，便于调试
 Vue.prototype.socket.on('connect', () => {

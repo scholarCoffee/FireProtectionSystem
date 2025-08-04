@@ -33,7 +33,14 @@
             "path": "pages/personal/userDetail/DataManagement",
             "style": {
                 "navigationStyle": "default",
-                "navigationBarTitleText": "数据后台管理"
+                "navigationBarTitleText": "后台管理"
+            }
+        },
+        {
+            "path": "pages/personal/userDetail/DataEdit",
+            "style": {
+                "navigationStyle": "default",
+                "navigationBarTitleText": "编辑信息"
             }
         }
     ],
