@@ -28,6 +28,13 @@
                 "navigationStyle": "default",
                 "navigationBarTitleText": "个人中心"
             }
+        },
+        {
+            "path": "pages/personal/userDetail/DataManagement",
+            "style": {
+                "navigationStyle": "default",
+                "navigationBarTitleText": "数据后台管理"
+            }
         }
     ],
     "subPackages": [

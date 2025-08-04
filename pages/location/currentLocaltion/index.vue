@@ -45,7 +45,7 @@
                 <view class="img-container">
                   <image :src="showImgUrl(item.type)" class="card-img" @click="goToDetail(item)"/>
                   <!-- 安全等级标签 -->
-                  <text :class="['safety-tag', getSafeLevelClass(item.safeLevelId)]">
+                  <text :class="['safety-tag', item.safeLevelId === 1 ? 'safety-excellent' : item.safeLevelId === 2 ? 'safety-good' : item.safeLevelId === 3 ? 'safety-normal' : 'safety-danger']">
                     {{ item.safeLevelName }}
                   </text>
                 </view>
@@ -222,10 +222,7 @@ export default {
       this.searchKeyword = '';
       this.fetchLocationList({ page: 1, pageSize: this.pageSize, type: index + 1 });
     },
-    getSafeLevelClass(safeLevelId) {
-      const map = { 1: 'excellent', 2: 'good', 3: 'danger' };
-      return map[safeLevelId] || '';
-    },
+
     callPhone(phone) {
       uni.makePhoneCall({
         phoneNumber: phone
@@ -405,10 +402,10 @@ body, html {
   font-weight: 500;
   box-shadow: 0 2px 4px rgba(0,0,0,0.2);
 }
-.safety-tag.excellent { background: linear-gradient(135deg, #4CAF50, #45a049); } /* 优秀-绿色 */
-.safety-tag.good { background: linear-gradient(135deg, #2196F3, #1976D2); }      /* 良好-蓝色 */
-.safety-tag.normal { background: linear-gradient(135deg, #FF9800, #F57C00); }    /* 一般-橙色 */
-.safety-tag.danger { background: linear-gradient(135deg, #F44336, #D32F2F); }    /* 较差-红色 */
+.safety-tag.safety-excellent { background: linear-gradient(135deg, #4CAF50, #45a049); } /* 优秀-绿色 */
+.safety-tag.safety-good { background: linear-gradient(135deg, #2196F3, #1976D2); }      /* 良好-蓝色 */
+.safety-tag.safety-normal { background: linear-gradient(135deg, #FF9800, #F57C00); }    /* 一般-橙色 */
+.safety-tag.safety-danger { background: linear-gradient(135deg, #F44336, #D32F2F); }    /* 较差-红色 */
 
 /* 右侧信息区域 */
 .card-info {

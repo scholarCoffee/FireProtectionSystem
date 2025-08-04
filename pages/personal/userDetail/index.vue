@@ -43,8 +43,25 @@
                     </view>
                 </view>
             </view>
+            
+            <!-- 管理后台入口 -->
+            <view class="column">
+                <view class="row" @tap="goToDataManagement">
+                    <view class="title">管理后台：</view>
+                    <view class="cont">
+                        <text class="admin-text">数据管理</text>
+                    </view>
+                    <view class="more">
+                        <image src="https://www.xiaobei.space/static/icons/common/right.png" mode="aspectFit"></image>
+                    </view>
+                </view>
+            </view>
+            
             <view class="bt2" @tap="onQuitLogin">退出登录</view>
         </view>
+        
+
+        
         <!-- 昵称修改弹窗 -->
         <view v-if="showModifyModal" class="modal-overlay" @tap="closeModal">
             <view class="modal-content" @tap.stop>
@@ -79,14 +96,18 @@
                     nickName: '', 
                     avatarUrl: '',
                     permissionStatus: 0,
-                    id: ''
+                    id: '',
+                    phone: ''
                 },
                 isLoggedIn: false, // 用户是否已登录
                 showModifyModal: false, // 是否显示修改弹窗
                 modifyValue: '', // 修改的值
                 modifyType: '', // 修改类型
                 modifyTitle: '', // 修改标题
-                tempFilePaths: ''
+                tempFilePaths: '',
+                
+                // 管理后台相关
+                serverUrl: 'https://www.xiaobei.space' // 服务器地址
             }
         },
         onShow() {
@@ -109,12 +130,13 @@
                 // 获取本地存储的用户信息
                 const userInfo = uni.getStorageSync('userInfo');
                 if (userInfo) {
-                    const { id, nickName, avatarUrl, phone } = userInfo;
+                    const { id, nickName, avatarUrl, phone, permissionStatus } = userInfo;
                     this.userInfo = {
                         id,
                         avatarUrl,
                         nickName,
-                        phone
+                        phone,
+                        permissionStatus: permissionStatus || 0
                     }
                     this.isLoggedIn = true; // 用户已登录
                 } else {
@@ -284,6 +306,7 @@
                         uni.setStorageSync('userInfo', userInfo);
                         this.userInfo.nickName = nickName;
                         this.userInfo.avatarUrl = avatarUrl;
+                        this.userInfo.permissionStatus = 1;
                         this.isLoggedIn = true;
                         uni.hideLoading();
                         uni.showToast({
@@ -327,7 +350,7 @@
             onWechatPhoneResult(e) {
                 const { encryptedData, iv, errMsg } = e.detail;
                 console.log( encryptedData, iv, errMsg)
-                // 处理“无权限”错误
+                // 处理"无权限"错误
                 if (errMsg === 'getPhoneNumber:fail no permission') {
                     uni.showModal({
                         title: '授权失败',
@@ -424,6 +447,13 @@
             formatPhone(phone) {
                 if (!phone) return '';
                 return phone.replace(/(\d{3})\d{4}(\d{4})/, '$1****$2');
+            },
+            
+            // 管理后台相关方法
+            goToDataManagement() {
+                uni.navigateTo({
+                    url: '/pages/personal/userDetail/DataManagement'
+                });
             }
         }
     }
@@ -573,9 +603,9 @@
                 font-style: italic;
             }
             
-            .phone-placeholder {
-                color: #999;
-                font-style: italic;
+            .admin-text {
+                color: #07c160;
+                font-weight: 500;
             }
         }
         
