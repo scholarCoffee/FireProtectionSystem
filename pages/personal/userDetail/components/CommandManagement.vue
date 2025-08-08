@@ -1,5 +1,5 @@
 <template>
-  <view class="safety-management">
+  <view class="command-management">
     <!-- 数据列表 -->
     <scroll-view class="data-list" scroll-y="true" @scrolltolower="loadMore">
       <view v-if="loading" class="loading-container">
@@ -16,8 +16,8 @@
         <view class="data-item" v-for="item in filteredList" :key="item.id">
           <view class="item-header">
             <view class="item-title">
-              <image :src="serverUrl + '/static/icons/data/alarm.png'" class="type-icon" />
-              <text class="title-text">{{ item.name }}</text>
+              <image :src="serverUrl + '/static/icons/data/manage.png'" class="type-icon" />
+              <text class="title-text">{{ item.title }}</text>
             </view>
             <view class="item-actions">
               <button class="action-icon-btn" @tap="editItem(item)">
@@ -30,16 +30,20 @@
           </view>
           <view class="item-content">
             <view class="content-row">
-              <text class="label">描述：</text>
-              <text class="value">{{ item.description || '暂无描述' }}</text>
+              <text class="label">类型：</text>
+              <text class="value">{{ getCommandTypeName(item.type) }}</text>
             </view>
             <view class="content-row">
-              <text class="label">权重：</text>
-              <text class="value">{{ item.weight || 0 }}</text>
+              <text class="label">优先级：</text>
+              <text class="value">{{ getPriorityText(item.priority) }}</text>
             </view>
             <view class="content-row">
               <text class="label">状态：</text>
               <text class="value" :class="item.status === 1 ? 'status-active' : 'status-inactive'">{{ getStatusText(item.status) }}</text>
+            </view>
+            <view class="content-row">
+              <text class="label">描述：</text>
+              <text class="value">{{ item.description || '暂无描述' }}</text>
             </view>
           </view>
         </view>
@@ -50,7 +54,7 @@
 
 <script>
 export default {
-  name: 'SafetyManagement',
+  name: 'CommandManagement',
   props: {
     serverUrl: {
       type: String,
@@ -64,8 +68,18 @@ export default {
   data() {
     return {
       loading: false,
-      safetyList: [],
+      commandList: [],
       filteredList: [],
+      commandTypeOptions: [
+        { value: 1, label: '紧急指挥' },
+        { value: 2, label: '常规指挥' },
+        { value: 3, label: '演练指挥' }
+      ],
+      priorityOptions: [
+        { value: 1, label: '高' },
+        { value: 2, label: '中' },
+        { value: 3, label: '低' }
+      ],
       statusOptions: [
         { value: 1, label: '启用' },
         { value: 0, label: '禁用' }
@@ -92,7 +106,7 @@ export default {
       try {
         const result = await new Promise((resolve, reject) => {
           uni.request({
-            url: this.serverUrl + '/safety/list',
+            url: this.serverUrl + '/command/list',
             method: 'GET',
             success: resolve,
             fail: reject
@@ -100,15 +114,15 @@ export default {
         });
         
         if (result.data && result.data.code === 200) {
-          this.safetyList = result.data.data || [];
+          this.commandList = result.data.data || [];
           this.filterData();
         } else {
-          this.safetyList = [];
+          this.commandList = [];
           this.filterData();
         }
       } catch (error) {
-        console.error('加载安全数据失败:', error);
-        this.safetyList = [];
+        console.error('加载指挥数据失败:', error);
+        this.commandList = [];
         this.filterData();
       } finally {
         this.loading = false;
@@ -117,12 +131,13 @@ export default {
     
     filterData() {
       if (!this.searchKeyword.trim()) {
-        this.filteredList = [...this.safetyList];
+        this.filteredList = [...this.commandList];
       } else {
         const keyword = this.searchKeyword.toLowerCase();
-        this.filteredList = this.safetyList.filter(item => 
-          item.name.toLowerCase().includes(keyword) ||
-          (item.description && item.description.toLowerCase().includes(keyword))
+        this.filteredList = this.commandList.filter(item => 
+          item.title.toLowerCase().includes(keyword) ||
+          (item.description && item.description.toLowerCase().includes(keyword)) ||
+          this.getCommandTypeName(item.type).toLowerCase().includes(keyword)
         );
       }
     },
@@ -137,14 +152,14 @@ export default {
     
     editItem(item) {
       uni.navigateTo({
-        url: `/pages/personal/userDetail/DataEdit?type=location&subType=safety&mode=edit&id=${item.id}`
+        url: `/pages/personal/userDetail/DataEdit?type=command&mode=edit&id=${item.id}`
       });
     },
     
     deleteItem(item) {
       uni.showModal({
         title: '确认删除',
-        content: `确定要删除这个安全信息吗？`,
+        content: `确定要删除这个指挥信息吗？`,
         success: (res) => {
           if (res.confirm) {
             this.performDelete(item);
@@ -158,7 +173,7 @@ export default {
       try {
         const result = await new Promise((resolve, reject) => {
           uni.request({
-            url: this.serverUrl + '/safety/delete',
+            url: this.serverUrl + '/command/delete',
             method: 'POST',
             data: { id: item.id },
             success: resolve,
@@ -188,6 +203,16 @@ export default {
     },
     
     // 工具方法
+    getCommandTypeName(type) {
+      const option = this.commandTypeOptions.find(item => item.value === type);
+      return option ? option.label : '未知类型';
+    },
+    
+    getPriorityText(priority) {
+      const option = this.priorityOptions.find(item => item.value === priority);
+      return option ? option.label : '未知优先级';
+    },
+    
     getStatusText(status) {
       const option = this.statusOptions.find(item => item.value === status);
       return option ? option.label : '请选择状态';
@@ -197,7 +222,7 @@ export default {
 </script>
 
 <style lang="scss" scoped>
-.safety-management {
+.command-management {
   flex: 1;
   display: flex;
   flex-direction: column;

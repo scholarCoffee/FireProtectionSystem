@@ -8,89 +8,141 @@
           :class="{ active: currentTab === 'location' }"
           @tap="switchTab('location')"
         >
-          <image :src="currentTab === 'location' ? this.serverUrl + '/static/icons/location/location-active.png' : this.serverUrl + '/static/icons/location/location.png'" class="tab-icon" />
+          <image :src="currentTab === 'location' ? serverUrl + '/static/icons/location/location-active.png' : serverUrl + '/static/icons/location/location.png'" class="tab-icon" />
           <text class="tab-text">位置信息</text>
         </view>
+
         <view 
           class="tab-item" 
-          :class="{ active: currentTab === 'safety' }"
-          @tap="switchTab('safety')"
+          :class="{ active: currentTab === 'chat' }"
+          @tap="switchTab('chat')"
         >
-          <image :src="currentTab === 'safety' ? this.serverUrl + '/static/icons/data/safe-active.png' : this.serverUrl + '/static/icons/data/safe.png'" class="tab-icon" />
-          <text class="tab-text">安全信息</text>
+          <image :src="currentTab === 'chat' ? serverUrl + '/static/icons/chat/chat-active.png' : serverUrl + '/static/icons/chat/chat.png'" class="tab-icon" />
+          <text class="tab-text">聊天管理</text>
         </view>
       </view>
     </view>
 
-    <!-- 操作栏 -->
+    <!-- 搜索和操作栏 -->
     <view class="action-bar">
-      <view class="action-left">
+      <view class="search-container">
+        <image :src="serverUrl + '/static/icons/location/search.png'" class="search-icon" />
+        <input 
+          v-model="searchKeyword" 
+          class="search-input" 
+          :placeholder="getSearchPlaceholder()"
+          @input="onSearchInput"
+        />
+      </view>
+      <view class="action-buttons">
         <button class="action-btn add-btn" @tap="showAddModal">
-          <image :src="this.serverUrl + '/static/icons/common/add-white.png'" class="btn-icon" />
+          <image :src="serverUrl + '/static/icons/common/add-white.png'" class="btn-icon" />
           <text>新增</text>
         </button>
         <button class="action-btn refresh-btn" @tap="refreshData">
-          <image :src="this.serverUrl + '/static/icons/common/refresh-white.png'" class="btn-icon" />
+          <image :src="serverUrl + '/static/icons/common/refresh-white.png'" class="btn-icon" />
           <text>刷新</text>
         </button>
       </view>
-      <view class="action-right">
-        <text class="data-count">数据管理</text>
-      </view>
     </view>
 
-    <!-- 组件内容 -->
-    <LocationManagement 
-      v-if="currentTab === 'location'" 
-      :serverUrl="serverUrl"
-      ref="locationManagement"
-    />
-    <SafetyManagement 
-      v-if="currentTab === 'safety'" 
-      :serverUrl="serverUrl"
-      ref="safetyManagement"
-    />
-
+    <!-- 位置信息内容 -->
+    <view v-if="currentTab === 'location'" class="location-content">
+      <LocationManagement 
+        :serverUrl="serverUrl"
+        :searchKeyword="searchKeyword"
+        ref="locationManagement"
+      />
+    </view>
+    <!-- 聊天管理内容 -->
+    <view v-if="currentTab === 'chat'" class="chat-content">
+      <ChatManagement 
+        :serverUrl="serverUrl"
+        :searchKeyword="searchKeyword"
+        ref="chatManagement"
+      />
+    </view>
   </view>
 </template>
 
 <script>
 import LocationManagement from './components/LocationManagement.vue'
-import SafetyManagement from './components/SafetyManagement.vue'
+import ChatManagement from './components/ChatManagement.vue'
 
 export default {
   name: 'DataManagement',
   components: {
     LocationManagement,
-    SafetyManagement
+    ChatManagement
   },
   data() {
     return {
       currentTab: 'location', // 当前标签页
+      searchKeyword: '', // 搜索关键词
+      searchTimer: null // 搜索防抖定时器
     }
   },
-
 
   methods: {
     switchTab(tab) {
       this.currentTab = tab;
+      this.searchKeyword = ''; // 切换标签时清空搜索
+    },
+    
+    getSearchPlaceholder() {
+      switch(this.currentTab) {
+        case 'location':
+          return '根据关键字查询位置信息';
+        case 'chat':
+          return '根据关键字查询聊天信息';
+        default:
+          return '搜索...';
+      }
+    },
+    
+    onSearchInput() {
+      // 防抖搜索
+      if (this.searchTimer) {
+        clearTimeout(this.searchTimer);
+      }
+      this.searchTimer = setTimeout(() => {
+        this.performSearch();
+      }, 500);
+    },
+    
+    performSearch() {
+      // 根据当前标签页执行搜索
+      if (this.currentTab === 'location' && this.$refs.locationManagement) {
+        this.$refs.locationManagement.search(this.searchKeyword);
+      } else if (this.currentTab === 'chat' && this.$refs.chatManagement) {
+        this.$refs.chatManagement.search(this.searchKeyword);
+      }
     },
     
     refreshData() {
       // 刷新当前组件的数据
       if (this.currentTab === 'location' && this.$refs.locationManagement) {
         this.$refs.locationManagement.loadData();
-      } else if (this.currentTab === 'safety' && this.$refs.safetyManagement) {
-        this.$refs.safetyManagement.loadData();
+      } else if (this.currentTab === 'chat' && this.$refs.chatManagement) {
+        this.$refs.chatManagement.loadData();
       }
     },
     
     showAddModal() {
-      // 跳转到新增页面
-      uni.navigateTo({
-        url: `/pages/personal/userDetail/DataEdit?type=${this.currentTab}&mode=add`
-      });
-    }
+      // 根据当前标签页跳转到不同的新增页面
+      let url = '';
+      if (this.currentTab === 'location') {
+        url = `/pages/personal/userDetail/DataEdit?type=location&mode=add`;
+      } else if (this.currentTab === 'chat') {
+        url = `/pages/personal/userDetail/DataEdit?type=chat&mode=add`;
+      }
+      
+      if (url) {
+        uni.navigateTo({
+          url: url
+        });
+      }
+    },
   }
 }
 </script>
@@ -103,53 +155,12 @@ export default {
   flex-direction: column;
 }
 
-/* 顶部导航 */
-.header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 20rpx 30rpx;
-  background: #fff;
-  border-bottom: 1rpx solid #f0f0f0;
-  position: sticky;
-  top: 0;
-  z-index: 100;
-}
-
-.header-left {
-  display: flex;
-  align-items: center;
-}
-
-.back-icon {
-  width: 32rpx;
-  height: 32rpx;
-  margin-right: 10rpx;
-}
-
-.back-text {
-  font-size: 28rpx;
-  color: #333;
-}
-
-.header-title {
-  font-size: 32rpx;
-  font-weight: 600;
-  color: #333;
-}
-
-.header-right {
-  width: 80rpx;
-}
-
 /* 标签页 */
 .tab-container {
   background: linear-gradient(135deg, #ffffff 0%, #f8faff 100%);
   border-bottom: 1rpx solid rgba(24, 144, 255, 0.1);
   box-shadow: 0 2rpx 8rpx rgba(24, 144, 255, 0.05);
 }
-
-
 
 .tab-bar {
   display: flex;
@@ -195,24 +206,63 @@ export default {
 }
 
 .tab-item.active .tab-text {
-  color: #1890ff;
+  color: #40a9ff;
   font-weight: 600;
 }
 
-/* 操作栏 */
+/* 搜索和操作栏 */
 .action-bar {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  padding: 24rpx 30rpx;
+  justify-content: space-between;
+  padding: 10rpx 20rpx 0rpx 20rpx;
   background: linear-gradient(135deg, #ffffff 0%, #f8faff 100%);
-  border-bottom: 1rpx solid rgba(24, 144, 255, 0.1);
   box-shadow: 0 2rpx 8rpx rgba(24, 144, 255, 0.05);
+  gap: 20rpx;
 }
 
-.action-left {
+.search-container {
+  flex: 1;
   display: flex;
-  gap: 16rpx;
+  align-items: center;
+  background: #f5f5f5;
+  border-radius: 24rpx;
+  padding: 0 20rpx;
+  height: 64rpx;
+  border: 2rpx solid transparent;
+  transition: all 0.3s ease;
+  
+  &:focus-within {
+    border-color: #1890ff;
+    background: #fff;
+    box-shadow: 0 0 0 4rpx rgba(24, 144, 255, 0.1);
+  }
+}
+
+.search-icon {
+  width: 32rpx;
+  height: 32rpx;
+  margin-right: 16rpx;
+  opacity: 0.6;
+}
+
+.search-input {
+  flex: 1;
+  height: 100%;
+  border: none;
+  background: transparent;
+  font-size: 28rpx;
+  color: #333;
+  outline: none;
+  
+  &::placeholder {
+    color: #999;
+  }
+}
+
+.action-buttons {
+  display: flex;
+  gap: 12rpx;
 }
 
 .action-btn {
@@ -220,11 +270,13 @@ export default {
   align-items: center;
   justify-content: center;
   border-radius: 12rpx;
-  font-size: 26rpx;
+  font-size: 24rpx;
   font-weight: 500;
   border: none;
   transition: all 0.2s ease;
-  min-width: 120rpx;
+  min-width: 100rpx;
+  height: 64rpx;
+  padding: 0 20rpx;
 }
 
 .add-btn {
@@ -250,18 +302,19 @@ export default {
 }
 
 .btn-icon {
-  width: 28rpx;
-  height: 28rpx;
+  width: 32rpx;
+  height: 32rpx;
   margin-right: 8rpx;
 }
 
-.data-count {
-  font-size: 24rpx;
-  color: #8c8c8c;
-  font-weight: 500;
+/* 内容区域 */
+.location-content,
+.chat-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0; /* 允许flex子项收缩 */
 }
-
-
 
 
 </style> 

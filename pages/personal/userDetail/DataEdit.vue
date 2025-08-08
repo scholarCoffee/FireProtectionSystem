@@ -118,6 +118,39 @@
             </view>
           </picker>
         </view>
+        
+        <!-- 安全评分配置 -->
+        <view class="safety-config-section">
+          <view class="section-header">
+            <text class="section-title">安全评分配置</text>
+          </view>
+          
+          <!-- 评分项列表 -->
+          <view class="score-items-list">
+            <view class="score-item" v-for="(item, index) in formData.scoreItems" :key="index">
+              <view class="item-header">
+                <text class="item-name">{{ item.name }}</text>
+                <view class="item-actions">
+                  <image :src="serverUrl + '/static/icons/common/edit.png'" class="action-icon" @tap="editScoreItem(index)" />
+                  <image :src="serverUrl + '/static/icons/common/delete.png'" class="action-icon delete-icon" @tap="deleteScoreItem(index)" />
+                </view>
+              </view>
+              <view class="item-content">
+                <text class="item-description">{{ item.description }}</text>
+                <view class="item-weight">
+                  <text class="weight-label">权重：</text>
+                  <text class="weight-value">{{ item.weight }}分</text>
+                </view>
+              </view>
+            </view>
+          </view>
+          
+          <!-- 添加评分项按钮 -->
+          <view class="add-score-item" @tap="addScoreItem">
+            <image :src="serverUrl + '/static/icons/common/add.png'" class="add-icon" />
+            <text class="add-text">添加评分项</text>
+          </view>
+        </view>
       </view>
     </scroll-view>
 
@@ -130,11 +163,12 @@
 </template>
 
 <script>
+import { locationTabList } from '@/commons/mock/index.js'
+
 export default {
   name: 'DataEdit',
   data() {
     return {
-      serverUrl: 'https://www.xiaobei.space/api',
       type: 'location', // location 或 safety
       mode: 'add', // add 或 edit
       editId: '', // 编辑时的ID
@@ -142,11 +176,7 @@ export default {
       // 错误状态
       errors: {},
       // 选项数据
-      locationTypeOptions: [
-        { value: 1, label: '高层小区' },
-        { value: 2, label: '重点单位' },
-        { value: 3, label: '沿街商铺' }
-      ],
+      locationTypeOptions: [],
       safetyLevelOptions: [
         { value: 1, label: '优秀' },
         { value: 2, label: '良好' },
@@ -169,6 +199,9 @@ export default {
     this.mode = options.mode || 'add';
     this.editId = options.id || '';
     
+    // 初始化位置类型选项
+    this.initLocationTypeOptions();
+    
     this.initFormData();
     
     if (this.isEdit && this.editId) {
@@ -176,6 +209,14 @@ export default {
     }
   },
   methods: {
+    // 初始化位置类型选项
+    initLocationTypeOptions() {
+      this.locationTypeOptions = locationTabList.map(item => ({
+        value: item.type,
+        label: item.name
+      }));
+    },
+    
     goBack() {
       uni.navigateBack();
     },
@@ -194,7 +235,8 @@ export default {
           name: '',
           description: '',
           weight: '',
-          status: 1
+          status: 1,
+          scoreItems: [] // 安全评分配置项
         };
       }
     },
@@ -379,6 +421,38 @@ export default {
       }
       
       return !Object.values(this.errors).some(error => error);
+    },
+    
+    // 安全评分配置相关方法
+    addScoreItem() {
+      // 跳转到评分项编辑页面
+      uni.navigateTo({
+        url: `/pages/personal/userDetail/ScoreItemEdit?mode=add&safetyId=${this.editId}`
+      });
+    },
+    
+    editScoreItem(index) {
+      const item = this.formData.scoreItems[index];
+      uni.navigateTo({
+        url: `/pages/personal/userDetail/ScoreItemEdit?mode=edit&safetyId=${this.editId}&itemId=${item.id}`
+      });
+    },
+    
+    deleteScoreItem(index) {
+      uni.showModal({
+        title: '确认删除',
+        content: '确定要删除这个评分项吗？',
+        success: (res) => {
+          if (res.confirm) {
+            this.formData.scoreItems.splice(index, 1);
+            uni.showToast({
+              title: '删除成功',
+              icon: 'success',
+              duration: 1500
+            });
+          }
+        }
+      });
     }
   }
 }
@@ -685,5 +759,137 @@ export default {
   .form-container {
     padding-bottom: 120rpx;
   }
+}
+
+/* 安全评分配置样式 */
+.safety-config-section {
+  margin-top: 20rpx;
+  background: #fff;
+  border-radius: 12rpx;
+  overflow: hidden;
+  box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.05);
+}
+
+.section-header {
+  padding: 20rpx 32rpx;
+  border-bottom: 1rpx solid #f0f0f0;
+  background: linear-gradient(135deg, #f8faff 0%, #f0f8ff 100%);
+}
+
+.section-title {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #1890ff;
+}
+
+.score-items-list {
+  padding: 0 32rpx;
+}
+
+.score-item {
+  padding: 20rpx 0;
+  border-bottom: 1rpx solid #f5f5f5;
+  
+  &:last-child {
+    border-bottom: none;
+  }
+}
+
+.item-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12rpx;
+}
+
+.item-name {
+  font-size: 26rpx;
+  font-weight: 500;
+  color: #333;
+  flex: 1;
+}
+
+.item-actions {
+  display: flex;
+  gap: 12rpx;
+}
+
+.action-icon {
+  width: 32rpx;
+  height: 32rpx;
+  padding: 8rpx;
+  border-radius: 6rpx;
+  background: #f5f5f5;
+  transition: all 0.2s ease;
+  
+  &:active {
+    background: #e6e6e6;
+    transform: scale(0.95);
+  }
+}
+
+.delete-icon {
+  background: #ff4d4f;
+  
+  &:active {
+    background: #ff7875;
+  }
+}
+
+.item-content {
+  display: flex;
+  flex-direction: column;
+  gap: 8rpx;
+}
+
+.item-description {
+  font-size: 24rpx;
+  color: #666;
+  line-height: 1.4;
+}
+
+.item-weight {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+}
+
+.weight-label {
+  font-size: 24rpx;
+  color: #999;
+}
+
+.weight-value {
+  font-size: 24rpx;
+  color: #1890ff;
+  font-weight: 500;
+}
+
+.add-score-item {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12rpx;
+  padding: 24rpx 32rpx;
+  background: linear-gradient(135deg, #f8faff 0%, #f0f8ff 100%);
+  border-top: 1rpx solid #f0f0f0;
+  transition: all 0.3s ease;
+  
+  &:active {
+    background: linear-gradient(135deg, #e6f7ff 0%, #d6f4ff 100%);
+    transform: scale(0.98);
+  }
+}
+
+.add-icon {
+  width: 32rpx;
+  height: 32rpx;
+  opacity: 0.7;
+}
+
+.add-text {
+  font-size: 26rpx;
+  color: #1890ff;
+  font-weight: 500;
 }
 </style> 
