@@ -172,7 +172,7 @@ export default {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 12rpx 0 24rpx 0;
+  padding: 0rpx 0 10rpx 0;
   position: relative;
   transition: all 0.3s ease;
 }
@@ -194,13 +194,13 @@ export default {
 }
 
 .tab-icon {
-  width: 44rpx;
-  height: 44rpx;
-  margin-bottom: 8rpx;
+  width: 32rpx;
+  height: 32rpx;
+  margin-bottom: 4rpx;
 }
 
 .tab-text {
-  font-size: 26rpx;
+  font-size: 20rpx;
   color: #8c8c8c;
   font-weight: 500;
 }
