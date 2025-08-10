@@ -42,6 +42,13 @@
                 "navigationStyle": "default",
                 "navigationBarTitleText": "编辑信息"
             }
+        },
+        {
+            "path": "pages/personal/userDetail/SafetyScoreEdit",
+            "style": {
+                "navigationStyle": "default",
+                "navigationBarTitleText": "安全评分配置"
+            }
         }
     ],
     "subPackages": [

@@ -58,7 +58,6 @@ export default {
   },
   data() {
     return {
-      serverUrl: this.$store?.state?.serverUrl || ''
     }
   },
   methods: {

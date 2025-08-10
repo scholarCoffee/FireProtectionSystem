@@ -83,6 +83,14 @@ export default {
     }
   },
 
+  // 添加 onShow 生命周期钩子，用于在从子页面返回时刷新数据
+  onShow() {
+    // 如果当前是位置信息标签页，刷新位置管理组件的数据
+    if (this.currentTab === 'location' && this.$refs.locationManagement) {
+      this.$refs.locationManagement.loadData();
+    }
+  },
+
   methods: {
     switchTab(tab) {
       this.currentTab = tab;

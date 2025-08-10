@@ -10,7 +10,7 @@
         >
           <text class="filter-text">全部</text>
         </view>
-                 <view 
+        <view 
            class="filter-tab" 
            v-for="item in locationTabList" 
            :key="item.type"
@@ -24,12 +24,12 @@
     
     <!-- 数据列表 -->
     <scroll-view class="data-list" scroll-y="true" @scrolltolower="loadMore">
-      <view v-if="loading" class="loading-container">
+      <view v-if="loading && page === 1" class="loading-container">
         <image :src="serverUrl + '/static/icons/common/loading.png'" class="loading-icon" />
         <text class="loading-text">加载中...</text>
       </view>
       
-      <view v-else-if="filteredList.length === 0" class="empty-container">
+      <view v-else-if="filteredList.length === 0 && !hasMore" class="empty-container">
         <image :src="serverUrl + '/static/icons/common/no-data.png'" class="empty-icon" />
         <text class="empty-text">暂无数据</text>
       </view>
@@ -67,9 +67,18 @@
               <text class="label">描述：</text>
               <text class="value">{{ item.description || '暂无描述' }}</text>
             </view>
-            
-            
           </view>
+        </view>
+        
+        <!-- 加载更多提示 -->
+        <view v-if="loadingMore" class="loading-more">
+          <image :src="serverUrl + '/static/icons/common/loading.png'" class="loading-more-icon" />
+          <text class="loading-more-text">加载更多...</text>
+        </view>
+        
+        <!-- 没有更多数据提示 -->
+        <view v-if="!hasMore && filteredList.length > 0" class="no-more">
+          <text class="no-more-text">没有更多数据了</text>
         </view>
       </view>
     </scroll-view>
@@ -94,19 +103,28 @@ export default {
   data() {
     return {
       loading: false,
+      loadingMore: false,
       locationList: [],
       filteredList: [],
       currentFilter: 0, // 当前筛选类型，0表示全部
-      locationTabList: locationTabList
+      locationTabList: locationTabList,
+      // 分页相关参数
+      page: 1,
+      pageSize: 20,
+      hasMore: true,
+      total: 0
     }
   },
   
   watch: {
     searchKeyword: {
       handler(newVal) {
-        this.filterData();
-      },
-      immediate: true
+        // 只有在有搜索关键词时才重置分页并重新加载
+        if (newVal !== undefined) {
+          this.resetPagination();
+          this.filterData();
+        }
+      }
     }
   },
   
@@ -115,65 +133,89 @@ export default {
   },
   
   methods: {
-    async loadData() {
-      this.loading = true;
+    // 重置分页参数
+    resetPagination() {
+      this.page = 1;
+      this.hasMore = true;
+      this.filteredList = [];
+    },
+    
+    async loadData(isLoadMore = false) {
+      if (isLoadMore) {
+        this.loadingMore = true;
+      } else {
+        this.loading = true;
+      }
+      
       try {
+        // 构建请求参数
+        const params = {
+          page: this.page,
+          pageSize: this.pageSize
+        };
+        
+        // 添加筛选条件
+        if (this.currentFilter !== 0) {
+          params.type = this.currentFilter;
+        }
+        
+        if (this.searchKeyword.trim()) {
+          params.keyword = this.searchKeyword.trim();
+        }
+        
         const result = await new Promise((resolve, reject) => {
           uni.request({
             url: this.serverUrl + '/location/list',
             method: 'GET',
+            data: params,
             success: resolve,
             fail: reject
           });
         });
         
         if (result.data && result.data.code === 200) {
-          // 根据服务器返回的数据格式，位置列表在 data.list 中
           const responseData = result.data.data;
           const locationData = responseData && responseData.list;
-          this.locationList = Array.isArray(locationData) ? locationData : [];
-          // 移除自动加载安全信息，改为点击管理时查询
-          this.filterData();
+          const newData = Array.isArray(locationData) ? locationData : [];
+          
+          if (isLoadMore) {
+            // 加载更多时，追加数据
+            this.filteredList = [...this.filteredList, ...newData];
+          } else {
+            // 首次加载或筛选时，替换数据
+            this.filteredList = newData;
+          }
+          
+          // 更新分页信息
+          this.total = responseData.total || 0;
+          this.hasMore = newData.length === this.pageSize;
+          
+          // 如果没有更多数据，显示提示
+          if (!this.hasMore && this.filteredList.length > 0) {
+            console.log('已加载所有数据');
+          }
         } else {
-          this.locationList = [];
-          this.filterData();
+          if (!isLoadMore) {
+            this.filteredList = [];
+          }
+          this.hasMore = false;
         }
       } catch (error) {
         console.error('加载位置数据失败:', error);
-        this.locationList = [];
-        this.filterData();
+        if (!isLoadMore) {
+          this.filteredList = [];
+        }
+        this.hasMore = false;
       } finally {
         this.loading = false;
+        this.loadingMore = false;
       }
     },
     
-
-    
     filterData() {
-      // 确保 locationList 是数组
-      if (!Array.isArray(this.locationList)) {
-        this.filteredList = [];
-        return;
-      }
-      
-      let filtered = [...this.locationList];
-      
-      // 按类型筛选
-      if (this.currentFilter !== 0) {
-        filtered = filtered.filter(item => item.type === this.currentFilter);
-      }
-      
-      // 按关键词搜索
-      if (this.searchKeyword.trim()) {
-        const keyword = this.searchKeyword.toLowerCase();
-        filtered = filtered.filter(item => 
-          item.addressName.toLowerCase().includes(keyword) ||
-          item.addressExt.toLowerCase().includes(keyword) ||
-          this.getLocationTypeName(item.type).toLowerCase().includes(keyword)
-        );
-      }
-      
-      this.filteredList = filtered;
+      // 重置分页并重新加载数据
+      this.resetPagination();
+      this.loadData();
     },
     
     setFilter(type) {
@@ -185,8 +227,14 @@ export default {
       this.searchKeyword = keyword;
     },
     
-    loadMore() {
-      // 可以在这里实现分页加载
+    // 滚动到底部加载更多
+    async loadMore() {
+      if (this.loadingMore || !this.hasMore) {
+        return;
+      }
+      
+      this.page += 1;
+      await this.loadData(true);
     },
     
     editItem(item) {
@@ -226,6 +274,8 @@ export default {
             icon: 'success',
             duration: 1500
           });
+          // 删除成功后重新加载数据
+          this.resetPagination();
           this.loadData();
         } else {
           throw new Error(result.data?.msg || '删除失败');
@@ -431,5 +481,123 @@ export default {
   flex: 1;
 }
 
+/* 加载更多提示 */
+.loading-more {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 30rpx 0;
+  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+  border-radius: 16rpx;
+  margin: 30rpx 20rpx 20rpx 20rpx;
+  box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.05);
+  position: relative;
+  
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 20rpx;
+    right: 20rpx;
+    height: 1rpx;
+    background: linear-gradient(90deg, transparent 0%, #dee2e6 50%, transparent 100%);
+  }
+}
 
+.loading-more-icon {
+  width: 36rpx;
+  height: 36rpx;
+  margin-right: 16rpx;
+  animation: rotate 1.2s linear infinite;
+  opacity: 0.8;
+}
+
+.loading-more-text {
+  font-size: 28rpx;
+  color: #6c757d;
+  font-weight: 500;
+  letter-spacing: 1rpx;
+}
+
+/* 没有更多数据提示 */
+.no-more {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 30rpx 0;
+  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+  border-radius: 16rpx;
+  margin: 30rpx 20rpx 20rpx 20rpx;
+  box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.05);
+  position: relative;
+  
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 20rpx;
+    right: 20rpx;
+    height: 1rpx;
+    background: linear-gradient(90deg, transparent 0%, #dee2e6 50%, transparent 100%);
+  }
+  
+  &::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 20rpx;
+    right: 20rpx;
+    height: 1rpx;
+    background: linear-gradient(90deg, transparent 0%, #dee2e6 50%, transparent 100%);
+  }
+}
+
+.no-more-text {
+  font-size: 28rpx;
+  color: #6c757d;
+  font-weight: 500;
+  letter-spacing: 1rpx;
+  position: relative;
+  padding: 0 20rpx;
+  
+  &::before {
+    content: '—';
+    position: absolute;
+    left: -10rpx;
+    color: #adb5bd;
+  }
+  
+  &::after {
+    content: '—';
+    position: absolute;
+    right: -10rpx;
+    color: #adb5bd;
+  }
+}
+
+/* 旋转动画 */
+@keyframes rotate {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* 添加淡入淡出效果 */
+.loading-more, .no-more {
+  animation: fadeInUp 0.3s ease-out;
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20rpx);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
 </style>

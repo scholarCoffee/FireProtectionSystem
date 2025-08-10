@@ -4,8 +4,6 @@
     <scroll-view class="form-container" scroll-y="true">
       <!-- Location表单 -->
       <view v-if="type === 'location'" class="form-content">
-
-        
         <!-- 位置信息区域 -->
         <view class="location-info-section">
           <view class="section-header">
@@ -67,7 +65,7 @@
             >
               <view class="picker-display">
                 <text>{{ getLocationTypeText(formData.type) }}</text>
-                <image src="/static/icons/common/down.png" class="picker-arrow" />
+                <image :src="serverUrl + '/static/icons/common/down.png'" class="picker-arrow" />
               </view>
             </picker>
           </view>
@@ -92,13 +90,13 @@
             <view class="header-actions">
               <image 
                 v-if="!formData.fireSafetyScore" 
-                src="/static/icons/common/add.png" 
+                :src="serverUrl + '/static/icons/common/add-sec-white.png'" 
                 class="action-icon add-icon" 
                 @tap="addSafetyScore" 
               />
               <image 
                 v-else 
-                src="/static/icons/common/edit.png" 
+                :src="serverUrl + '/static/icons/common/edit.png'" 
                 class="action-icon edit-icon" 
                 @tap="editSafetyScore" 
               />
@@ -171,11 +169,17 @@
             <view class="gate-item" v-for="(gate, index) in gateOptions" :key="index">
               <text class="gate-name">{{ gate.name }}</text>
               <switch 
+                class="gate-switch"
                 :checked="isGateSelected(gate.name)" 
                 @change="toggleGate(gate.name)"
                 color="#1890ff"
               />
             </view>
+          </view>
+          
+          <!-- 错误提示 -->
+          <view v-if="errors.enterGateList" class="error-message">
+            <text class="error-text">{{ errors.enterGateList }}</text>
           </view>
         </view>
         
@@ -184,7 +188,7 @@
           <view class="section-header">
             <text class="section-title">联系人配置</text>
             <view class="header-actions">
-              <image :src="serverUrl + '/static/icons/common/add-white.png'" class="action-icon add-icon" @tap="showContactModal" />
+              <image :src="serverUrl + '/static/icons/common/add-sec-white.png'" class="action-icon add-icon" @tap="showContactModal('add')" />
             </view>
           </view>
           
@@ -198,7 +202,7 @@
                 <text class="contact-phone">{{ contact.phone }}</text>
               </view>
               <view class="contact-actions">
-                <image :src="serverUrl + '/static/icons/common/edit.png'" class="action-icon edit-icon" @tap="editPhoneContact(index)" />
+                <image :src="serverUrl + '/static/icons/common/edit-white.png'" class="action-icon edit-icon" @tap="showContactModal('edit', index)" />
                 <image :src="serverUrl + '/static/icons/common/delete-white.png'" class="action-icon delete-icon" @tap="deletePhoneContact(index)" />
               </view>
             </view>
@@ -207,6 +211,76 @@
           <view v-else class="empty-state">
             <text class="empty-text">暂无联系人，点击上方"+"添加</text>
           </view>
+          
+          <!-- 错误提示 -->
+          <view v-if="errors.phoneList" class="error-message">
+            <text class="error-text">{{ errors.phoneList }}</text>
+          </view>
+        </view>
+
+        <!-- 联系人弹窗 -->
+        <view class="contact-modal" v-if="showContactModalFlag" @tap="hideContactModal">
+          <view class="modal-content" @tap.stop>
+            <view class="modal-header">
+              <text class="modal-title">{{ contactModalMode === 'add' ? '添加联系人' : '编辑联系人' }}</text>
+              <view class="close-btn" @tap="hideContactModal">
+                <text class="close-icon">×</text>
+              </view>
+            </view>
+            
+            <view class="modal-body">
+              <view class="form-group">
+                <text class="form-label">联系人姓名 <text class="required">*</text></text>
+                <input 
+                  v-model="contactForm.name" 
+                  class="form-modal-input" 
+                  placeholder="请输入联系人姓名"
+                  maxlength="20"
+                />
+              </view>
+              
+              <view class="form-group">
+                <text class="form-label">联系电话 <text class="required">*</text></text>
+                <input 
+                  v-model="contactForm.phone" 
+                  class="form-modal-input" 
+                  placeholder="请输入联系电话"
+                  maxlength="15"
+                  type="number" 
+                />
+              </view>
+              
+              <view class="form-group">
+                <text class="form-label">联系人类型 <text class="required">*</text></text>
+                <view class="contact-type-options">
+                  <view 
+                    v-for="option in contactTypeOptions" 
+                    :key="option.value"
+                    class="type-option"
+                    :class="{ 
+                      'active': contactForm.type === option.value,
+                      'disabled': (option.value === 1 && contactTypeLimits.unitFull && contactModalMode === 'add') || 
+                                (option.value === 2 && contactTypeLimits.fireFull && contactModalMode === 'add')
+                    }"
+                    @tap="selectContactType(option.value)"
+                  >
+                    <view class="checkbox">
+                      <view class="checkbox-inner" v-if="contactForm.type === option.value"></view>
+                    </view>
+                    <text class="type-label">{{ option.label }}</text>
+                    <text v-if="(option.value === 1 && contactTypeLimits.unitFull && contactModalMode === 'add') || 
+                                (option.value === 2 && contactTypeLimits.fireFull && contactModalMode === 'add')" 
+                          class="type-limit-tip">(已配置)</text>
+                  </view>
+                </view>
+              </view>
+            </view>
+            
+            <view class="modal-footer">
+              <button class="footer-btn cancel-btn" @tap="hideContactModal">取消</button>
+              <button class="footer-btn confirm-btn" @tap="saveContact">确定</button>
+            </view>
+          </view>
         </view>
         
         <!-- 消防地图配置 -->
@@ -214,7 +288,7 @@
           <view class="section-header">
             <text class="section-title">消防地图</text>
             <view class="header-actions">
-              <image :src="serverUrl + '/static/icons/common/add-white.png'" class="action-icon add-icon" @tap="addImage" v-if="formData.imgList.length < 3" />
+              <image :src="serverUrl + '/static/icons/common/add-sec-white.png'" class="action-icon add-icon" @tap="addImage" v-if="formData.imgList.length < 3" />
             </view>
           </view>
           
@@ -321,7 +395,6 @@ export default {
       errors: {},
       // 评分标准提示框显示状态
       showScoreTooltip: false,
-
       // 选项数据
       locationTypeOptions: [],
       chatTypeOptions: [
@@ -342,12 +415,44 @@ export default {
         { name: '南门', type: 2 },
         { name: '西门', type: 3 },
         { name: '北门', type: 4 }
-      ]
+      ],
+      // 联系人弹窗相关
+      showContactModalFlag: false,
+      contactModalMode: 'add', // 'add' 或 'edit'
+      contactForm: {
+        name: '',
+        phone: '',
+        type: 1,
+        index: -1
+      }
     }
   },
   computed: {
     isEdit() {
       return this.mode === 'edit';
+    },
+    
+    // 检查联系人类型是否已满
+    contactTypeLimits() {
+      const unitContacts = this.formData.phoneList.filter(contact => contact.type === 1);
+      const fireContacts = this.formData.phoneList.filter(contact => contact.type === 2);
+      
+      return {
+        unitFull: unitContacts.length >= 1, // 单位负责人最多1个
+        fireFull: fireContacts.length >= 1, // 消防负责人最多1个
+        canAddUnit: unitContacts.length < 1,
+        canAddFire: fireContacts.length < 1
+      };
+    },
+    
+    // 检查是否可以添加更多联系人
+    canAddMoreContacts() {
+      return this.formData.phoneList.length < 2; // 最多2个联系人
+    },
+    
+    // 检查是否至少有一个联系人
+    hasMinimumContacts() {
+      return this.formData.phoneList.length >= 1;
     }
   },
   onLoad(options) {
@@ -362,13 +467,6 @@ export default {
     
     if (this.isEdit && this.editId) {
       this.loadEditData();
-    }
-  },
-  
-  onShow() {
-    // 页面显示时，如果是编辑模式且有地址ID，且安全信息为空时才刷新
-    if (this.type === 'location' && this.editId && this.mode === 'edit' && !this.formData.fireSafetyScore) {
-      this.refreshSafetyInfo();
     }
   },
   methods: {
@@ -394,14 +492,13 @@ export default {
           type: 1,
           safeLevelId: 1,
           description: '',
+          safeId: '',
+          safeLevelName: '',
+          safeLevelScore: '',
           fireSafetyScore: null, // 安全信息字段，初始化为null
           enterGateList: [], // 可出行大门列表
           phoneList: [], // 联系人列表
           imgList: [], // 消防地图图片列表
-          createTime: '', // 创建时间
-          updateTime: '', // 更新时间
-          status: 1, // 数据状态，默认启用
-          recordId: '' // 记录编号
         };
       } else if (this.type === 'chat') {
         this.formData = {
@@ -448,16 +545,15 @@ export default {
               allSenceLink: responseData.allSenceLink || '',
               type: responseData.type || 1,
               safeLevelId: responseData.safeLevelId || 1,
+              safeLevelName: responseData.safeLevelName || '',
+              safeLevelScore: responseData.safeLevelScore || '',
+              safeId: responseData.safeId || '',
               description: responseData.description || '',
               // 处理安全信息，null时显示为空对象
               fireSafetyScore: responseData.fireSafetyScore || null,
               enterGateList: responseData.enterGateList || [],
               phoneList: responseData.phoneList || [],
-              imgList: responseData.imgList || [],
-              createTime: responseData.createTime || '',
-              updateTime: responseData.updateTime || '',
-              status: responseData.status || 1,
-              recordId: responseData.recordId || ''
+              imgList: responseData.imgList || []
             };
           } else if (this.type === 'chat') {
             // 处理聊天数据
@@ -526,8 +622,11 @@ export default {
           uni.showToast({
             title: firstError,
             icon: 'none',
-            duration: 2000
+            duration: 3000
           });
+          
+          // 滚动到第一个错误位置
+          this.scrollToFirstError();
         }
         return;
       }
@@ -643,6 +742,18 @@ export default {
         this.validateField('addressId', this.formData.addressId);
         this.validateField('allSenceLink', this.formData.allSenceLink);
         this.validateField('type', this.formData.type);
+        
+        // 验证可出行大门配置：至少选择一个
+        if (!this.formData.enterGateList || this.formData.enterGateList.length === 0) {
+          this.errors['enterGateList'] = '至少需要选择一个可出行大门';
+          return false;
+        }
+        
+        // 验证联系人配置：至少配置一个负责人
+        if (!this.formData.phoneList || this.formData.phoneList.length === 0) {
+          this.errors['phoneList'] = '至少需要配置一个联系人';
+          return false;
+        }
       } else if (this.type === 'chat') {
         this.validateField('chatName', this.formData.chatName);
       }
@@ -668,73 +779,143 @@ export default {
           type: gateOption ? gateOption.type : this.formData.enterGateList.length + 1
         });
       }
+      
+      // 清除大门配置错误
+      if (this.errors.enterGateList) {
+        this.errors.enterGateList = '';
+      }
     },
     
     // 联系人管理方法
-    showContactModal() {
-      uni.showModal({
-        title: '添加联系人',
-        editable: true,
-        placeholderText: '请输入联系人姓名',
-        success: (res) => {
-          if (res.confirm && res.content.trim()) {
-            const name = res.content.trim();
-            uni.showModal({
-              title: '输入电话号码',
-              editable: true,
-              placeholderText: '请输入电话号码',
-              success: (phoneRes) => {
-                if (phoneRes.confirm && phoneRes.content.trim()) {
-                  const phone = phoneRes.content.trim();
-                  uni.showActionSheet({
-                    itemList: ['单位负责人', '消防负责人'],
-                    success: (typeRes) => {
-                      this.formData.phoneList.push({
-                        name: name,
-                        phone: phone,
-                        type: typeRes.tapIndex + 1
-                      });
-                    }
-                  });
-                }
-              }
-            });
-          }
-        }
-      });
+    showContactModal(mode = 'add', index = -1) {
+      // 如果是添加模式，检查是否还能添加联系人
+      if (mode === 'add' && !this.canAddMoreContacts) {
+        uni.showToast({
+          title: '最多只能配置2个联系人',
+          icon: 'none'
+        });
+        return;
+      }
+      
+      this.contactModalMode = mode;
+      this.contactForm.name = '';
+      this.contactForm.phone = '';
+      this.contactForm.type = 1;
+      this.contactForm.index = index; // 用于编辑时传递索引
+      
+      // 如果是编辑模式，填充现有数据
+      if (mode === 'edit' && index >= 0 && this.formData.phoneList[index]) {
+        const contact = this.formData.phoneList[index];
+        this.contactForm.name = contact.name;
+        this.contactForm.phone = contact.phone;
+        this.contactForm.type = contact.type;
+      }
+      
+      this.showContactModalFlag = true;
     },
     
-    editPhoneContact(index) {
-      const contact = this.formData.phoneList[index];
-      uni.showModal({
-        title: '编辑联系人',
-        editable: true,
-        content: contact.name,
-        success: (res) => {
-          if (res.confirm && res.content.trim()) {
-            this.formData.phoneList[index].name = res.content.trim();
-            uni.showModal({
-              title: '输入电话号码',
-              editable: true,
-              content: contact.phone,
-              success: (phoneRes) => {
-                if (phoneRes.confirm && phoneRes.content.trim()) {
-                  this.formData.phoneList[index].phone = phoneRes.content.trim();
-                }
-              }
+    hideContactModal() {
+      this.showContactModalFlag = false;
+    },
+
+    selectContactType(type) {
+      this.contactForm.type = type;
+    },
+
+    async saveContact() {
+      if (!this.contactForm.name || !this.contactForm.phone || !this.contactForm.type) {
+        uni.showToast({
+          title: '请填写完整信息',
+          icon: 'none'
+        });
+        return;
+      }
+
+      // 检查联系人类型限制
+      if (this.contactModalMode === 'add') {
+        // 添加模式：检查该类型是否已满
+        if (this.contactForm.type === 1 && this.contactTypeLimits.unitFull) {
+          uni.showToast({
+            title: '单位负责人已配置，不能重复添加',
+            icon: 'none'
+          });
+          return;
+        }
+        if (this.contactForm.type === 2 && this.contactTypeLimits.fireFull) {
+          uni.showToast({
+            title: '消防负责人已配置，不能重复添加',
+            icon: 'none'
+          });
+          return;
+        }
+        
+        this.formData.phoneList.push({
+          name: this.contactForm.name,
+          phone: this.contactForm.phone,
+          type: this.contactForm.type
+        });
+      } else if (this.contactModalMode === 'edit') {
+        // 编辑模式：检查类型变更是否违反限制
+        const oldContact = this.formData.phoneList[this.contactForm.index];
+        if (oldContact.type !== this.contactForm.type) {
+          // 类型发生变更，需要检查新类型是否已满
+          if (this.contactForm.type === 1 && this.contactTypeLimits.unitFull) {
+            uni.showToast({
+              title: '单位负责人已配置，不能重复添加',
+              icon: 'none'
             });
+            return;
+          }
+          if (this.contactForm.type === 2 && this.contactTypeLimits.fireFull) {
+            uni.showToast({
+              title: '消防负责人已配置，不能重复添加',
+              icon: 'none'
+            });
+            return;
           }
         }
+        
+        this.formData.phoneList[this.contactForm.index] = {
+          name: this.contactForm.name,
+          phone: this.contactForm.phone,
+          type: this.contactForm.type
+        };
+      }
+      
+      this.hideContactModal();
+      
+      // 清除联系人配置错误
+      if (this.errors.phoneList) {
+        this.errors.phoneList = '';
+      }
+      
+      uni.showToast({
+        title: this.contactModalMode === 'add' ? '联系人添加成功' : '联系人更新成功',
+        icon: 'success'
       });
     },
     
     deletePhoneContact(index) {
+      // 检查是否至少保留一个联系人
+      if (this.formData.phoneList.length <= 1) {
+        uni.showToast({
+          title: '至少需要配置一个联系人',
+          icon: 'none'
+        });
+        return;
+      }
+      
       uni.showModal({
         title: '确认删除',
         content: '确定要删除这个联系人吗？',
         success: (res) => {
           if (res.confirm) {
             this.formData.phoneList.splice(index, 1);
+            
+            // 清除联系人配置错误
+            if (this.errors.phoneList) {
+              this.errors.phoneList = '';
+            }
           }
         }
       });
@@ -830,19 +1011,30 @@ export default {
       }
     },
 
-         // 新增方法：添加安全评分
-     addSafetyScore() {
-       uni.navigateTo({
-         url: `/pages/personal/userDetail/SafetyScoreEdit?mode=add&addressId=${this.editId || this.formData.addressId}`
-       });
-     },
+    // 获取安全等级文本
+    getSafetyLevelText(levelId) {
+      if (levelId === 1) {
+        return '优秀';
+      } else if (levelId === 2) {
+        return '一般';
+      } else {
+        return '较差';
+      }
+    },
 
-         // 新增方法：编辑安全评分
-     editSafetyScore() {
-       uni.navigateTo({
-         url: `/pages/personal/userDetail/SafetyScoreEdit?mode=edit&addressId=${this.editId || this.formData.addressId}`
-       });
-     },
+    // 新增方法：添加安全评分
+    addSafetyScore() {
+      uni.navigateTo({
+        url: `/pages/personal/userDetail/SafetyScoreEdit?mode=add&safeId=${this.formData.safeId}&addressId=${this.formData.addressId}`
+      });
+    },
+
+    // 新增方法：编辑安全评分
+    editSafetyScore() {
+      uni.navigateTo({
+        url: `/pages/personal/userDetail/SafetyScoreEdit?mode=edit&safeId=${this.formData.safeId}&addressId=${this.formData.addressId}`
+      });
+    },
 
     // 新增方法：格式化日期时间
     formatDateTime(timestamp) {
@@ -855,32 +1047,21 @@ export default {
       const minutes = String(date.getMinutes()).padStart(2, '0');
       return `${year}-${month}-${day} ${hours}:${minutes}`;
     },
-     
-    // 新增方法：刷新安全信息
-    async refreshSafetyInfo() {
-      try {
-        const result = await new Promise((resolve, reject) => {
-          uni.request({
-            url: this.serverUrl + '/location/detail',
-            method: 'GET',
-            data: { addressId: this.editId },
-            success: resolve,
-            fail: reject
+    
+    // 滚动到第一个错误位置
+    scrollToFirstError() {
+      // 延迟执行，确保DOM更新完成
+      this.$nextTick(() => {
+        const errorElements = document.querySelectorAll('.error-message');
+        if (errorElements.length > 0) {
+          const firstError = errorElements[0];
+          firstError.scrollIntoView({ 
+            behavior: 'smooth', 
+            block: 'center' 
           });
-        });
-         
-        if (result.data && result.data.code === 200) {
-          const responseData = result.data.data;
-          // 只更新安全信息相关字段
-          if (responseData.fireSafetyScore) {
-            this.formData.fireSafetyScore = responseData.fireSafetyScore;
-          }
         }
-      } catch (error) {
-        console.log('刷新安全信息失败:', error);
-      }
-    }
-     
+      });
+    },
   }
 }
 </script>
@@ -897,7 +1078,7 @@ export default {
 .form-container {
   flex: 1;
   padding: 0;
-  padding-bottom: 120rpx;
+  padding-bottom: 170rpx;
   height: calc(100vh - 100rpx);
   overflow-y: auto;
 }
@@ -913,10 +1094,11 @@ export default {
   background: #ffffff;
   overflow: hidden;
   box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.05);
-  margin-bottom: 16rpx;
+  border-radius: 16rpx;
+  box-sizing: border-box;
   
   .section-header {
-    padding: 20rpx 24rpx;
+    padding: 12rpx 24rpx;
     border-bottom: 1rpx solid #f0f0f0;
     background: #f8f9fa;
     
@@ -929,14 +1111,15 @@ export default {
 }
 
 /* 安全信息区域 */
-.safety-section {       
+.safety-section {      
+  margin-top: 20rpx;
   background: #ffffff;
   overflow: hidden;
+  border-radius: 16rpx;
   box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.05);
-  margin-bottom: 16rpx;
   
   .section-header {
-    padding: 20rpx 24rpx;
+    padding: 12rpx 24rpx;
     border-bottom: 1rpx solid #f0f0f0;
     background: #f8f9fa;
     display: flex;
@@ -952,7 +1135,7 @@ export default {
   
   .safety-content {
     .form-item {
-      padding: 16rpx 20rpx;
+      padding: 0rpx 20rpx;
       border-bottom: 1rpx solid #f5f5f5;
       display: flex;
       align-items: center;
@@ -968,12 +1151,13 @@ export default {
 /* 配置区域 */
 .config-section {
   background: #ffffff;
+  margin-top: 20rpx;
   overflow: hidden;
   box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.05);
-  margin-bottom: 16rpx;
-  
+  border-radius: 16rpx;
+
   .section-header {
-    padding: 16rpx 20rpx;
+    padding: 12rpx 20rpx;
     border-bottom: 1rpx solid #f0f0f0;
     background: #f8f9fa;
     display: flex;
@@ -984,6 +1168,11 @@ export default {
       font-size: 30rpx;
       font-weight: 600;
       color: #333333;
+    }
+    
+    .header-actions {
+      display: flex;
+      align-items: center;
     }
   }
   
@@ -1011,10 +1200,336 @@ export default {
   }
 }
 
+/* 联系人弹窗样式 */
+.contact-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  animation: fadeIn 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  backdrop-filter: blur(8rpx);
+}
+
+.modal-content {
+  width: 95%;
+  max-width: 600rpx;
+  border-radius: 32rpx;
+  overflow: hidden;
+  box-shadow: 
+    0 32rpx 64rpx rgba(0, 0, 0, 0.15),
+    0 8rpx 32rpx rgba(0, 0, 0, 0.1),
+    inset 0 1rpx 0 rgba(255, 255, 255, 0.8);
+  display: flex;
+  flex-direction: column;
+  animation: slideInUp 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  border: 1rpx solid rgba(255, 255, 255, 0.2);
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  padding: 16rpx 8rpx;
+  align-items: center;
+  background: linear-gradient(135deg, #1890ff 0%, #40a9ff 100%);
+  position: relative;
+  color: #ffffff;
+}
+.modal-title {
+  font-size: 24rpx;
+  font-weight: 600;
+  color: #ffffff;
+  flex: 1;
+  text-align: left;
+  padding-left: 20rpx;
+  letter-spacing: 0.5rpx;
+  text-shadow: 0 2rpx 4rpx rgba(0, 0, 0, 0.2);
+}
+
+.close-btn {
+  width: 40rpx;
+  height: 40rpx;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 30rpx;
+  color: rgba(255, 255, 255, 0.9);
+  font-weight: 300;
+  border-radius: 50%;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10rpx);
+  
+  &:active {
+    background: rgba(255, 255, 255, 0.2);
+    transform: scale(0.9) rotate(90deg);
+  }
+}
+
+.modal-body {
+  padding: 20rpx 20rpx;
+  display: flex;
+  flex-direction: column;
+  gap: 28rpx;
+  background: #ffffff;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+.form-label {
+  font-size: 30rpx;
+  color: #2c3e50;
+  font-weight: 600;
+  margin-bottom: 16rpx;
+  letter-spacing: 0.5rpx;
+  display: flex;
+  align-items: center;
+  position: relative;
+}
+
+.required {
+  color: #e74c3c;
+  margin-left: 6rpx;
+  font-weight: 700;
+  font-size: 32rpx;
+}
+
+.form-input {
+  height: 88rpx;
+  padding: 0 28rpx;
+  border: 2rpx solid #e1e8ed;
+  border-radius: 20rpx;
+  font-size: 30rpx;
+  color: #2c3e50;
+  box-sizing: border-box;
+  text-align: left;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  letter-spacing: 0.5rpx;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  
+  &:focus {
+    background: #ffffff;
+    border-color: #1890ff;
+    box-shadow: 
+      0 0 0 6rpx rgba(24, 144, 255, 0.1),
+      inset 0 2rpx 4rpx rgba(0, 0, 0, 0.05);
+    outline: none;
+    transform: translateY(-2rpx);
+  }
+  
+  &::placeholder {
+    color: #95a5a6;
+    font-size: 30rpx;
+    font-weight: 400;
+  }
+}
+
+.form-modal-input {
+  height: 64rpx;
+  padding: 0 16rpx;
+  border: none;
+  border-radius: 12rpx;
+  font-size: 24rpx;
+  color: #333333;
+  box-sizing: border-box;
+  text-align: left;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  letter-spacing: 0.5rpx;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+  box-shadow: inset 0 2rpx 4rpx rgba(0, 0, 0, 0.05);
+}
+
+.contact-type-options {
+  display: flex;
+  flex-direction: column;
+  gap: 20rpx;
+}
+
+.type-option {
+  display: flex;
+  align-items: center;
+  padding: 16rpx 20rpx;
+  border: 2rpx solid #e1e8ed;
+  border-radius: 16rpx;
+  background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
+  box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.05);
+  
+  &:active {
+    transform: scale(0.98) translateY(2rpx);
+  }
+  
+  &.active {
+    border-color: #1890ff;
+    background: linear-gradient(135deg, rgba(24, 144, 255, 0.08) 0%, rgba(24, 144, 255, 0.03) 100%);
+    box-shadow: 
+      0 0 0 6rpx rgba(24, 144, 255, 0.1),
+      0 4rpx 16rpx rgba(24, 144, 255, 0.15);
+    transform: translateY(-2rpx);
+  }
+}
+
+.checkbox {
+  width: 28rpx;
+  height: 28rpx;
+  border: 2rpx solid #cbd5e0;
+  border-radius: 6rpx;
+  margin-right: 16rpx;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  background: #ffffff;
+  
+  .type-option.active & {
+    border-color: #1890ff;
+    background: linear-gradient(135deg, #1890ff 0%, #40a9ff 100%);
+    box-shadow: 0 2rpx 8rpx rgba(24, 144, 255, 0.3);
+  }
+}
+
+.checkbox-inner {
+  width: 20rpx;
+  height: 20rpx;
+  background: transparent;
+  border-radius: 0;
+  transform: scale(0);
+  animation: checkmark 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  position: relative;
+  
+  /* 使用图片 */
+  background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="white"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>');
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+}
+
+.type-label {
+  font-size: 24rpx;
+  color: #2c3e50;
+  font-weight: 500;
+  flex: 1;
+  
+  .type-option.active & {
+    color: #1890ff;
+    font-weight: 600;
+  }
+}
+
+@keyframes checkmark {
+  from {
+    transform: scale(0) rotate(-45deg);
+  }
+  to {
+    transform: scale(1) rotate(0deg);
+  }
+}
+
+.modal-footer {
+  display: flex;
+  padding: 10rpx;
+  border-top: 1rpx solid #e1e8ed;
+  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+  gap: 20rpx;
+}
+
+.footer-btn {
+  flex: 1;
+  height: 64rpx;
+  border: none;
+  border-radius: 16rpx;
+  font-size: 24rpx;
+  font-weight: 600;
+  letter-spacing: 0.5rpx;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  
+  &:active {
+    transform: translateY(3rpx);
+  }
+  
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+    transition: left 0.5s;
+  }
+  
+  &:active::before {
+    left: 100%;
+  }
+}
+
+.cancel-btn {
+  background: linear-gradient(135deg, #f1f2f6 0%, #dfe4ea 100%);
+  color: #636e72;
+  border: 2rpx solid #dcdde1;
+  box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.08);
+  
+  &:active {
+    background: linear-gradient(135deg, #dfe4ea 0%, #c8d6e5 100%);
+    box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.12);
+  }
+}
+
+.confirm-btn {
+  background: linear-gradient(135deg, #1890ff 0%, #40a9ff 100%);
+  color: #ffffff;
+  box-shadow: 
+    0 6rpx 20rpx rgba(24, 144, 255, 0.4),
+    0 2rpx 8rpx rgba(64, 169, 255, 0.3);
+  text-shadow: 0 2rpx 4rpx rgba(0, 0, 0, 0.2);
+  
+  &:active {
+    box-shadow: 
+      0 4rpx 16rpx rgba(24, 144, 255, 0.3),
+      0 2rpx 8rpx rgba(64, 169, 255, 0.2);
+  }
+}
+
+/* 弹窗动画 */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideInUp {
+  from {
+    opacity: 0;
+    transform: translateY(80rpx) scale(0.85);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
 /* 表单项样式 */
 .form-item {
   margin: 0;
-  padding: 10rpx 10rpx;
+  padding: 0rpx 20rpx;
   display: flex;
   align-items: center;
   min-height: 72rpx;
@@ -1032,9 +1547,9 @@ export default {
 
 .form-label {
   flex-shrink: 0;
-  font-size: 32rpx;
-  color: #2c3e50;
-  font-weight: 500;
+  font-size: 24rpx;
+  color: #333333;
+  font-weight: 600;
   margin-right: 24rpx;
   min-width: 160rpx;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Helvetica Neue', Helvetica, Arial, sans-serif;
@@ -1053,13 +1568,11 @@ export default {
   padding: 0 16rpx;
   border: none;
   border-radius: 12rpx;
-  font-size: 32rpx;
-  color: #34495e;
-  background: #f8f9fa;
+  font-size: 24rpx;
+  color: #333333;
   box-sizing: border-box;
   text-align: left;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Helvetica Neue', Helvetica, Arial, sans-serif;
-  font-weight: 400;
   letter-spacing: 0.3rpx;
   transition: all 0.3s ease;
   
@@ -1071,7 +1584,7 @@ export default {
   
   &::placeholder {
     color: #95a5a6;
-    font-size: 32rpx;
+    font-size: 24rpx;
     font-weight: 400;
   }
 }
@@ -1079,12 +1592,11 @@ export default {
 .form-textarea {
   flex: 1;
   min-height: 64rpx;
-  padding: 16rpx;
+  padding: 0 16rpx;
   border: none;
   border-radius: 12rpx;
-  font-size: 32rpx;
+  font-size: 24rpx;
   color: #333333;
-  background: #f8f9fa;
   box-sizing: border-box;
   text-align: left;
   resize: none;
@@ -1118,8 +1630,8 @@ export default {
   }
   
   .form-textarea {
-    min-height: 48rpx;
-    max-height: 120rpx;
+    min-height: 80rpx;
+    max-height: 240rpx;
     overflow-y: auto;
   }
 }
@@ -1135,11 +1647,10 @@ export default {
   padding: 0 16rpx;
   border: none;
   border-radius: 12rpx;
-  background: #f8f9fa;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  font-size: 32rpx;
+  justify-content: flex-end;
+  font-size: 24rpx;
   color: #333333;
   box-sizing: border-box;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Helvetica Neue', Helvetica, Arial, sans-serif;
@@ -1302,10 +1813,14 @@ export default {
 
 /* 大门配置样式 */
 .gate-name {
-  font-size: 32rpx;
+  font-size: 24rpx;
   color: #2c3e50;
   font-weight: 600;
   letter-spacing: 0.3rpx;
+}
+
+.gate-switch {
+  transform: scale(0.8);
 }
 
 /* 联系人样式 */
@@ -1322,7 +1837,7 @@ export default {
 }
 
 .contact-name {
-  font-size: 30rpx;
+  font-size: 24rpx;
   font-weight: 600;
   color: #2c3e50;
   flex: 1;
@@ -1330,7 +1845,7 @@ export default {
 }
 
 .contact-type {
-  font-size: 26rpx;
+  font-size: 24rpx;
   color: #1890ff;
   background: linear-gradient(135deg, #e6f7ff 0%, #cceeff 100%);
   padding: 8rpx 16rpx;
@@ -1340,7 +1855,7 @@ export default {
 }
 
 .contact-phone {
-  font-size: 26rpx;
+  font-size: 24rpx;
   color: #34495e;
   font-weight: 400;
 }
@@ -1415,15 +1930,16 @@ export default {
 }
 
 .add-icon {
-  background: linear-gradient(135deg, #e6f7ff 0%, #cceeff 100%);
+  background: linear-gradient(135deg, #1890ff 0%, #096dd9 100%);
   
   &:active {
-    background: linear-gradient(135deg, #cceeff 0%, #b3e0ff 100%);
+    background: linear-gradient(135deg, #1890ff 0%, #096dd9 100%);
   }
 }
 
 .edit-icon {
   background: linear-gradient(135deg, #1890ff 0%, #096dd9 100%);
+  margin-right: 16rpx;
   
   &:active {
     background: linear-gradient(135deg, #096dd9 0%, #0050b3 100%);
@@ -1446,7 +1962,7 @@ export default {
   font-size: 28rpx;
   background: #fafbfc;
   border-radius: 12rpx;
-  margin: 24rpx;
+  margin: 10rpx 24rpx;
   border: 2rpx dashed #d9d9d9;
 }
 
@@ -1456,10 +1972,40 @@ export default {
   font-weight: 400;
 }
 
+/* 错误提示样式 */
+.error-message {
+  padding: 16rpx 24rpx;
+  margin: 0 24rpx 16rpx 24rpx;
+  background: linear-gradient(135deg, #fff2f0 0%, #ffebee 100%);
+  border: 1rpx solid #ffccc7;
+  border-radius: 12rpx;
+  animation: shake 0.5s ease-in-out;
+}
+
+.error-text {
+  color: #ff4d4f;
+  font-size: 24rpx;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  
+  &::before {
+    content: '⚠';
+    margin-right: 8rpx;
+    font-size: 28rpx;
+  }
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-4rpx); }
+  75% { transform: translateX(4rpx); }
+}
+
 /* 底部按钮 */
 .footer {
   display: flex;
-  padding: 24rpx 32rpx;
+  padding: 16rpx 32rpx;
   gap: 24rpx;
   background: #ffffff;
   border-top: 1rpx solid #e8f4ff;
@@ -1473,17 +2019,14 @@ export default {
 
 .footer-btn {
   flex: 1;
-  height: 96rpx;
   border-radius: 16rpx;
-  font-size: 32rpx;
+  font-size: 24rpx;
   font-weight: 600;
   border: none;
   transition: all 0.3s ease;
   position: relative;
   overflow: hidden;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Helvetica Neue', Helvetica, Arial, sans-serif;
-  letter-spacing: 0.5rpx;
-  
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Helvetica Neue', Helvetica, Arial, sans-serif;  
   &:active {
     transform: scale(0.98);
   }
@@ -1523,12 +2066,12 @@ export default {
   }
   
   .form-item {
-    padding: 10rpx 10rpx;
+    padding: 0rpx 20rpx;
     min-height: 88rpx;
   }
   
   .form-label {
-    font-size: 30rpx;
+    font-size: 24rpx;
     min-width: 140rpx;
     margin-right: 24rpx;
   }
@@ -1536,21 +2079,21 @@ export default {
   .form-input,
   .form-textarea,
   .picker-display {
-    font-size: 30rpx;
+    font-size: 24rpx;
   }
   
   .form-input {
-    height: 88rpx;
+    height: 68rpx;
     padding: 0 20rpx;
   }
   
   .form-textarea {
-    min-height: 88rpx;
-    padding: 20rpx;
+    min-height: 68rpx;
+    padding: 0 20rpx;
   }
   
   .picker-display {
-    height: 88rpx;
+    height: 68rpx;
     padding: 0 20rpx;
   }
   
@@ -1586,7 +2129,7 @@ export default {
   }
   
   .form-item {
-    padding: 16rpx 20rpx;
+    padding: 0rpx 20rpx;
     min-height: 80rpx;
   }
   
@@ -1603,22 +2146,22 @@ export default {
   }
   
   .form-input {
-    height: 80rpx;
+    height: 60rpx;
     padding: 0 16rpx;
   }
   
   .form-textarea {
-    min-height: 80rpx;
-    padding: 16rpx;
+    min-height: 60rpx;
+    padding: 0 20rpx;
   }
   
   .picker-display {
-    height: 80rpx;
+    height: 60rpx;
     padding: 0 16rpx;
   }
   
   .footer-btn {
-    height: 80rpx;
+    height: 60rpx;
     font-size: 28rpx;
   }
   
