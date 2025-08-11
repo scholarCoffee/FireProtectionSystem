@@ -9,29 +9,28 @@
           <view class="section-header">
             <text class="section-title">位置信息</text>
           </view>
+          <view class="form-item">
+            <text class="form-label">地址名称 <text class="required">*</text></text>
+            <input 
+              v-model="formData.addressName" 
+              class="form-input" 
+              placeholder="请输入地址名称"
+              maxlength="50"
+              @input="onAddressNameInput"
+            />
+          </view>
           
-        <view class="form-item">
-          <text class="form-label">地址名称 <text class="required">*</text></text>
-          <input 
-            v-model="formData.addressName" 
-            class="form-input" 
-            placeholder="请输入地址名称"
-            maxlength="50"
-            @input="onAddressNameInput"
-          />
-        </view>
-        
-        <view class="form-item">
-          <text class="form-label">详细地址 <text class="required">*</text></text>
-          <input 
-            v-model="formData.addressExt" 
-            class="form-input" 
-            placeholder="请输入详细地址"
-            maxlength="200"
-            @input="onAddressExtInput"
-          />
-        </view>
-          
+          <view class="form-item">
+            <text class="form-label">详细地址 <text class="required">*</text></text>
+            <input 
+              v-model="formData.addressExt" 
+              class="form-input" 
+              placeholder="请输入详细地址"
+              maxlength="200"
+              @input="onAddressExtInput"
+            />
+          </view>
+            
           <view class="form-item">
             <text class="form-label">地址代号 <text class="required">*</text></text>
             <input 
@@ -42,7 +41,7 @@
               @input="onAddressIdInput"
             />
           </view>
-          
+            
           <view class="form-item">
             <text class="form-label">全云景地址 <text class="required">*</text></text>
             <input 
@@ -53,35 +52,35 @@
               @input="onAllSenceLinkInput"
             />
           </view>
-        
-        <view class="form-item">
-          <text class="form-label">位置类型 <text class="required">*</text></text>
-          <picker 
-            :value="formData.type - 1" 
-            :range="locationTypeOptions" 
-            range-key="label"
-            @change="onLocationTypeChange"
-            class="form-picker"
-          >
-            <view class="picker-display">
-              <text>{{ getLocationTypeText(formData.type) }}</text>
-              <image :src="serverUrl + '/static/icons/common/down.png'" class="picker-arrow" />
-            </view>
-          </picker>
-        </view>
-        
+          
+          <view class="form-item">
+            <text class="form-label">位置类型 <text class="required">*</text></text>
+            <picker 
+              :value="formData.type - 1" 
+              :range="locationTypeOptions" 
+              range-key="label"
+              @change="onLocationTypeChange"
+              class="form-picker"
+            >
+              <view class="picker-display">
+                <text class="picker-text">{{ getLocationTypeText(formData.type) }}</text>
+                <image :src="serverUrl + '/static/icons/common/down.png'" class="picker-arrow" />
+              </view>
+            </picker>
+          </view>
+          
           <view class="form-item description-item">
-          <text class="form-label">描述</text>
-          <textarea 
-            v-model="formData.description" 
-            class="form-textarea" 
-            placeholder="请输入描述信息"
-            maxlength="500"
-              auto-height
-              show-confirm-bar="false"
-          />
+            <text class="form-label">描述</text>
+            <textarea 
+              v-model="formData.description" 
+              class="form-textarea" 
+              placeholder="请输入描述信息"
+              maxlength="500"
+                auto-height
+                show-confirm-bar="false"
+            />
+          </view>
         </view>
-      </view>
 
         <!-- 安全信息区域 -->
         <view class="safety-section">
@@ -102,7 +101,7 @@
               />
             </view>
           </view>
-          
+            
           <view v-if="formData.fireSafetyScore" class="safety-content">
             <view class="safety-summary">
               <view class="safety-score-display">
@@ -143,7 +142,7 @@
             <text class="empty-text">暂无安全评分信息，点击上方"+"添加</text>
           </view>
         </view>
-        
+          
         <!-- 可出行大门配置 -->
         <view class="config-section">
           <view class="section-header">
@@ -161,13 +160,13 @@
               />
             </view>
           </view>
-          
+            
           <!-- 错误提示 -->
           <view v-if="errors.enterGateList" class="error-message">
             <text class="error-text">{{ errors.enterGateList }}</text>
           </view>
         </view>
-        
+          
         <!-- 联系人配置 -->
         <view class="config-section">
           <view class="section-header">
@@ -176,7 +175,7 @@
               <image :src="serverUrl + '/static/icons/common/add-sec-white.png'" class="action-icon add-icon" @tap="showContactModal('add')" />
             </view>
           </view>
-          
+            
           <view class="contact-list" v-if="formData.phoneList && formData.phoneList.length > 0">
             <view class="contact-item" v-for="(contact, index) in formData.phoneList" :key="index">
               <view class="contact-info">
@@ -192,7 +191,6 @@
               </view>
             </view>
           </view>
-          
           <view v-else class="empty-state">
             <text class="empty-text">暂无联系人，点击上方"+"添加</text>
           </view>
@@ -211,85 +209,86 @@
               <view class="close-btn" @tap="hideContactModal">
                 <text class="close-icon">×</text>
               </view>
-            </view>
-            
+            </view>  
             <view class="modal-body">
               <view class="form-group">
                 <text class="form-label">联系人姓名 <text class="required">*</text></text>
-          <input 
-                  v-model="contactForm.name" 
-                  class="form-modal-input" 
-                  placeholder="请输入联系人姓名"
-                  maxlength="20"
-          />
-        </view>
-        
-              <view class="form-group">
-                <text class="form-label">联系电话 <text class="required">*</text></text>
-                <input 
-                  v-model="contactForm.phone" 
-                  class="form-modal-input" 
-                  placeholder="请输入联系电话"
-                  maxlength="15"
-                  type="number" 
-          />
-        </view>
-        
-              <view class="form-group">
-                <text class="form-label">联系人类型 <text class="required">*</text></text>
-                <view class="contact-type-options">
-                  <view 
-                    v-for="option in contactTypeOptions" 
-                    :key="option.value"
-                    class="type-option"
-                    :class="{ 
-                      'active': contactForm.type === option.value,
-                      'disabled': (option.value === 1 && contactTypeLimits.unitFull && contactModalMode === 'add') || 
-                                (option.value === 2 && contactTypeLimits.fireFull && contactModalMode === 'add')
-                    }"
-                    @tap="selectContactType(option.value)"
-                  >
-                    <view class="checkbox">
-                      <view class="checkbox-inner" v-if="contactForm.type === option.value"></view>
-                    </view>
-                    <text class="type-label">{{ option.label }}</text>
-                    <text v-if="(option.value === 1 && contactTypeLimits.unitFull && contactModalMode === 'add') || 
-                                (option.value === 2 && contactTypeLimits.fireFull && contactModalMode === 'add')" 
-                          class="type-limit-tip">(已配置)</text>
+              <input 
+                v-model="contactForm.name" 
+                class="form-modal-input" 
+                placeholder="请输入联系人姓名"
+                maxlength="20"
+              />
+            </view>
+            <view class="form-group">
+              <text class="form-label">联系电话 <text class="required">*</text></text>
+              <input 
+                v-model="contactForm.phone" 
+                class="form-modal-input" 
+                placeholder="请输入联系电话"
+                maxlength="15"
+                type="number" 
+              />
+            </view>
+          
+            <view class="form-group">
+              <text class="form-label">联系人类型 <text class="required">*</text></text>
+              <view class="contact-type-options">
+                <view 
+                  v-for="option in contactTypeOptions" 
+                  :key="option.value"
+                  class="type-option"
+                  :class="{ 
+                    'active': contactForm.type === option.value,
+                    'disabled': (option.value === 1 && contactTypeLimits.unitFull && contactModalMode === 'add') || 
+                              (option.value === 2 && contactTypeLimits.fireFull && contactModalMode === 'add')
+                  }"
+                  @tap="selectContactType(option.value)"
+                >
+                  <view class="checkbox">
+                    <view class="checkbox-inner" v-if="contactForm.type === option.value"></view>
                   </view>
+                  <text class="type-label">{{ option.label }}</text>
                 </view>
               </view>
+              </view>
             </view>
-            
             <view class="modal-footer">
               <button class="footer-btn cancel-btn" @tap="hideContactModal">取消</button>
               <button class="footer-btn confirm-btn" @tap="saveContact">确定</button>
             </view>
           </view>
         </view>
-        
-        <!-- 消防地图配置 -->
+          
+                <!-- 消防地图配置 -->
         <view class="config-section">
           <view class="section-header">
             <text class="section-title">消防地图</text>
-            <view class="header-actions">
-              <image :src="serverUrl + '/static/icons/common/add-sec-white.png'" class="action-icon add-icon" @tap="addImage" v-if="formData.imgList.length < 3" />
-            </view>
           </view>
           
-          <view class="image-list" v-if="formData.imgList && formData.imgList.length > 0">
-            <view class="image-item" v-for="(img, index) in formData.imgList" :key="index">
-              <image :src="serverUrl + img" class="map-image" mode="aspectFill" />
-              <view class="image-overlay">
-                <view class="image-actions">
-                  <image :src="serverUrl + '/static/icons/common/delete-white.png'" class="action-icon delete-icon" @tap="deleteImage(index)" />
+          <view class="image-upload-area">
+            <!-- 已上传的图片 -->
+            <view class="image-list" v-if="formData.imgList && formData.imgList.length > 0">
+              <view class="image-item" v-for="(img, index) in formData.imgList" :key="index">
+                <image :src="serverUrl + img" class="map-image" mode="aspectFill" />
+                <view class="image-overlay">
+                  <view class="image-actions">
+                    <image :src="serverUrl + '/static/icons/common/delete-white.png'" class="action-icon delete-icon" @tap="deleteImage(index)" />
+                  </view>
                 </view>
               </view>
             </view>
-          </view>
-          
-          <view v-else class="empty-state">
-            <text class="empty-text">暂无消防地图，点击上方"+"添加</text>
+            
+            <!-- 上传按钮 -->
+            <view class="upload-btn" v-if="formData.imgList.length < 3" @tap="addImage">
+              <image :src="serverUrl + '/static/icons/common/add-third-grey.png'" class="upload-icon" />
+              <text class="upload-text">上传图片</text>
+            </view>
+            
+            <!-- 空状态提示 -->
+            <view v-if="formData.imgList.length === 0" class="empty-upload-state">
+              <text class="empty-text">暂无消防地图，点击下方按钮上传</text>
+            </view>
           </view>
         </view>
       </view>
@@ -306,7 +305,7 @@
             @input="onChatNameInput"
           />
         </view>
-        
+          
         <view class="form-item">
           <text class="form-label">聊天类型</text>
           <picker 
@@ -322,7 +321,7 @@
             </view>
           </picker>
         </view>
-        
+          
         <view class="form-item description-item">
           <text class="form-label">聊天描述</text>
           <textarea 
@@ -333,8 +332,8 @@
             auto-height
             show-confirm-bar="false"
           />
-          </view>
-          
+        </view>
+            
         <view class="form-item">
           <text class="form-label">状态</text>
           <picker 
@@ -347,7 +346,7 @@
             <view class="picker-display">
               <text>{{ getChatStatusText(formData.chatStatus) }}</text>
               <image :src="serverUrl + '/static/icons/common/down.png'" class="picker-arrow" />
-                </view>
+            </view>
           </picker>
         </view>
       </view>
@@ -421,13 +420,11 @@ export default {
       const unitContacts = this.formData.phoneList.filter(contact => contact.type === 1);
       const fireContacts = this.formData.phoneList.filter(contact => contact.type === 2);
       
-              return {
-          unitFull: unitContacts.length >= 1,
-          fireFull: fireContacts.length >= 1
-        };
+      return {
+        unitFull: unitContacts.length >= 1,
+        fireFull: fireContacts.length >= 1
+      };
     },
-    
-
   },
   onLoad(options) {
     this.type = options.type || 'location';
@@ -436,7 +433,6 @@ export default {
     
     // 初始化位置类型选项
     this.initLocationTypeOptions();
-    
     this.initFormData();
     
     if (this.isEdit && this.editId) {
@@ -763,7 +759,7 @@ export default {
     // 联系人管理方法
     showContactModal(mode = 'add', index = -1) {
       // 如果是添加模式，检查是否还能添加联系人
-      if (mode === 'add' && !this.canAddMoreContacts) {
+      if (mode === 'add' && !this.formData.phoneList.length >= 2) {
         uni.showToast({
           title: '最多只能配置2个联系人',
           icon: 'none'
@@ -797,6 +793,7 @@ export default {
     },
 
     async saveContact() {
+      this.hideContactModal();
       if (!this.contactForm.name || !this.contactForm.phone || !this.contactForm.type) {
         uni.showToast({
           title: '请填写完整信息',
@@ -855,9 +852,7 @@ export default {
           type: this.contactForm.type
         };
       }
-      
-      this.hideContactModal();
-      
+            
       // 清除联系人配置错误
       if (this.errors.phoneList) {
         this.errors.phoneList = '';
@@ -894,9 +889,7 @@ export default {
         }
       });
     },
-    
-
-    
+  
     // 图片管理方法
     addImage() {
       if (this.formData.imgList.length >= 3) {
@@ -912,13 +905,46 @@ export default {
         sizeType: ['compressed'],
         sourceType: ['album', 'camera'],
         success: (res) => {
-          // 这里应该上传图片到服务器，然后获取URL
-          // 暂时使用本地路径
-          this.formData.imgList.push('/static/icons/location/temp.png');
-          uni.showToast({
-            title: '图片添加成功',
-            icon: 'success'
+          const filePath = (res.tempFilePaths && res.tempFilePaths[0]) || (res.tempFiles && res.tempFiles[0]?.path) || '';
+          if (!filePath) {
+            uni.showToast({ title: '未选择有效图片', icon: 'none' });
+            return;
+          }
+          uni.showLoading({ title: '上传中...' });
+          uni.uploadFile({
+            url: this.serverUrl + '/files/upload',
+            filePath,
+            name: 'file',
+            fileType: 'image',
+            formData: {
+              addressId: this.formData.addressId || this.editId || '',
+              url: '/uploadImg/locationEdit',
+              name: new Date().getTime() + this.editId + Math.ceil(Math.random()*10),
+            },
+            success: (uploadRes) => {
+              try {
+                const parsed = typeof uploadRes.data === 'string' ? JSON.parse(uploadRes.data) : uploadRes.data;
+                const backImg = parsed?.data || '';
+                if (!backImg) {
+                  throw new Error('上传返回为空');
+                }
+                // 将返回的图片路径加入列表（页面渲染使用 serverUrl + img）
+                this.formData.imgList.push(backImg);
+                uni.showToast({ title: '图片上传成功', icon: 'success' });
+              } catch (e) {
+                uni.showToast({ title: '图片解析失败', icon: 'none' });
+              }
+            },
+            fail: (err) => {
+              uni.showToast({ title: '上传失败: ' + (err?.errMsg || ''), icon: 'none' });
+            },
+            complete: () => {
+              uni.hideLoading();
+            }
           });
+        },
+        fail: () => {
+          uni.showToast({ title: '取消选择', icon: 'none' });
         }
       });
     },
@@ -989,8 +1015,6 @@ export default {
       }
     },
     
-
-
     // 获取安全等级文本
     getSafetyLevelText(levelId) {
       if (levelId === 1) {
@@ -1005,18 +1029,55 @@ export default {
     // 新增方法：添加安全评分
     addSafetyScore() {
       uni.navigateTo({
-        url: `/pages/personal/userDetail/SafetyScoreEdit?mode=add&safeId=${this.formData.safeId}&addressId=${this.formData.addressId}`
+        url: `/pages/personal/userDetail/SafetyScoreEdit?mode=add&safeId=${this.formData.safeId}&addressId=${this.formData.addressId}`,
+        events: {
+          // 监听安全评分更新事件
+          safetyScoreUpdated: (data) => {
+            // 更新本地数据
+            if (data.addressId === this.formData.addressId) {
+              this.formData.fireSafetyScore = {
+                scoreItems: data.scoreItems,
+                safeId: data.safeId
+              };
+              
+              // 显示更新成功提示
+              uni.showToast({
+                title: '安全评分已添加',
+                icon: 'success',
+                duration: 2000
+              });
+            }
+          }
+        }
       });
     },
 
     // 新增方法：编辑安全评分
     editSafetyScore() {
       uni.navigateTo({
-        url: `/pages/personal/userDetail/SafetyScoreEdit?mode=edit&safeId=${this.formData.safeId}&addressId=${this.formData.addressId}`
+        url: `/pages/personal/userDetail/SafetyScoreEdit?mode=edit&safeId=${this.formData.safeId}&addressId=${this.formData.addressId}`,
+        events: {
+          // 监听安全评分更新事件
+          safetyScoreUpdated: (data) => {
+            // 更新本地数据
+            if (data.addressId === this.formData.addressId) {
+              this.formData.fireSafetyScore = {
+                ...this.formData.fireSafetyScore,
+                scoreItems: data.scoreItems,
+                safeId: data.safeId
+              };
+              
+              // 显示更新成功提示
+              uni.showToast({
+                title: '安全评分已更新',
+                icon: 'success',
+                duration: 2000
+              });
+            }
+          }
+        }
       });
     },
-
-
   }
 }
 </script>
@@ -1525,7 +1586,8 @@ export default {
 
 .footer-btn {
   flex: 1;
-  height: 64rpx;
+  height: 68rpx;
+  line-height: 68rpx;
   border: none;
   border-radius: 16rpx;
   font-size: 24rpx;
@@ -1557,30 +1619,20 @@ export default {
 }
 
 .cancel-btn {
-  background: linear-gradient(135deg, #f1f2f6 0%, #dfe4ea 100%);
   color: #636e72;
-  border: 2rpx solid #dcdde1;
-  box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.08);
-  
-  &:active {
-    background: linear-gradient(135deg, #dfe4ea 0%, #c8d6e5 100%);
-    box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.12);
-  }
 }
 
 .confirm-btn {
   background: linear-gradient(135deg, #1890ff 0%, #40a9ff 100%);
-  color: #ffffff;
-  box-shadow: 
-    0 6rpx 20rpx rgba(24, 144, 255, 0.4),
-    0 2rpx 8rpx rgba(64, 169, 255, 0.3);
-  text-shadow: 0 2rpx 4rpx rgba(0, 0, 0, 0.2);
-  
-  &:active {
-    box-shadow: 
-      0 4rpx 16rpx rgba(24, 144, 255, 0.3),
-      0 2rpx 8rpx rgba(64, 169, 255, 0.2);
-  }
+  color: #ffffff; 
+  border-radius: 16rpx;
+  font-size: 24rpx;
+  font-weight: 600;
+  letter-spacing: 0.5rpx;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
 }
 
 /* 弹窗动画 */
@@ -1699,6 +1751,7 @@ export default {
 /* 描述字段特殊样式 */
 .description-item {
   align-items: flex-start;
+  margin-bottom: 20rpx;
   min-height: 80rpx;
   
   .form-label {
@@ -1734,10 +1787,8 @@ export default {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Helvetica Neue', Helvetica, Arial, sans-serif;
   font-weight: 400;
   transition: all 0.3s ease;
-  
-  &:active {
-    background: #ffffff;
-    box-shadow: 0 0 0 4rpx rgba(24, 144, 255, 0.1);
+  .picker-text {
+    margin-right: 16rpx;
   }
 }
 
@@ -1751,7 +1802,7 @@ export default {
 .safety-score-item {
   .safety-score-display {
     flex: 1;
-  display: flex;
+    display: flex;
     align-items: center;
     justify-content: flex-end;
   }
@@ -1860,9 +1911,17 @@ export default {
   font-weight: 400;
 }
 
+/* 图片上传区域样式 */
+.image-upload-area {
+  padding: 24rpx;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16rpx;
+  align-items: flex-start;
+}
+
 /* 图片列表样式 */
 .image-list {
-  padding: 24rpx;
   display: flex;
   flex-wrap: wrap;
   gap: 16rpx;
@@ -1903,6 +1962,56 @@ export default {
   opacity: 0;
   transition: opacity 0.3s ease;
   border-radius: 16rpx;
+}
+
+/* 上传按钮样式 */
+.upload-btn {
+  width: 200rpx;
+  height: 150rpx;
+  border: 2rpx dashed #d9d9d9;
+  border-radius: 16rpx;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  background: #fafbfc;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  
+  &:hover {
+    border-color: #1890ff;
+    background: #f0f8ff;
+    transform: translateY(-2rpx);
+  }
+  
+  &:active {
+    transform: scale(0.98);
+  }
+}
+
+.upload-icon {
+  width: 68rpx;
+  height: 68rpx;
+  margin-bottom: 12rpx;
+  opacity: 0.6;
+}
+
+.upload-text {
+  font-size: 24rpx;
+  color: #666666;
+  font-weight: 500;
+}
+
+/* 空状态样式调整 */
+.empty-upload-state {
+  width: 100%;
+  padding: 48rpx 24rpx;
+  text-align: center;
+  color: #95a5a6;
+  font-size: 28rpx;
+  background: #fafbfc;
+  border-radius: 12rpx;
+  border: 2rpx dashed #d9d9d9;
 }
 
 .image-item:hover .image-overlay {
@@ -2006,32 +2115,31 @@ export default {
 
 /* 底部按钮 */
   .footer {
-  display: flex;
-  padding: 16rpx 32rpx;
-  gap: 24rpx;
-  background: #ffffff;
-  border-top: 1rpx solid #e8f4ff;
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  z-index: 100;
-  box-shadow: 0 -4rpx 20rpx rgba(0, 0, 0, 0.08);
+    display: flex;
+    padding: 16rpx 32rpx;
+    gap: 24rpx;
+    background: #ffffff;
+    border-top: 1rpx solid #e8f4ff;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 100;
+    box-shadow: 0 -4rpx 20rpx rgba(0, 0, 0, 0.08);
   }
   
   .footer-btn {
-  flex: 1;
-  border-radius: 16rpx;
-  font-size: 24rpx;
+    flex: 1;
+    border-radius: 16rpx;
+    font-size: 24rpx;
     font-weight: 600;
-  border: none;
-  transition: all 0.3s ease;
-  position: relative;
-  overflow: hidden;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Helvetica Neue', Helvetica, Arial, sans-serif;  
-  &:active {
-    transform: scale(0.98);
-  }
+    border: none;
+    position: relative;
+    overflow: hidden;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Helvetica Neue', Helvetica, Arial, sans-serif;  
+    &:active {
+      transform: scale(0.98);
+    }
 }
 
 .cancel-btn {
@@ -2049,12 +2157,14 @@ export default {
 .confirm-btn {
   background: linear-gradient(135deg, #1890ff 0%, #096dd9 100%);
   color: #ffffff;
-  box-shadow: 0 6rpx 20rpx rgba(24, 144, 255, 0.3);
-  
-  &:active {
-    background: linear-gradient(135deg, #096dd9 0%, #0050b3 100%);
-    box-shadow: 0 4rpx 16rpx rgba(24, 144, 255, 0.4);
-  }
+  border-radius: 16rpx;
+  font-size: 24rpx;
+  font-weight: 600;
+  letter-spacing: 0.5rpx;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
 }
 
 /* 移动端优化 */
@@ -2105,11 +2215,10 @@ export default {
   }
   
   .footer-btn {
-    height: 88rpx;
-    font-size: 30rpx;
+    height: 68rpx;
+    line-height: 68rpx;
+    font-size: 24rpx;
   }
-  
-
   
   .safety-content {
     padding: 10rpx 16rpx;
@@ -2199,10 +2308,22 @@ export default {
   }
   
   .footer-btn {
-    height: 60rpx;
-    font-size: 28rpx;
+    height: 68rpx;
+    line-height: 68rpx;
+    font-size: 24rpx;
   }
   
 
 }
 </style> 
+<style lang="scss">
+/* 提升 uni 提示层层级，确保在联系人弹窗 (.contact-modal, z-index: 1000) 之上显示 */
+:deep(.uni-toast),
+:deep(.uni-toast__box) {
+  z-index: 3000 !important;
+}
+
+:deep(.uni-mask) {
+  z-index: 2999 !important;
+}
+</style>

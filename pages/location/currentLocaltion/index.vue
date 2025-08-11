@@ -45,8 +45,8 @@
                 <view class="img-container">
                   <image :src="showImgUrl(item.type)" class="card-img" @click="goToDetail(item)"/>
                   <!-- 安全等级标签 -->
-                  <text :class="['safety-tag', item.safeLevelId === 1 ? 'safety-excellent' : item.safeLevelId === 2 ? 'safety-good' : item.safeLevelId === 3 ? 'safety-normal' : 'safety-danger']">
-                    {{ item.safeLevelName }}
+                  <text  v-if="item.fireSafetyScore" :class="['safety-tag',  item.fireSafetyScore.safetyLevelId === 1 ? 'safety-excellent' : item.fireSafetyScore.safetyLevelId === 2 ? 'safety-good' : item.fireSafetyScore.safetyLevelId === 3 ? 'safety-normal' : 'safety-danger']">
+                    {{ item.fireSafetyScore.safetyLevelName }}
                   </text>
                 </view>
               </view>
@@ -57,8 +57,9 @@
                   <image :src="serverUrl + '/static/icons/common/phone.png'" class="phone-icon" @click="onClickShowPhone(item)" />
                 </view>
                 <view class="card-desc">
-                  <text class="card-desc-score">{{ item.safeLevelScore || 0 }}</text>
-                  <text>分</text>
+                  <text class="card-desc-score">{{ item.fireSafetyScore ? item.fireSafetyScore.totalScore : ''  }}</text>
+                  <text v-if="item.fireSafetyScore">分</text>
+                  <text v-else>未设置</text>
                 </view>
                 <button class="card-btn" @click="goToExternalLink(item.allSenceLink)">一键查看</button>
               </view>
@@ -133,9 +134,7 @@ export default {
       finished: false,
       showWebview: false,
       webviewUrl: '',
-      showPhoneSelector: false, // 控制电话选择器显示
       currentPhoneList: [], // 当前电话列表
-      phonePickerList: [], // uni.picker 的 range 数据
       showCustomPhoneSelector: false // 控制自定义电话选择器显示
     };
   },
@@ -457,32 +456,6 @@ body, html {
   margin-right: 1px;
 }
 
-/* 电话列表样式 */
-.phone-list {
-  margin: auto 0;
-}
-.phone-item {
-  display: flex;
-  align-items: center;
-  font-size: 13px;
-  margin-bottom: 4px;
-  color: #555;
-  cursor: pointer; /* 提示可点击 */
-  min-width: 0; /* 允许收缩 */
-}
-.phone-label {
-  color: #666;
-  margin-right: 4px;
-  flex-shrink: 0; /* 防止标签被压缩 */
-}
-.phone-number {
-  color: #2196F3;
-  margin-right: 4px;
-  flex: 1;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
 .phone-icon {
   top: 1px;
   margin-right: 4px;
@@ -566,8 +539,6 @@ body, html {
   width: 20px;
   height: 20px;
 }
-
-
 
 /* 自定义电话选择器样式 */
 .custom-phone-selector {

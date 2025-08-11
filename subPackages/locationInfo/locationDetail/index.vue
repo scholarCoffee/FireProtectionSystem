@@ -60,23 +60,22 @@
           </view>
           
           <!-- 安全等级卡片 -->
-          <view class="safety-card-full" @tap="goToSafetyDetail">
+          <view class="safety-card-full" @tap="goToSafetyDetail" v-if="locationObj.fireSafetyScore">
             <view class="safety-header">
                 <view class="safety-info">
                   <view class="score-display">
-                    <text class="score-number">{{ locationObj.safeLevelScore || 0 }}</text>
+                    <text class="score-number">{{ locationObj.fireSafetyScore.totalScore }}</text>
                     <text class="score-unit">分</text>
                   </view>
                 </view>
                 <view class="safety-badge" :class="safeLevelClass">
-                  <text class="badge-text">{{ locationObj.safeLevelName }}</text>
+                  <text class="badge-text">{{ locationObj.fireSafetyScore.safetyLevelName }}</text>
                 </view>
               </view>
             <view class="score-progress">
               <view class="progress-track">
-                <view class="progress-fill" :style="{ width: (locationObj.safeLevelScore || 0) + '%' }"></view>
+                <view class="progress-fill" :style="{ width: (locationObj.fireSafetyScore.totalScore) + '%' }"></view>
               </view>
-              <text class="progress-text">安全评分</text>
             </view>
           </view>
           

@@ -105,7 +105,6 @@
         </view>
       </view>
     </view>
-    
     <!-- 底部间距 -->
     <view class="bottom-spacing"></view>
   </scroll-view>
@@ -124,10 +123,6 @@ export default {
         totalScore: 0,
         maxPossibleScore: 100,
         scorePercentage: 0,
-        safetyLevel: '一般',
-        safetyColor: '黄色',
-        safetyCssClass: 'safety-normal',
-        safetyCssColor: '#faad14',
         scoreItems: {},
         configVersion: '1.0.0',
         createTime: null,

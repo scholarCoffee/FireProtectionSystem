@@ -57,11 +57,11 @@
             </view>
             <view class="content-row">
               <text class="label">安全等级：</text>
-              <text class="value">{{ item.safeLevelName || '未设置' }}</text>
+              <text class="value">{{ item.fireSafetyScore ? item.fireSafetyScore.safetyLevelName : '未设置' }}</text>
             </view>
             <view class="content-row">
               <text class="label">安全评分：</text>
-              <text class="value">{{ item.safeLevelScore || 0 }}分</text>
+              <text class="value">{{ item.fireSafetyScore ? item.fireSafetyScore.totalScore + '分' : '未设置' }}</text>
             </view>
             <view class="content-row">
               <text class="label">描述：</text>

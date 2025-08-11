@@ -12,14 +12,14 @@
           <text class="tab-text">位置信息</text>
         </view>
 
-        <view 
+        <!-- <view 
           class="tab-item" 
           :class="{ active: currentTab === 'chat' }"
           @tap="switchTab('chat')"
         >
           <image :src="currentTab === 'chat' ? serverUrl + '/static/icons/chat/chat-active.png' : serverUrl + '/static/icons/chat/chat.png'" class="tab-icon" />
           <text class="tab-text">聊天管理</text>
-        </view>
+        </view> -->
       </view>
     </view>
 
@@ -323,6 +323,4 @@ export default {
   flex-direction: column;
   min-height: 0; /* 允许flex子项收缩 */
 }
-
-
 </style> 
