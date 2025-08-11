@@ -3,7 +3,7 @@
         <!-- 如果用户未登录，显示登录提示和按钮 -->
         <view v-if="!isLoggedIn" class="login-prompt">
             <view class="login-container">
-                <image src="https://www.xiaobei.space/static/icons/person/person.png" class="login-avatar"></image>
+                <image :src="serverUrl + '/static/icons/person/person.png'" class="login-avatar"></image>
                 <text class="login-title">欢迎使用消防作战终端</text>
                 <text class="login-desc">登录后即可管理个人信息</text>
                 <button class="login-button" open-type="getUserInfo" @getuserinfo="onGetUserInfo">一键登录</button>
@@ -18,7 +18,7 @@
                         <image :src="userInfo.avatarUrl" class="user-img"></image>
                     </view>
                     <view class="more" >
-                        <image src="https://www.xiaobei.space/static/icons/common/right.png" mode="aspectFit"></image>
+                        <image :src="serverUrl + '/static/icons/common/right.png'" mode="aspectFit"></image>
                     </view>
                 </view>
             </view>
@@ -27,7 +27,7 @@
                     <view class="title">昵称：</view>
                     <view class="cont">{{ userInfo.nickName }}</view>
                     <view class="more">
-                        <image src="https://www.xiaobei.space/static/icons/common/right.png" mode="aspectFit"></image>
+                        <image :src="serverUrl + '/static/icons/common/right.png'" mode="aspectFit"></image>
                     </view>
                 </view>
             </view>
@@ -39,7 +39,7 @@
                         <button v-else open-type="getPhoneNumber" @getphonenumber="onWechatPhoneResult" class="hidden-phone-btn">点击绑定手机号</button>
                     </view>
                     <view class="more">
-                        <image src="https://www.xiaobei.space/static/icons/common/right.png" mode="aspectFit"></image>
+                        <image :src="serverUrl + '/static/icons/common/right.png'" mode="aspectFit"></image>
                     </view>
                 </view>
             </view>
@@ -54,7 +54,7 @@
                         <text class="settings-text">设置</text>
                     </view>
                     <view class="more">
-                        <image src="https://www.xiaobei.space/static/icons/common/right.png" mode="aspectFit"></image>
+                        <image :src="serverUrl + '/static/icons/common/right.png'" mode="aspectFit"></image>
                     </view>
                 </view>
             </view>
@@ -113,7 +113,7 @@
                 const mockUserInfo = {
                     id: '687a6f59e83419906c0699f4',
                     nickName: '测试用户-小创',
-                    avatarUrl: 'https://www.xiaobei.space/static/icons/chat/person-avatar.png',
+                    avatarUrl: this.serverUrl + '/static/icons/chat/person-avatar.png',
                     permissionStatus: 1 // 默认有权限
                 };
                 uni.setStorageSync('userInfo', mockUserInfo);

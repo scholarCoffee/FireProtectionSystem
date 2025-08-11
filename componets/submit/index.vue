@@ -8,16 +8,16 @@
                 <textarea v-model="msg" auto-height="true" class="chat-send btn" :class="{ displayNone: isRecord}" @input="onClickInput" @focus="focus"></textarea>
                 <view class="record btn" :class="{ displayNone: !isRecord }" @longpress="touchstart" @touchend="touchend" @touchmove="touchmove">按住说话</view>
                 <view class="bt-img emoji-icon" @tap="onShowEmoji">
-                    <image src="https://www.xiaobei.space/static/icons/chat/smile.png" class="icon gray"></image>
+                    <image :src="serverUrl + '/static/icons/chat/smile.png'" class="icon gray"></image>
                 </view>
                 <view class="bt-img add-icon" @tap="onClickMore">
-                    <image src="https://www.xiaobei.space/static/icons/chat/add.png" class="icon gray"></image>
+                    <image :src="serverUrl + '/static/icons/chat/add.png'" class="icon gray"></image>
                 </view>
             </view>
             <view class="emoji" :class="{ displayNone: isEmoji }">
                 <view class="emoji-send">
                     <view class="emoji-send-det" @tap="onDelEmoji">
-                        <image src="https://www.xiaobei.space/static/icons/chat/delete.png"></image>
+                        <image :src="serverUrl + '/static/icons/chat/delete.png'"></image>
                     </view>
                     <view class="emoji-send-bt" @tap="onClickEmojiSend">发送</view>
                 </view>
@@ -25,7 +25,7 @@
                 </view>
                 <view class="more" :class="{ displayNone: isMore }">
                     <view class="more-list" v-for="(item, index) in moreList" :key="index" @tap="onClickMore(item)">
-                        <image :src="item.imgUrl"></image>
+                        <image :src="serverUrl + item.imgUrl"></image>
                         <view class="more-list-text">{{ item.text }}</view>
                     </view>
                 </view>
@@ -64,7 +64,7 @@
             }
         },
         mounted() {
-            this.speakIcon = 'https://www.xiaobei.space/static/icons/chat/beforeSpeak.png'
+            this.speakIcon = this.serverUrl + '/static/icons/chat/beforeSpeak.png'
         },
         methods: {
             hideSubmit() {
@@ -72,7 +72,7 @@
                 this.isEmoji = true
                 this.isMore = true
                 this.isRecord = false
-                this.speakIcon = "https://www.xiaobei.space/static/icons/chat/beforeSpeak.png"
+                this.speakIcon = this.serverUrl + "/static/icons/chat/beforeSpeak.png"
             },
             // 获取模块高度
             getElementHeight(value) {
@@ -87,9 +87,9 @@
                 this.isEmoji = true
                 this.isMore = true
                 if(this.isRecord) {
-                    this.speakIcon = "https://www.xiaobei.space/static/icons/chat/beforeSpeak.png"
+                    this.speakIcon = this.serverUrl + "/static/icons/chat/beforeSpeak.png"
                 } else {
-                    this.speakIcon = "https://www.xiaobei.space/static/icons/chat/speaking.png"
+                    this.speakIcon = this.serverUrl + "/static/icons/chat/speaking.png"
                 }
                 this.isRecord = !this.isRecord
             },
@@ -98,7 +98,7 @@
                 this.isEmoji = !this.isEmoji
                 this.isMore = true
                 this.isRecord = false
-                this.speakIcon = "https://www.xiaobei.space/static/icons/chat/beforeSpeak.png"
+                this.speakIcon = this.serverUrl + "/static/icons/chat/beforeSpeak.png"
                 setTimeout(() => { 
                     this.getElementHeight(0)
                 }, 0)
@@ -213,7 +213,7 @@
                 this.isEmoji = true
                 this.isMore = true
                 this.isRecord = false
-                this.speakIcon = "https://www.xiaobei.space/static/icons/chat/beforeSpeak.png"
+                this.speakIcon = this.serverUrl + "/static/icons/chat/beforeSpeak.png"
             },
             // 点击输入框
             onClickInput(e) {
@@ -237,7 +237,7 @@
             onClickMore() {
                 this.isMore = !this.isMore
                 this.isRecord = false
-                this.speakIcon = "https://www.xiaobei.space/static/icons/chat/beforeSpeak.png"
+                this.speakIcon = this.serverUrl + "/static/icons/chat/beforeSpeak.png"
                 this.isEmoji = true
                 setTimeout(() => {
                     this.getElementHeight(0)
