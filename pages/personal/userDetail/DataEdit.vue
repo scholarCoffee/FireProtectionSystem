@@ -10,27 +10,27 @@
             <text class="section-title">位置信息</text>
           </view>
           
-          <view class="form-item">
-            <text class="form-label">地址名称 <text class="required">*</text></text>
-            <input 
-              v-model="formData.addressName" 
-              class="form-input" 
-              placeholder="请输入地址名称"
-              maxlength="50"
-              @input="onAddressNameInput"
-            />
-          </view>
-          
-          <view class="form-item">
-            <text class="form-label">详细地址 <text class="required">*</text></text>
-            <input 
-              v-model="formData.addressExt" 
-              class="form-input" 
-              placeholder="请输入详细地址"
-              maxlength="200"
-              @input="onAddressExtInput"
-            />
-          </view>
+        <view class="form-item">
+          <text class="form-label">地址名称 <text class="required">*</text></text>
+          <input 
+            v-model="formData.addressName" 
+            class="form-input" 
+            placeholder="请输入地址名称"
+            maxlength="50"
+            @input="onAddressNameInput"
+          />
+        </view>
+        
+        <view class="form-item">
+          <text class="form-label">详细地址 <text class="required">*</text></text>
+          <input 
+            v-model="formData.addressExt" 
+            class="form-input" 
+            placeholder="请输入详细地址"
+            maxlength="200"
+            @input="onAddressExtInput"
+          />
+        </view>
           
           <view class="form-item">
             <text class="form-label">地址代号 <text class="required">*</text></text>
@@ -53,36 +53,36 @@
               @input="onAllSenceLinkInput"
             />
           </view>
-          
-          <view class="form-item">
-            <text class="form-label">位置类型 <text class="required">*</text></text>
-            <picker 
-              :value="formData.type - 1" 
-              :range="locationTypeOptions" 
-              range-key="label"
-              @change="onLocationTypeChange"
-              class="form-picker"
-            >
-              <view class="picker-display">
-                <text>{{ getLocationTypeText(formData.type) }}</text>
-                <image :src="serverUrl + '/static/icons/common/down.png'" class="picker-arrow" />
-              </view>
-            </picker>
-          </view>
-          
-          <view class="form-item description-item">
-            <text class="form-label">描述</text>
-            <textarea 
-              v-model="formData.description" 
-              class="form-textarea" 
-              placeholder="请输入描述信息"
-              maxlength="500"
-              auto-height
-              show-confirm-bar="false"
-            />
-          </view>
+        
+        <view class="form-item">
+          <text class="form-label">位置类型 <text class="required">*</text></text>
+          <picker 
+            :value="formData.type - 1" 
+            :range="locationTypeOptions" 
+            range-key="label"
+            @change="onLocationTypeChange"
+            class="form-picker"
+          >
+            <view class="picker-display">
+              <text>{{ getLocationTypeText(formData.type) }}</text>
+              <image :src="serverUrl + '/static/icons/common/down.png'" class="picker-arrow" />
+            </view>
+          </picker>
         </view>
         
+          <view class="form-item description-item">
+          <text class="form-label">描述</text>
+          <textarea 
+            v-model="formData.description" 
+            class="form-textarea" 
+            placeholder="请输入描述信息"
+            maxlength="500"
+              auto-height
+              show-confirm-bar="false"
+          />
+        </view>
+      </view>
+
         <!-- 安全信息区域 -->
         <view class="safety-section">
           <view class="section-header">
@@ -96,7 +96,7 @@
               />
               <image 
                 v-else 
-                :src="serverUrl + '/static/icons/common/edit.png'" 
+                :src="serverUrl + '/static/icons/common/edit-white.png'" 
                 class="action-icon edit-icon" 
                 @tap="editSafetyScore" 
               />
@@ -104,56 +104,41 @@
           </view>
           
           <view v-if="formData.fireSafetyScore" class="safety-content">
-            <view class="form-item safety-score-item">
-              <text class="form-label">安全评分</text>
+            <view class="safety-summary">
               <view class="safety-score-display">
-                <text class="score-value">{{ calculateTotalScore() }}分</text>
-              </view>
-            </view>
-            
-            <view class="form-item safety-level-item">
-              <view class="form-label">
-                <text>安全等级</text>
-                <view class="info-icon-container" 
-                      @mouseenter="showScoreStandard" 
-                      @mouseleave="hideScoreStandard"
-                      @touchstart="toggleScoreStandard">
-                  <image :src="serverUrl + '/static/icons/common/info.png'" class="info-icon" />
+                <view class="score-display-content">
+                  <text class="score-label">总分:</text>
+                  <text class="score-value">{{ calculateTotalScore() }}分</text>
+                  <text class="level-value" :class="getSafetyLevelClass(getSafetyLevelByScore(calculateTotalScore()))">
+                    ({{ getSafetyLevelText(getSafetyLevelByScore(calculateTotalScore())) }})
+                  </text>
                 </view>
-              </view>
-              <view class="safety-level-display">
-                <text class="safety-level-text" :class="getSafetyLevelClass(getSafetyLevelByScore(calculateTotalScore()))">
-                  {{ getSafetyLevelText(getSafetyLevelByScore(calculateTotalScore())) }}
-                </text>
-              </view>
-            </view>
-            
-            <!-- 评分标准提示框 -->
-            <view v-if="showScoreTooltip" class="score-tooltip">
-              <view class="tooltip-title">评分标准</view>
-              <view class="tooltip-content">
-                <view class="tooltip-item">
-                  <text class="tooltip-label">优秀：</text>
-                  <text class="tooltip-text">90分及以上</text>
-                </view>
-                <view class="tooltip-item">
-                  <text class="tooltip-label">一般：</text>
-                  <text class="tooltip-text">70-89分</text>
-                </view>
-                <view class="tooltip-item">
-                  <text class="tooltip-label">较差：</text>
-                  <text class="tooltip-text">70分以下</text>
+                <!-- 分数进度条 -->
+                <view class="score-progress-section">
+                  <view class="progress-bar-container">
+                    <view class="progress-bar">
+                      <view 
+                        class="progress-fill" 
+                        :style="{ width: calculateTotalScore() + '%' }"
+                        :class="getProgressBarClass(getSafetyLevelByScore(calculateTotalScore()))"
+                      ></view>
+                    </view>
+                    <view class="progress-markers">
+                      <view class="marker">
+                        <text class="marker-text">0分</text>
+                      </view>
+                      <view class="marker">
+                        <text class="marker-text">50分</text>
+                      </view>
+                      <view class="marker">
+                        <text class="marker-text">100分</text>
+                      </view>
+                    </view>
+                  </view>
                 </view>
               </view>
             </view>
-            
-            <!-- 安全信息组件 -->
-            <SafetyScoreDetail 
-              :safetyScoreData="formData.fireSafetyScore"
-              :addressId="editId"
-            />
           </view>
-          
           <view v-else class="empty-state">
             <text class="empty-text">暂无安全评分信息，点击上方"+"添加</text>
           </view>
@@ -231,14 +216,14 @@
             <view class="modal-body">
               <view class="form-group">
                 <text class="form-label">联系人姓名 <text class="required">*</text></text>
-                <input 
+          <input 
                   v-model="contactForm.name" 
                   class="form-modal-input" 
                   placeholder="请输入联系人姓名"
                   maxlength="20"
-                />
-              </view>
-              
+          />
+        </view>
+        
               <view class="form-group">
                 <text class="form-label">联系电话 <text class="required">*</text></text>
                 <input 
@@ -247,9 +232,9 @@
                   placeholder="请输入联系电话"
                   maxlength="15"
                   type="number" 
-                />
-              </view>
-              
+          />
+        </view>
+        
               <view class="form-group">
                 <text class="form-label">联系人类型 <text class="required">*</text></text>
                 <view class="contact-type-options">
@@ -348,8 +333,8 @@
             auto-height
             show-confirm-bar="false"
           />
-        </view>
-        
+          </view>
+          
         <view class="form-item">
           <text class="form-label">状态</text>
           <picker 
@@ -362,7 +347,7 @@
             <view class="picker-display">
               <text>{{ getChatStatusText(formData.chatStatus) }}</text>
               <image :src="serverUrl + '/static/icons/common/down.png'" class="picker-arrow" />
-            </view>
+                </view>
           </picker>
         </view>
       </view>
@@ -393,8 +378,7 @@ export default {
       formData: {},
       // 错误状态
       errors: {},
-      // 评分标准提示框显示状态
-      showScoreTooltip: false,
+
       // 选项数据
       locationTypeOptions: [],
       chatTypeOptions: [
@@ -437,23 +421,13 @@ export default {
       const unitContacts = this.formData.phoneList.filter(contact => contact.type === 1);
       const fireContacts = this.formData.phoneList.filter(contact => contact.type === 2);
       
-      return {
-        unitFull: unitContacts.length >= 1, // 单位负责人最多1个
-        fireFull: fireContacts.length >= 1, // 消防负责人最多1个
-        canAddUnit: unitContacts.length < 1,
-        canAddFire: fireContacts.length < 1
-      };
+              return {
+          unitFull: unitContacts.length >= 1,
+          fireFull: fireContacts.length >= 1
+        };
     },
     
-    // 检查是否可以添加更多联系人
-    canAddMoreContacts() {
-      return this.formData.phoneList.length < 2; // 最多2个联系人
-    },
-    
-    // 检查是否至少有一个联系人
-    hasMinimumContacts() {
-      return this.formData.phoneList.length >= 1;
-    }
+
   },
   onLoad(options) {
     this.type = options.type || 'location';
@@ -921,10 +895,12 @@ export default {
       });
     },
     
+
+    
     // 图片管理方法
     addImage() {
       if (this.formData.imgList.length >= 3) {
-        uni.showToast({
+            uni.showToast({
           title: '最多只能上传3张图片',
           icon: 'none'
         });
@@ -985,31 +961,35 @@ export default {
       }
     },
     
-    // 显示评分标准提示框
-    showScoreStandard() {
-      this.showScoreTooltip = true;
-    },
-    
-    // 隐藏评分标准提示框
-    hideScoreStandard() {
-      this.showScoreTooltip = false;
-    },
-    
-    // 触摸切换评分标准提示框（移动端支持）
-    toggleScoreStandard() {
-      this.showScoreTooltip = !this.showScoreTooltip;
-    },
-    
-    // 获取安全等级的CSS类名
-    getSafetyLevelClass(levelId) {
-      if (levelId === 1) {
-        return 'safety-level-excellent'; // 优秀 - 绿色
-      } else if (levelId === 2) {
-        return 'safety-level-general'; // 一般 - 蓝色
-      } else {
-        return 'safety-level-poor'; // 较差 - 橙色
+    // 根据安全等级获取CSS类名
+    getSafetyLevelClass(level) {
+      switch (level) {
+        case 1:
+          return 'excellent';
+        case 2:
+          return 'good';
+        case 3:
+          return 'poor';
+        default:
+          return '';
       }
     },
+    
+    // 根据安全等级获取进度条CSS类名
+    getProgressBarClass(level) {
+      switch (level) {
+        case 1:
+          return 'progress-excellent';
+        case 2:
+          return 'progress-good';
+        case 3:
+          return 'progress-poor';
+        default:
+          return '';
+      }
+    },
+    
+
 
     // 获取安全等级文本
     getSafetyLevelText(levelId) {
@@ -1036,32 +1016,7 @@ export default {
       });
     },
 
-    // 新增方法：格式化日期时间
-    formatDateTime(timestamp) {
-      if (!timestamp) return '';
-      const date = new Date(timestamp);
-      const year = date.getFullYear();
-      const month = String(date.getMonth() + 1).padStart(2, '0');
-      const day = String(date.getDate()).padStart(2, '0');
-      const hours = String(date.getHours()).padStart(2, '0');
-      const minutes = String(date.getMinutes()).padStart(2, '0');
-      return `${year}-${month}-${day} ${hours}:${minutes}`;
-    },
-    
-    // 滚动到第一个错误位置
-    scrollToFirstError() {
-      // 延迟执行，确保DOM更新完成
-      this.$nextTick(() => {
-        const errorElements = document.querySelectorAll('.error-message');
-        if (errorElements.length > 0) {
-          const firstError = errorElements[0];
-          firstError.scrollIntoView({ 
-            behavior: 'smooth', 
-            block: 'center' 
-          });
-        }
-      });
-    },
+
   }
 }
 </script>
@@ -1078,8 +1033,8 @@ export default {
 .form-container {
   flex: 1;
   padding: 0;
-  padding-bottom: 170rpx;
-  height: calc(100vh - 100rpx);
+  padding-bottom: 220rpx;
+  height: calc(100vh - 80rpx);
   overflow-y: auto;
 }
 
@@ -1134,16 +1089,139 @@ export default {
   }
   
   .safety-content {
-    .form-item {
-      padding: 0rpx 20rpx;
-      border-bottom: 1rpx solid #f5f5f5;
+    padding: 12rpx 20rpx;
+    width: 100%;
+    box-sizing: border-box;
+    .safety-summary {
+      display: flex;
+      box-sizing: border-box;
+      justify-content: flex-start;
+      align-items: center;
+      width: 100%;
+    }
+    
+    .safety-score-display {
       display: flex;
       align-items: center;
-      min-height: 72rpx;
-      
-      &:last-child {
-        border-bottom: none;
+      box-sizing: border-box;
+      gap: 6rpx;
+      background: linear-gradient(135deg, #f8faff 0%, #f0f8ff 100%);
+      border: 1rpx solid #e6f4ff;
+      border-radius: 12rpx;
+      padding: 12rpx 16rpx;
+      transition: all 0.3s ease;
+      flex: 1;
+      min-width: 0;
+      .score-display-content {
+        display: flex;
+        align-items: center;
+        justify-content: flex-start;
+        width: 100%;
       }
+      
+      &:hover {
+        transform: translateY(-2rpx);
+        box-shadow: 0 4rpx 16rpx rgba(24, 144, 255, 0.15);
+      }
+    }
+    
+    .score-label {
+      font-size: 26rpx;
+      color: #333333;
+      font-weight: 500;
+      white-space: nowrap;
+    }
+    
+    .score-value {
+      font-size: 32rpx;
+      color: #007aff;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+    
+    .level-value {
+      font-size: 26rpx;
+      font-weight: 500;
+      white-space: nowrap;
+      
+      &.excellent {
+        color: #34c759;
+      }
+      
+      &.good {
+        color: #007aff;
+      }
+      
+      &.poor {
+        color: #ff9500;
+      }
+    }
+    
+    /* 分数进度条样式 */
+    .score-progress-section {
+      width: 100%;
+    }
+    
+    .progress-bar-container {
+      position: relative;
+      width: 100%;
+    }
+    
+    .progress-bar {
+      height: 14rpx;
+      background: #e8f4ff;
+      border-radius: 8rpx;
+      overflow: hidden;
+      position: relative;
+      width: 100%;
+    }
+    
+    .progress-fill {
+      height: 100%;
+      border-radius: 8rpx;
+      transition: width 0.6s ease;
+      
+      &.progress-excellent {
+        background: linear-gradient(90deg, #52c41a 0%, #73d13d 100%);
+      }
+      
+      &.progress-good {
+        background: linear-gradient(90deg, #1890ff 0%, #40a9ff 100%);
+      }
+      
+      &.progress-poor {
+        background: linear-gradient(90deg, #fa8c16 0%, #ffa940 100%);
+      }
+    }
+    
+    .progress-markers {
+      display: flex;
+      justify-content: space-between;
+      position: relative;
+      width: 100%;
+    }
+    
+    .marker {
+      position: relative;
+      width: 60rpx;
+      text-align: center;
+      
+      &::before {
+        content: '';
+        position: absolute;
+        top: -6rpx;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 2rpx;
+        height: 10rpx;
+        background: #d9d9d9;
+      }
+    }
+    
+    .marker-text {
+      font-size: 20rpx;
+      color: #666666;
+      font-weight: 500;
     }
   }
 }
@@ -1673,7 +1751,7 @@ export default {
 .safety-score-item {
   .safety-score-display {
     flex: 1;
-    display: flex;
+  display: flex;
     align-items: center;
     justify-content: flex-end;
   }
@@ -1695,7 +1773,7 @@ export default {
   position: relative;
   
   .safety-level-display {
-    flex: 1;
+  flex: 1;
     display: flex;
     align-items: center;
     justify-content: flex-end;
@@ -1707,7 +1785,7 @@ export default {
     font-weight: 700;
     letter-spacing: 0.5rpx;
     padding: 16rpx 24rpx;
-    border-radius: 12rpx;
+  border-radius: 12rpx;
     
     &.safety-level-excellent {
       color: #52c41a;
@@ -1729,87 +1807,9 @@ export default {
   }
 }
 
-.info-icon-container {
-  position: relative;
-  display: flex;
-  align-items: center;
-  margin-left: 8rpx;
-}
 
-.info-icon {
-  width: 32rpx;
-  height: 32rpx;
-  opacity: 0.7;
-  transition: opacity 0.2s ease;
-  
-  &:hover {
-    opacity: 1;
-  }
-}
 
-/* 评分标准提示框 */
-.score-tooltip {
-  position: absolute;
-  top: 100%;
-  right: 0;
-  width: 320rpx;
-  background: #ffffff;
-  border: 1rpx solid #e5e5e5;
-  border-radius: 16rpx;
-  box-shadow: 0 8rpx 32rpx rgba(0, 0, 0, 0.15);
-  z-index: 1000;
-  margin-top: 16rpx;
-  overflow: hidden;
-  
-  @media (max-width: 750rpx) {
-    width: 300rpx;
-    right: -20rpx;
-  }
-  
-  @media (max-width: 600rpx) {
-    width: 280rpx;
-    right: -40rpx;
-  }
-}
 
-.tooltip-title {
-  padding: 24rpx;
-  background: linear-gradient(135deg, #f8faff 0%, #e6f7ff 100%);
-  border-bottom: 1rpx solid #e5e5e5;
-  font-size: 28rpx;
-  font-weight: 600;
-  color: #1890ff;
-  letter-spacing: 0.3rpx;
-}
-
-.tooltip-content {
-  padding: 24rpx;
-}
-
-.tooltip-item {
-  display: flex;
-  align-items: center;
-  margin-bottom: 12rpx;
-  
-  &:last-child {
-    margin-bottom: 0;
-  }
-}
-
-.tooltip-label {
-  font-size: 26rpx;
-  color: #2c3e50;
-  font-weight: 600;
-  min-width: 60rpx;
-  letter-spacing: 0.3rpx;
-}
-
-.tooltip-text {
-  font-size: 26rpx;
-  color: #34495e;
-  font-weight: 500;
-  letter-spacing: 0.3rpx;
-}
 
 /* 大门配置样式 */
 .gate-name {
@@ -1954,6 +1954,8 @@ export default {
   }
 }
 
+
+
 /* 空状态样式 */
 .empty-state {
   padding: 48rpx 24rpx;
@@ -1969,9 +1971,9 @@ export default {
 .empty-text {
   color: #95a5a6;
   font-size: 28rpx;
-  font-weight: 400;
-}
-
+    font-weight: 400;
+  }
+  
 /* 错误提示样式 */
 .error-message {
   padding: 16rpx 24rpx;
@@ -2003,7 +2005,7 @@ export default {
 }
 
 /* 底部按钮 */
-.footer {
+  .footer {
   display: flex;
   padding: 16rpx 32rpx;
   gap: 24rpx;
@@ -2015,13 +2017,13 @@ export default {
   right: 0;
   z-index: 100;
   box-shadow: 0 -4rpx 20rpx rgba(0, 0, 0, 0.08);
-}
-
-.footer-btn {
+  }
+  
+  .footer-btn {
   flex: 1;
   border-radius: 16rpx;
   font-size: 24rpx;
-  font-weight: 600;
+    font-weight: 600;
   border: none;
   transition: all 0.3s ease;
   position: relative;
@@ -2107,14 +2109,50 @@ export default {
     font-size: 30rpx;
   }
   
-  .score-value {
-    font-size: 36rpx;
-    padding: 12rpx 20rpx;
-  }
+
   
-  .safety-level-text {
-    font-size: 32rpx;
-    padding: 12rpx 20rpx;
+  .safety-content {
+    padding: 10rpx 16rpx;
+    
+    .safety-summary {
+      flex-direction: column ;
+      gap: 10rpx ;
+    }
+    
+    .safety-score-display {
+      padding: 12rpx ;
+      flex-direction: column ;
+      gap: 6rpx ;
+      width: 100% ;
+    }
+    
+    .score-label {
+      font-size: 24rpx ;
+    }
+    
+    .score-value {
+      font-size: 30rpx ;
+    }
+    
+    .level-value {
+      font-size: 26rpx ;
+    }
+    
+    .score-progress-section {
+      margin: 10rpx 0 ;
+    }
+    
+    .progress-bar {
+      height: 12rpx ;
+    }
+    
+    .marker {
+      width: 50rpx ;
+    }
+    
+    .marker-text {
+      font-size: 18rpx ;
+    }
   }
 }
 
@@ -2165,14 +2203,6 @@ export default {
     font-size: 28rpx;
   }
   
-  .score-value {
-    font-size: 32rpx;
-    padding: 10rpx 16rpx;
-  }
-  
-  .safety-level-text {
-    font-size: 28rpx;
-    padding: 10rpx 16rpx;
-  }
+
 }
 </style> 

@@ -558,7 +558,7 @@ export default {
   justify-content: center;
   padding: 6px 12px;
   border-radius: 16px;
-  background: #07c160;
+  background: #40a9ff;
   -webkit-backdrop-filter: blur(10px);
   backdrop-filter: blur(20px);
   color: #ffffff;
@@ -568,9 +568,9 @@ export default {
 /* 单位图纸卡片 */
 .drawing-card {
   flex: 1;
-  background: linear-gradient(135deg, #1890FF, #40A9FF);
+  background: linear-gradient(135deg, #ffffff, #e6f7ff);
   border-radius: 12px;
-  padding: 16px;
+  padding: 10px;
   box-shadow: 0 4px 12px rgba(24, 144, 255, 0.2);
   position: relative;
   overflow: hidden;
