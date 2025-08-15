@@ -284,11 +284,6 @@
               <image :src="serverUrl + '/static/icons/common/add-third-grey.png'" class="upload-icon" />
               <text class="upload-text">上传图片</text>
             </view>
-            
-            <!-- 空状态提示 -->
-            <view v-if="formData.imgList.length === 0" class="empty-upload-state">
-              <text class="empty-text">暂无消防地图，点击下方按钮上传</text>
-            </view>
           </view>
         </view>
       </view>
@@ -594,7 +589,6 @@ export default {
             icon: 'none',
             duration: 3000
           });
-          
           // 滚动到第一个错误位置
           this.scrollToFirstError();
         }
@@ -722,6 +716,12 @@ export default {
         // 验证联系人配置：至少配置一个负责人
         if (!this.formData.phoneList || this.formData.phoneList.length === 0) {
           this.errors['phoneList'] = '至少需要配置一个联系人';
+          return false;
+        }
+
+        // 验证消防地图配置：至少配置一张消防地图
+        if (!this.formData.imgList || this.formData.imgList.length === 0) {
+          this.errors['imgList'] = '至少需要配置一张消防地图';
           return false;
         }
       } else if (this.type === 'chat') {

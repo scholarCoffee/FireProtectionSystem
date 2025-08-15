@@ -311,12 +311,7 @@ export default {
   border-color: #1296db;
   box-shadow: 0 2px 12px rgba(18, 150, 219, 0.15);
 }
-.location-icon {
-  width: 16px;
-  height: 16px;
-  margin-right: 5px;
-  top: 1px;
-}
+
 .tabs {
   display: flex;
   justify-content: space-around;
@@ -415,11 +410,7 @@ body, html {
   justify-content: space-between;
   min-width: 0; /* 允许flex子项收缩 */
 }
-.card-row {
-  display: flex;
-  align-items: center;
-  margin-bottom: 4px;
-}
+
 .card-title {
   font-weight: bold;
   margin: 0px;
