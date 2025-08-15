@@ -4,8 +4,43 @@
     <scroll-view class="form-container" scroll-y="true">
       <!-- Location表单 -->
       <view v-if="type === 'location'" class="form-content">
-        <!-- 位置信息区域 -->
+        <!-- 默认图片配置 -->
         <view class="location-info-section">
+          <view class="section-header">
+            <text class="section-title">默认图片 <text class="required">*</text></text>
+          </view>
+          
+          <view class="default-image-upload-area">
+            <!-- 已设置的默认图片 -->
+            <view class="default-image-preview" v-if="formData.defaultImg">
+              <image :src="serverUrl + formData.defaultImg" class="default-image" mode="aspectFill" />
+              <view class="image-overlay">
+                <view class="image-actions">
+                  <image :src="serverUrl + '/static/icons/common/delete-white.png'" class="action-icon delete-icon" @tap="deleteDefaultImage" />
+                </view>
+              </view>
+              <!-- 删除按钮 -->
+              <view class="delete-btn-overlay">
+                <button class="delete-btn-small" @tap="deleteDefaultImage">
+                  <image :src="serverUrl + '/static/icons/common/delete-white.png'" class="delete-icon-small" />
+                </button>
+              </view>
+            </view>
+            
+            <!-- 上传默认图片按钮 -->
+            <view class="upload-default-btn" v-if="!formData.defaultImg" @tap="addDefaultImage">
+              <image :src="serverUrl + '/static/icons/common/add-third-grey.png'" class="upload-icon" />
+              <text class="upload-text">上传默认图片</text>
+            </view>
+            
+            <!-- 错误提示 -->
+            <view v-if="errors.defaultImg" class="error-message">
+              <text class="error-text">{{ errors.defaultImg }}</text>
+            </view>
+          </view>
+        </view>
+        <!-- 位置信息区域 -->
+        <view class="config-section">
           <view class="section-header">
             <text class="section-title">位置信息</text>
           </view>
@@ -260,7 +295,7 @@
           </view>
         </view>
           
-                <!-- 消防地图配置 -->
+        <!-- 消防地图配置 -->
         <view class="config-section">
           <view class="section-header">
             <text class="section-title">消防地图</text>
@@ -372,7 +407,6 @@ export default {
       formData: {},
       // 错误状态
       errors: {},
-
       // 选项数据
       locationTypeOptions: [],
       chatTypeOptions: [
@@ -464,6 +498,7 @@ export default {
           enterGateList: [], // 可出行大门列表
           phoneList: [], // 联系人列表
           imgList: [], // 消防地图图片列表
+          defaultImg: '', // 默认图片
         };
       } else if (this.type === 'chat') {
         this.formData = {
@@ -518,7 +553,8 @@ export default {
               fireSafetyScore: responseData.fireSafetyScore || null,
               enterGateList: responseData.enterGateList || [],
               phoneList: responseData.phoneList || [],
-              imgList: responseData.imgList || []
+              imgList: responseData.imgList || [],
+              defaultImg: responseData.defaultImg || '' // 默认图片
             };
           } else if (this.type === 'chat') {
             // 处理聊天数据
@@ -688,6 +724,10 @@ export default {
           if (!value) {
             this.errors[fieldName] = '请选择位置类型';
           }
+        } else if (fieldName === 'defaultImg') {
+          if (!value || !value.trim()) {
+            this.errors[fieldName] = '请上传默认图片';
+          }
         }
       } else if (this.type === 'chat') {
         if (fieldName === 'chatName') {
@@ -706,6 +746,7 @@ export default {
         this.validateField('addressId', this.formData.addressId);
         this.validateField('allSenceLink', this.formData.allSenceLink);
         this.validateField('type', this.formData.type);
+        this.validateField('defaultImg', this.formData.defaultImg);
         
         // 验证可出行大门配置：至少选择一个
         if (!this.formData.enterGateList || this.formData.enterGateList.length === 0) {
@@ -722,6 +763,12 @@ export default {
         // 验证消防地图配置：至少配置一张消防地图
         if (!this.formData.imgList || this.formData.imgList.length === 0) {
           this.errors['imgList'] = '至少需要配置一张消防地图';
+          return false;
+        }
+
+        // 验证默认图片配置：必须配置一张默认图片
+        if (!this.formData.defaultImg || !this.formData.defaultImg.trim()) {
+          this.errors['defaultImg'] = '必须配置一张默认图片';
           return false;
         }
       } else if (this.type === 'chat') {
@@ -961,6 +1008,78 @@ export default {
       });
     },
     
+    // 默认图片管理方法
+    addDefaultImage() {
+      uni.chooseImage({
+        count: 1,
+        sizeType: ['compressed'],
+        sourceType: ['album', 'camera'],
+        success: (res) => {
+          const filePath = (res.tempFilePaths && res.tempFilePaths[0]) || (res.tempFiles && res.tempFiles[0]?.path) || '';
+          if (!filePath) {
+            uni.showToast({ title: '未选择有效图片', icon: 'none' });
+            return;
+          }
+          uni.showLoading({ title: '上传中...' });
+          uni.uploadFile({
+            url: this.serverUrl + '/files/upload',
+            filePath,
+            name: 'file',
+            fileType: 'image',
+            formData: {
+              addressId: this.formData.addressId || this.editId || '',
+              url: '/uploadImg/locationEdit',
+              name: 'default_' + new Date().getTime() + this.editId + Math.ceil(Math.random()*10),
+            },
+            success: (uploadRes) => {
+              try {
+                const parsed = typeof uploadRes.data === 'string' ? JSON.parse(uploadRes.data) : uploadRes.data;
+                const backImg = parsed?.data || '';
+                if (!backImg) {
+                  throw new Error('上传返回为空');
+                }
+                // 设置默认图片
+                this.formData.defaultImg = backImg;
+                // 清除默认图片配置错误
+                if (this.errors.defaultImg) {
+                  this.errors.defaultImg = '';
+                }
+                uni.showToast({ title: '默认图片上传成功', icon: 'success' });
+              } catch (e) {
+                uni.showToast({ title: '图片解析失败', icon: 'none' });
+              }
+            },
+            fail: (err) => {
+              uni.showToast({ title: '上传失败: ' + (err?.errMsg || ''), icon: 'none' });
+            },
+            complete: () => {
+              uni.hideLoading();
+            }
+          });
+        },
+        fail: () => {
+          uni.showToast({ title: '取消选择', icon: 'none' });
+        }
+      });
+    },
+    
+    deleteDefaultImage() {
+      uni.showModal({
+        title: '确认删除',
+        content: '确定要删除默认图片吗？',
+        success: (res) => {
+          if (res.confirm) {
+            this.formData.defaultImg = '';
+            // 清除默认图片配置错误
+            if (this.errors.defaultImg) {
+              this.errors.defaultImg = '';
+            }
+            uni.showToast({ title: '默认图片已删除', icon: 'success' });
+          }
+        }
+      });
+    },
+    
     // 计算安全评分总分
     calculateTotalScore() {
       if (!this.formData.fireSafetyScore || !this.formData.fireSafetyScore.scoreItems) {
@@ -1076,8 +1195,8 @@ export default {
             }
           }
         }
-      });
-    },
+              });
+      },
   }
 }
 </script>
@@ -1094,7 +1213,7 @@ export default {
 .form-container {
   flex: 1;
   padding: 0;
-  padding-bottom: 220rpx;
+  padding-bottom: 220rpx; /* 底部间距，为两个按钮留出空间 */
   height: calc(100vh - 80rpx);
   overflow-y: auto;
 }
@@ -1135,7 +1254,7 @@ export default {
   box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.05);
   
   .section-header {
-    padding: 12rpx 24rpx;
+    padding: 12rpx 20rpx;
     border-bottom: 1rpx solid #f0f0f0;
     background: #f8f9fa;
     display: flex;
@@ -1286,6 +1405,10 @@ export default {
     }
   }
 }
+.header-actions {
+  display: flex;
+  align-items: center;
+}
 
 /* 配置区域 */
 .config-section {
@@ -1307,11 +1430,6 @@ export default {
       font-size: 30rpx;
       font-weight: 600;
       color: #333333;
-    }
-    
-    .header-actions {
-      display: flex;
-      align-items: center;
     }
   }
   
@@ -1920,6 +2038,106 @@ export default {
   align-items: flex-start;
 }
 
+/* 默认图片上传区域样式 */
+.default-image-upload-area {
+  padding: 24rpx;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.default-image-preview {
+  position: relative;
+  width: 300rpx;
+  height: 200rpx;
+  border-radius: 16rpx;
+  overflow: hidden;
+  background: #f5f5f5;
+  box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.1);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  
+  &:hover {
+    transform: translateY(-4rpx);
+    box-shadow: 0 8rpx 24rpx rgba(0, 0, 0, 0.15);
+  }
+}
+
+.default-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.upload-default-btn {
+  width: 300rpx;
+  height: 200rpx;
+  border: 2rpx dashed #d9d9d9;
+  border-radius: 16rpx;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  background: #fafbfc;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  
+  &:hover {
+    border-color: #1890ff;
+    background: #f0f8ff;
+    transform: translateY(-2rpx);
+  }
+  
+  &:active {
+    transform: scale(0.98);
+  }
+}
+
+/* 删除按钮覆盖层样式 */
+.delete-btn-overlay {
+  position: absolute;
+  top: 8rpx;
+  right: 8rpx;
+  z-index: 10;
+}
+
+.delete-btn-small {
+  background: linear-gradient(135deg, #ff4d4f 0%, #ff7875 100%);
+  color: #ffffff;
+  border: none;
+  padding: 8rpx 8rpx;
+  font-size: 20rpx;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 2rpx 8rpx rgba(255, 77, 79, 0.4);
+  
+  &:hover {
+    transform: translateY(-2rpx);
+    box-shadow: 0 4rpx 12rpx rgba(255, 77, 79, 0.6);
+  }
+  
+  &:active {
+    transform: scale(0.95);
+    box-shadow: 0 1rpx 4rpx rgba(255, 77, 79, 0.8);
+  }
+}
+
+.delete-icon-small {
+  width: 24rpx;
+  height: 24rpx;
+  filter: brightness(0) invert(1);
+}
+
+.delete-btn-small text {
+  color: #ffffff;
+  font-size: 20rpx;
+  font-weight: 600;
+  line-height: 1;
+}
+
 /* 图片列表样式 */
 .image-list {
   display: flex;
@@ -2048,7 +2266,6 @@ export default {
 
 .edit-icon {
   background: linear-gradient(135deg, #1890ff 0%, #096dd9 100%);
-  margin-right: 16rpx;
   
   &:active {
     background: linear-gradient(135deg, #096dd9 0%, #0050b3 100%);
@@ -2057,7 +2274,7 @@ export default {
 
 .delete-icon {
   background: linear-gradient(135deg, #ff4d4f 0%, #ff7875 100%);
-  
+  margin-left: 16rpx;
   &:active {
     background: linear-gradient(135deg, #ff7875 0%, #ffa39e 100%);
   }
@@ -2136,11 +2353,16 @@ export default {
     border: none;
     position: relative;
     overflow: hidden;
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Helvetica Neue', Helvetica, Arial, sans-serif;  
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    height: 80rpx;
+    line-height: 80rpx;
+    
     &:active {
       transform: scale(0.98);
     }
-}
+  }
+  
+
 
 .cancel-btn {
   background: #ffffff;
@@ -2166,6 +2388,8 @@ export default {
   position: relative;
   overflow: hidden;
 }
+
+
 
 /* 移动端优化 */
 @media (max-width: 750rpx) {
@@ -2219,6 +2443,8 @@ export default {
     line-height: 68rpx;
     font-size: 24rpx;
   }
+  
+
   
   .safety-content {
     padding: 10rpx 16rpx;

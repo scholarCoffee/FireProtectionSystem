@@ -117,27 +117,20 @@ export default {
       safeId: null,
       loading: false,
       safetyData: {
-        safeId: '',
         addressId: '',
         addressName: '',
         totalScore: 0,
         maxPossibleScore: 100,
         scorePercentage: 0,
-        scoreItems: {},
-        configVersion: '1.0.0',
-        createTime: null,
-        updateTime: null
+        scoreItems: {}
       },
       config: {
-        configVersion: '',
-        configName: '',
         description: '',
         scoreConfig: {
           maxScore: 100,
           safetyLevels: [],
         },
-        scoreItems: [],
-        categories: []
+        scoreItems: []
       },
       filterScore: null, // 分数筛选
       sortOrder: 'desc', // 排序方式

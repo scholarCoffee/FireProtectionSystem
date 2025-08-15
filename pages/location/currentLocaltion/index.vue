@@ -43,7 +43,7 @@
               <!-- 左侧图片 + 标签区域 -->
               <view class="card-left">
                 <view class="img-container">
-                  <image :src="showImgUrl(item.type)" class="card-img" @click="goToDetail(item)"/>
+                  <image :src= "serverUrl + item.defaultImg" class="card-img" @click="goToDetail(item)"/>
                   <!-- 安全等级标签 -->
                   <text  v-if="item.fireSafetyScore" :class="['safety-tag',  item.fireSafetyScore.safetyLevelId === 1 ? 'safety-excellent' : item.fireSafetyScore.safetyLevelId === 2 ? 'safety-good' : item.fireSafetyScore.safetyLevelId === 3 ? 'safety-normal' : 'safety-danger']">
                     {{ item.fireSafetyScore.safetyLevelName }}
@@ -137,15 +137,6 @@ export default {
       currentPhoneList: [], // 当前电话列表
       showCustomPhoneSelector: false // 控制自定义电话选择器显示
     };
-  },
-  computed: {
-    showImgUrl() {
-      return type => {
-        return type === 1 ? this.serverUrl + '/static/icons/location/showCommunity.png' : 
-               type === 2 ? this.serverUrl + '/static/icons/location/showFactory.png' : 
-               this.serverUrl + '/static/icons/location/showShop.png';
-      }
-    }
   },
   onShow() {
     // #ifdef MP

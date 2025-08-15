@@ -56,10 +56,6 @@ export default {
       default: ''
     }
   },
-  data() {
-    return {
-    }
-  },
   methods: {
     // 获取评分项中文名称
     getScoreItemName(key) {

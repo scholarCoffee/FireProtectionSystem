@@ -5,12 +5,7 @@
       <view>
         <!-- 头部图片区域 -->
         <view class="header-image">
-          <image 
-            :src="locationObj.type === 1 ? serverUrl + '/static/icons/location/showCommunity.png' 
-              : locationObj.type === 2 ? serverUrl + '/static/icons/location/showFactory.png' 
-              : serverUrl + '/static/icons/location/showShop.png'" 
-            class="detail-img" 
-          />
+          <image :src="serverUrl + locationObj.defaultImg" class="detail-img" />
         </view>
 
         <!-- 信息卡片 -->
@@ -333,7 +328,7 @@ export default {
 .detail-img {
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
   transform: translateZ(0);
   will-change: transform;
 }
