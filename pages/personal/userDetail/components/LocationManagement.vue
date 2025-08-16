@@ -264,12 +264,12 @@ export default {
   
     async performDelete(item) {
       uni.showLoading({ title: '删除中...' });
-      try {
+      try { 
         const result = await new Promise((resolve, reject) => {
           uni.request({
             url: this.serverUrl + '/location/delete',
             method: 'POST',
-            data: { id: item.addressId },
+            data: { addressId: item.addressId },
             success: resolve,
             fail: reject
           });

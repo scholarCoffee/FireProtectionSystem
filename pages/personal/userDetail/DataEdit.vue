@@ -437,7 +437,9 @@ export default {
         phone: '',
         type: 1,
         index: -1
-      }
+      },
+      // 新增：本地安全评分数据
+      localSafetyScore: null
     }
   },
      computed: {
@@ -483,6 +485,9 @@ export default {
     // 初始化位置类型选项
     this.initLocationTypeOptions();
     this.initFormData();
+    
+    // 检查是否有本地保存的安全评分
+    this.checkLocalSafetyScore();
     
     if (this.isEdit && this.editId) {
       this.loadEditData();
@@ -662,7 +667,7 @@ export default {
         const url = this.type === 'location' 
           ? this.serverUrl + '/location/save'
           : this.serverUrl + '/chat/save';
-        
+      
         const result = await new Promise((resolve, reject) => {
           uni.request({
             url,
@@ -695,10 +700,41 @@ export default {
         });
       } finally {
         uni.hideLoading();
-      }
-    },
-    
-    // 工具方法
+              }
+      },
+      
+      // 先保存安全评分
+      async saveSafetyScoreFirst() {
+        try {
+          const url = this.serverUrl + '/fireSafetyScore/create';
+          const data = {
+            addressId: this.formData.addressId || 'TEMP_' + Date.now(),
+            scoreItems: this.formData.fireSafetyScore.scoreItems
+          };
+          
+          const result = await new Promise((resolve, reject) => {
+            uni.request({
+              url,
+              method: 'POST',
+              data: data,
+              success: resolve,
+              fail: reject
+            });
+          });
+          
+          if (result.data && result.data.code === 200) {
+            // 更新safeId
+            this.formData.safeId = result.data.data?.safeId || '';
+            // 标记不再是本地数据
+            this.formData.fireSafetyScore.isLocal = false;
+          }
+        } catch (error) {
+          console.error('保存安全评分失败:', error);
+          // 即使失败也继续保存地址信息
+        }
+      },
+      
+      // 工具方法
     getLocationTypeText(type) {
       const option = this.locationTypeOptions.find(item => item.value === type);
       return option ? option.label : '请选择类型';
@@ -1170,23 +1206,16 @@ export default {
       uni.navigateTo({
         url: `/pages/personal/userDetail/SafetyScoreEdit?mode=add&safeId=${this.formData.safeId}&addressId=${this.formData.addressId}`,
         events: {
-          // 监听安全评分更新事件
-          safetyScoreUpdated: (data) => {
-            // 更新本地数据
-            if (data.addressId === this.formData.addressId) {
-              this.formData.fireSafetyScore = {
-                scoreItems: data.scoreItems,
-                safeId: data.safeId
-              };
-              
-              // 显示更新成功提示
-              uni.showToast({
-                title: '安全评分已添加',
-                icon: 'success',
-                duration: 2000
-              });
+                      // 监听安全评分更新事件
+            safetyScoreUpdated: (data) => {
+              if (data.isLocal) {
+                // 本地保存的安全评分
+                this.handleLocalSafetyScore(data);
+              } else {
+                // 编辑模式的安全评分
+                this.handleEditSafetyScore(data);
+              }
             }
-          }
         }
       });
     },
@@ -1198,24 +1227,77 @@ export default {
         events: {
           // 监听安全评分更新事件
           safetyScoreUpdated: (data) => {
-            // 更新本地数据
-            if (data.addressId === this.formData.addressId) {
-              this.formData.fireSafetyScore = {
-                ...this.formData.fireSafetyScore,
-                scoreItems: data.scoreItems,
-                safeId: data.safeId
-              };
-              
-              // 显示更新成功提示
-              uni.showToast({
-                title: '安全评分已更新',
-                icon: 'success',
-                duration: 2000
-              });
+            if (data.isLocal) {
+              // 本地保存的安全评分
+              this.handleLocalSafetyScore(data);
+            } else {
+              // 编辑模式的安全评分
+              this.handleEditSafetyScore(data);
             }
           }
         }
       });
+    },
+    
+    // 处理本地保存的安全评分
+    handleLocalSafetyScore(data) {
+      // 更新本地数据
+      this.formData.fireSafetyScore = {
+        scoreItems: data.scoreItems,
+        isLocal: true
+      };
+      
+      // 清除本地存储的安全评分
+      uni.removeStorageSync('tempSafetyScore');
+      
+      // 显示提示
+      uni.showToast({
+        title: '安全评分已填充，请完善地址信息后保存',
+        icon: 'none',
+        duration: 3000
+      });
+    },
+    
+    // 处理编辑模式的安全评分
+    handleEditSafetyScore(data) {
+      // 更新本地数据
+      if (data.addressId === this.formData.addressId) {
+        this.formData.fireSafetyScore = {
+          scoreItems: data.scoreItems,
+          safeId: data.safeId
+        };
+        
+        // 显示更新成功提示
+        uni.showToast({
+          title: '安全评分已更新',
+          icon: 'success',
+          duration: 2000
+        });
+      }
+    },
+    
+    // 检查本地保存的安全评分
+    checkLocalSafetyScore() {
+      try {
+        const localData = uni.getStorageSync('tempSafetyScore');
+        if (localData && localData.isLocal) {
+          this.localSafetyScore = localData;
+          // 自动填充安全评分到表单
+          this.formData.fireSafetyScore = {
+            scoreItems: localData.scoreItems,
+            isLocal: true
+          };
+          
+          // 显示提示
+          uni.showToast({
+            title: '检测到本地安全评分，已自动填充',
+            icon: 'none',
+            duration: 3000
+          });
+        }
+      } catch (error) {
+        console.log('检查本地安全评分失败:', error);
+      }
     },
     
     // 滚动到第一个错误位置

@@ -424,7 +424,38 @@ export default {
     
     // 保存数据
     async saveData() {
-      uni.showLoading({ title: this.mode === 'edit' ? '更新中...' : '保存中...' });
+      // 验证评分项是否完整
+      if (!this.validateScoreItems()) {
+        uni.showToast({
+          title: '请完善所有评分项',
+          icon: 'none',
+          duration: 2000
+        });
+        return;
+      }
+      
+      if (this.mode === 'edit' && this.addressId) {
+        // 编辑模式：直接更新安全评分
+        await this.updateSafetyScore();
+      } else {
+        // 新建模式：只保存到本地，不调用API
+        this.saveSafetyScoreToLocal();
+      }
+    },
+    
+    // 验证评分项完整性
+    validateScoreItems() {
+      for (const key in this.scoreItems) {
+        if (!this.scoreItems[key] || typeof this.scoreItems[key].score !== 'number') {
+          return false;
+        }
+      }
+      return true;
+    },
+    
+    // 更新安全评分（编辑模式）
+    async updateSafetyScore() {
+      uni.showLoading({ title: '更新中...' });
       try {
         const url = this.serverUrl + '/fireSafetyScore/update';
         const data = {
@@ -444,37 +475,78 @@ export default {
         });
         
         if (result.data && result.data.code === 200) {
-          uni.showToast({
-            title: this.mode === 'edit' ? '更新成功' : '保存成功',
-            icon: 'success',
-            duration: 1500
-          });
-          
-          // 发送事件通知 DataEdit 页面刷新数据
-          const eventChannel = this.getOpenerEventChannel();
-          if (eventChannel) {
-            eventChannel.emit('safetyScoreUpdated', {
-              addressId: this.addressId,
-              scoreItems: this.scoreItems,
-              safeId: this.safeId
-            });
-          }
-          
-          setTimeout(() => {
-            uni.navigateBack();
-          }, 1500);
+          this.handleSaveSuccess('更新成功');
         } else {
-          throw new Error(result.data?.msg || '操作失败');
+          throw new Error(result.data?.msg || '更新失败');
         }
       } catch (error) {
         uni.showToast({
-          title: error.message || '操作失败',
+          title: error.message || '更新失败',
           icon: 'none',
           duration: 2000
         });
       } finally {
         uni.hideLoading();
       }
+    },
+    
+    // 保存安全评分到本地（新建模式）
+    saveSafetyScoreToLocal() {
+      // 将安全评分保存到本地存储
+      const safetyScoreData = {
+        scoreItems: this.scoreItems,
+        timestamp: Date.now(),
+        isLocal: true
+      };
+      
+      // 保存到本地存储
+      uni.setStorageSync('tempSafetyScore', safetyScoreData);
+      
+      // 显示保存成功提示
+      uni.showToast({
+        title: '安全评分已保存',
+        icon: 'success',
+        duration: 1500
+      });
+      
+      // 发送事件通知 DataEdit 页面
+      const eventChannel = this.getOpenerEventChannel();
+      if (eventChannel) {
+        eventChannel.emit('safetyScoreUpdated', {
+          scoreItems: this.scoreItems,
+          isLocal: true,
+          message: '安全评分已保存到本地，请在地址信息中完善后统一保存'
+        });
+      }
+      
+      // 延迟返回，让用户看到提示
+      setTimeout(() => {
+        uni.navigateBack();
+      }, 1500);
+    },
+    
+    // 处理保存成功（编辑模式）
+    handleSaveSuccess(message) {
+      uni.showToast({
+        title: message,
+        icon: 'success',
+        duration: 1500
+      });
+      
+      // 发送事件通知 DataEdit 页面刷新数据
+      const eventChannel = this.getOpenerEventChannel();
+      if (eventChannel) {
+        eventChannel.emit('safetyScoreUpdated', {
+          addressId: this.addressId,
+          scoreItems: this.scoreItems,
+          safeId: this.safeId,
+          isLocal: false
+        });
+      }
+      
+      setTimeout(() => {
+        uni.navigateBack();
+      }, 1000);
     }
   }
 }
