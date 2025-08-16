@@ -52,9 +52,11 @@
               </view>
               <!-- 右侧信息区域 -->
               <view class="card-info">
-                <view class="card-title" >
-                  <text @click="goToDetail(item)">{{ item.addressName.length > 10 ? item.addressName.slice(0, 11) + '…' : item.addressName }}</text>
-                  <image :src="serverUrl + '/static/icons/common/phone.png'" class="phone-icon" @click="onClickShowPhone(item)" />
+                <view class="card-title">
+                  <text @click="goToDetail(item)" class="title-text">{{ item.addressName.length > 10 ? item.addressName.slice(0, 11) + '…' : item.addressName }}</text>
+                  <view class="phone-icon-wrapper" @click="onClickShowPhone(item)">
+                    <image :src="serverUrl + '/static/icons/common/phone.png'" class="phone-icon" />
+                  </view>
                 </view>
                 <view class="card-desc">
                   <text class="card-desc-score">{{ item.fireSafetyScore ? item.fireSafetyScore.totalScore : ''  }}</text>
@@ -65,7 +67,7 @@
               </view>
             </view>
             <view class="load-more">{{ loadingText }}</view>
-            <view style="height: 140px;"></view> 
+            <view style="height: 80px;"></view> 
           </template>
           <template v-else>
             <view class="empty-data">
@@ -251,6 +253,33 @@ export default {
 .page-content {
   padding-top: 0;
 }
+
+/* 微信小程序兼容性优化 */
+/* #ifdef MP-WEIXIN */
+.card-title {
+  display: -webkit-box;
+  display: -webkit-flex;
+  display: flex;
+  -webkit-box-pack: justify;
+  -webkit-justify-content: space-between;
+  justify-content: space-between;
+  -webkit-box-align: center;
+  -webkit-align-items: center;
+  align-items: center;
+}
+
+.phone-icon-wrapper {
+  display: -webkit-box;
+  display: -webkit-flex;
+  display: flex;
+  -webkit-box-align: center;
+  -webkit-align-items: center;
+  align-items: center;
+  -webkit-box-pack: center;
+  -webkit-justify-content: center;
+  justify-content: center;
+}
+/* #endif */
 .search-bar, .tabs, .content {
   margin-top: 0;
 }
@@ -407,19 +436,23 @@ body, html {
   font-weight: bold;
   margin: 0px;
   font-size: 16px;
-  max-width: 100%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  width: 100%;
   cursor: pointer;
   display: flex;
   justify-content: space-between;
   align-items: center;
+  position: relative;
+  min-height: 24px;
 }
-.card-title text {
+.title-text {
   flex: 1;
   color: #333;
   font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin-right: 8px;
+  min-width: 0;
 }
 .card-desc {
   color: #FF6B35;
@@ -439,13 +472,25 @@ body, html {
   margin-right: 1px;
 }
 
+.phone-icon-wrapper {
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-left: 8px;
+  background-color: rgba(18, 150, 219, 0.15);
+  border-radius: 50%;
+  padding: 2px;
+  border: 1px solid rgba(18, 150, 219, 0.2);
+}
+
 .phone-icon {
-  top: 1px;
-  margin-right: 4px;
   width: 14px;
   height: 14px;
-  opacity: 0.7;
-  flex-shrink: 0; /* 防止图标被压缩 */
+  opacity: 0.8;
+  flex-shrink: 0;
 }
 
 .card-btn {

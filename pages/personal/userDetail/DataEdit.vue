@@ -315,7 +315,7 @@
             </view>
             
             <!-- 上传按钮 -->
-            <view class="upload-btn" v-if="formData.imgList.length < 3" @tap="addImage">
+            <view class="upload-btn" v-if="formData.imgList && formData.imgList.length < 3" @tap="addImage">
               <image :src="serverUrl + '/static/icons/common/add-third-grey.png'" class="upload-icon" />
               <text class="upload-text">上传图片</text>
             </view>
@@ -447,12 +447,12 @@ export default {
      
      // 检查联系人类型是否已满
      contactTypeLimits() {
-       const unitContacts = this.formData.phoneList.filter(contact => contact.type === 1);
-       const fireContacts = this.formData.phoneList.filter(contact => contact.type === 2);
+       const unitContacts = this.formData?.phoneList?.filter(contact => contact.type === 1);
+       const fireContacts = this.formData?.phoneList?.filter(contact => contact.type === 2);
        
        return {
-         unitFull: unitContacts.length >= 1,
-         fireFull: fireContacts.length >= 1
+         unitFull: unitContacts?.length >= 1,
+         fireFull: fireContacts?.length >= 1
        };
      },
      
@@ -1248,7 +1248,7 @@ export default {
 .form-container {
   flex: 1;
   padding: 0;
-  padding-bottom: 220rpx; /* 底部间距，为两个按钮留出空间 */
+  padding-bottom: 100rpx; /* 底部间距，为两个按钮留出空间 */
   height: calc(100vh - 80rpx);
   overflow-y: auto;
 }
@@ -1309,29 +1309,33 @@ export default {
     box-sizing: border-box;
     .safety-summary {
       display: flex;
+      flex-direction: column;
       box-sizing: border-box;
       justify-content: flex-start;
-      align-items: center;
+      align-items: flex-start;
       width: 100%;
+      gap: 16rpx;
     }
     
     .safety-score-display {
       display: flex;
-      align-items: center;
+      flex-direction: column;
+      align-items: flex-start;
       box-sizing: border-box;
-      gap: 6rpx;
+      gap: 12rpx;
       background: linear-gradient(135deg, #f8faff 0%, #f0f8ff 100%);
       border: 1rpx solid #e6f4ff;
       border-radius: 12rpx;
-      padding: 12rpx 16rpx;
+      padding: 16rpx 20rpx;
       transition: all 0.3s ease;
-      flex: 1;
+      width: 100%;
       min-width: 0;
       .score-display-content {
         display: flex;
         align-items: center;
         justify-content: flex-start;
         width: 100%;
+        gap: 8rpx;
       }
       
       &:hover {
@@ -1733,7 +1737,7 @@ export default {
   display: flex;
   padding: 10rpx;
   border-top: 1rpx solid #e1e8ed;
-  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+  background: #fff;
   gap: 20rpx;
 }
 
@@ -2010,10 +2014,6 @@ export default {
     }
   }
 }
-
-
-
-
 
 /* 大门配置样式 */
 .gate-name {
@@ -2366,48 +2366,28 @@ export default {
 }
 
 /* 底部按钮 */
-  .footer {
-    display: flex;
-    padding: 16rpx 32rpx;
-    gap: 24rpx;
-    background: #ffffff;
-    border-top: 1rpx solid #e8f4ff;
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    z-index: 100;
-    box-shadow: 0 -4rpx 20rpx rgba(0, 0, 0, 0.08);
-  }
-  
-  .footer-btn {
-    flex: 1;
-    border-radius: 16rpx;
-    font-size: 24rpx;
-    font-weight: 600;
-    border: none;
-    position: relative;
-    overflow: hidden;
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Helvetica Neue', Helvetica, Arial, sans-serif;
-    height: 80rpx;
-    line-height: 80rpx;
-    
-    &:active {
-      transform: scale(0.98);
-    }
-  }
-  
-
-
-.cancel-btn {
+.footer {
+  display: flex;
+  padding: 16rpx 20rpx;
+  gap: 24rpx;
   background: #ffffff;
-  color: #666666;
-  border: 2rpx solid #e8f4ff;
-  font-weight: 600;
+  border-top: 1rpx solid #e8f4ff;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+}
   
-  &:active {
-    background: #f8f9fa;
-    border-color: #d9d9d9;
+.cancel-btn {
+  background: #f5f5f5;
+  color: #666666;
+  font-weight: 400;
+  font-size: 24rpx;
+  border: none !important;
+
+  &::after {
+    border: none !important;
   }
 }
 
@@ -2416,7 +2396,7 @@ export default {
   color: #ffffff;
   border-radius: 16rpx;
   font-size: 24rpx;
-  font-weight: 600;
+  font-weight: 400;
   letter-spacing: 0.5rpx;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   cursor: pointer;
@@ -2469,17 +2449,9 @@ export default {
   }
   
   .footer {
-    padding: 20rpx 24rpx;
+    padding: 16rpx 24rpx 30rpx 24rpx;
     gap: 20rpx;
   }
-  
-  .footer-btn {
-    height: 68rpx;
-    line-height: 68rpx;
-    font-size: 24rpx;
-  }
-  
-
   
   .safety-content {
     padding: 10rpx 16rpx;
@@ -2567,14 +2539,6 @@ export default {
     height: 60rpx;
     padding: 0 16rpx;
   }
-  
-  .footer-btn {
-    height: 68rpx;
-    line-height: 68rpx;
-    font-size: 24rpx;
-  }
-  
-
 }
 </style> 
 <style lang="scss">
@@ -2586,5 +2550,29 @@ export default {
 
 :deep(.uni-mask) {
   z-index: 2999 !important;
+}
+
+/* 微信小程序兼容性样式 */
+@media screen and (max-width: 750rpx) {
+  .safety-section {
+    .safety-content {
+      .safety-summary {
+        flex-direction: column !important;
+        align-items: flex-start !important;
+      }
+      
+      .safety-score-display {
+        flex-direction: column !important;
+        align-items: flex-start !important;
+        width: 100% !important;
+      }
+      
+      .score-display-content {
+        flex-direction: column !important;
+        align-items: flex-start !important;
+        gap: 8rpx !important;
+      }
+    }
+  }
 }
 </style>

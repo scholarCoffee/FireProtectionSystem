@@ -1,5 +1,5 @@
 <template>
-  <scroll-view class="safety-detail-container" scroll-y="true" @scroll="handleScroll" :scroll-top="scrollTop" :scroll-with-animation="false" :enhanced="true" :bounces="false">
+  <scroll-view class="safety-detail-container" scroll-y="true" @scroll="handleScroll">
     <!-- 加载状态 -->
     <view v-if="loading" class="loading-container">
       <view class="loading-content">
@@ -269,7 +269,6 @@ export default {
       // 筛选区距离顶部的距离（调整阈值）
       const filterOffsetTop = 150; // 降低触发阈值
       const shouldFix = scrollTop > filterOffsetTop;
-      console.log('滚动位置:', scrollTop, '是否固定:', shouldFix);
       this.isFilterFixed = shouldFix;
     }
   }
@@ -282,9 +281,6 @@ export default {
   background-color: #f5f5f5;
   box-sizing: border-box;
   padding-bottom: 0;
-  -webkit-overflow-scrolling: touch;
-  will-change: scroll-position;
-  transform: translateZ(0);
 }
 
 /* 加载状态 */
@@ -322,6 +318,17 @@ export default {
 @keyframes rotate {
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
+}
+
+@keyframes slideDownFixed {
+  from {
+    transform: translateY(-100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
 }
 
 /* 恢复最初主色调：安全等级色为主，卡片白色，分数/进度条用原色 */
@@ -572,6 +579,7 @@ export default {
   transform: translateZ(0);
   will-change: transform;
 }
+
 .filter-bar-fixed {
   position: fixed;
   top: 0;
@@ -583,11 +591,14 @@ export default {
   z-index: 1000;
   width: 100%;
   background: #fff;
+  animation: slideDownFixed 0.3s ease-out;
 }
+
 .filter-placeholder {
   height: 60px; /* 减小占位高度 */
   width: 100%;
 }
+
 .filter-header {
   display: flex;
   justify-content: space-between;

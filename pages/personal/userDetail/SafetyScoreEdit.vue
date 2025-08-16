@@ -753,10 +753,10 @@ export default {
 /* 底部按钮 */
 .footer {
   display: flex;
-  padding: 16rpx 32rpx;
+  padding: 16rpx 20rpx;
   gap: 24rpx;
   background: #ffffff;
-  border-top: 1rpx solid #e5e5e5;
+  border-top: 1rpx solid #e8f4ff;
   position: fixed;
   bottom: 0;
   left: 0;
@@ -787,22 +787,28 @@ export default {
 }
 
 .cancel-btn {
-  background: #ffffff;
+  background: #f5f5f5;
   color: #666666;
-  border: 1rpx solid #e5e5e5;
-  
-  &:active {
-    background: #f8f8f8;
+  font-weight: 400;
+  font-size: 24rpx;
+  border: none !important;
+
+  &::after {
+    border: none !important;
   }
 }
 
 .confirm-btn {
-  background: #1890ff;
+  background: linear-gradient(135deg, #1890ff 0%, #096dd9 100%);
   color: #ffffff;
-  
-  &:active {
-    background: #096dd9;
-  }
+  border-radius: 16rpx;
+  font-size: 24rpx;
+  font-weight: 400;
+  letter-spacing: 0.5rpx;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
 }
 
 /* 评分标准弹窗样式 */

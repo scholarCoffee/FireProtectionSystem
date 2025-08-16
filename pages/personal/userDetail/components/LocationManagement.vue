@@ -23,7 +23,11 @@
     </view>
     
     <!-- 数据列表 -->
-    <scroll-view class="data-list" scroll-y="true" @scrolltolower="loadMore">
+    <scroll-view 
+      class="data-list" 
+      scroll-y="true" 
+      @scrolltolower="loadMore"
+    >
       <view v-if="loading && page === 1" class="loading-container">
         <image :src="serverUrl + '/static/icons/common/loading.png'" class="loading-icon" />
         <text class="loading-text">加载中...</text>
@@ -35,7 +39,7 @@
       </view>
       
       <view v-else class="list-content">
-        <view class="data-item" v-for="item in filteredList" :key="item.addressId">
+        <view class="data-item" v-for="item in filteredList" :key="item.addressId" :data-index="item.addressId">
           <view class="item-header">
             <view class="item-title">
               <image :src="getLocationTypeIcon(item.type)" class="type-icon" />
@@ -112,7 +116,8 @@ export default {
       page: 1,
       pageSize: 20,
       hasMore: true,
-      total: 0
+      total: 0,
+
     }
   },
   
@@ -133,6 +138,8 @@ export default {
   },
   
   methods: {
+
+    
     // 重置分页参数
     resetPagination() {
       this.page = 1;
@@ -366,10 +373,12 @@ export default {
 
 .data-list {
   flex: 1;
-  height: 100%; /* 确保有明确的高度 */
-  box-sizing: border-box; /* 确保padding包含在高度内 */
-  overflow-y: auto; /* 确保可以垂直滚动 */
+  padding: 0;
+  padding-bottom: 120rpx;
+  height: calc(100vh - 200rpx);
 }
+
+
 
 .loading-container, .empty-container {
   display: flex;
@@ -403,6 +412,12 @@ export default {
   border-radius: 12rpx;
   padding: 24rpx;
   box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.05);
+  transition: all 0.2s ease;
+}
+
+.data-item:active {
+  transform: scale(0.98);
+  box-shadow: 0 1rpx 4rpx rgba(0, 0, 0, 0.1);
 }
 
 .item-header {
@@ -584,6 +599,8 @@ export default {
     transform: rotate(360deg);
   }
 }
+
+
 
 /* 添加淡入淡出效果 */
 .loading-more, .no-more {
