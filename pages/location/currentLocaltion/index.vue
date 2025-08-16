@@ -133,6 +133,7 @@ export default {
       loadingText: '向下拉取更多',
       finished: false,
       showWebview: false,
+      serverUrl: 'https://www.xiaobei.space',
       webviewUrl: '',
       currentPhoneList: [], // 当前电话列表
       showCustomPhoneSelector: false // 控制自定义电话选择器显示

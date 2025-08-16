@@ -143,19 +143,19 @@
                 <view class="score-display-content">
                   <text class="score-label">总分:</text>
                   <text class="score-value">{{ calculateTotalScore() }}分</text>
-                  <text class="level-value" :class="getSafetyLevelClass(getSafetyLevelByScore(calculateTotalScore()))">
-                    ({{ getSafetyLevelText(getSafetyLevelByScore(calculateTotalScore())) }})
+                  <text class="level-value" :class="safetyLevelClass">
+                    ({{ safetyLevelText }})
                   </text>
                 </view>
                 <!-- 分数进度条 -->
                 <view class="score-progress-section">
                   <view class="progress-bar-container">
                     <view class="progress-bar">
-                      <view 
-                        class="progress-fill" 
-                        :style="{ width: calculateTotalScore() + '%' }"
-                        :class="getProgressBarClass(getSafetyLevelByScore(calculateTotalScore()))"
-                      ></view>
+                    <view 
+                       class="progress-fill" 
+                       :style="{ width: Math.min(calculateTotalScore(), 100) + '%' }"
+                       :class="progressBarClass"
+                     ></view>
                     </view>
                     <view class="progress-markers">
                       <view class="marker">
@@ -407,6 +407,7 @@ export default {
       formData: {},
       // 错误状态
       errors: {},
+      serverUrl: 'https://www.xiaobei.space',
       // 选项数据
       locationTypeOptions: [],
       chatTypeOptions: [
@@ -439,22 +440,41 @@ export default {
       }
     }
   },
-  computed: {
-    isEdit() {
-      return this.mode === 'edit';
-    },
-    
-    // 检查联系人类型是否已满
-    contactTypeLimits() {
-      const unitContacts = this.formData.phoneList.filter(contact => contact.type === 1);
-      const fireContacts = this.formData.phoneList.filter(contact => contact.type === 2);
-      
-      return {
-        unitFull: unitContacts.length >= 1,
-        fireFull: fireContacts.length >= 1
-      };
-    },
-  },
+     computed: {
+     isEdit() {
+       return this.mode === 'edit';
+     },
+     
+     // 检查联系人类型是否已满
+     contactTypeLimits() {
+       const unitContacts = this.formData.phoneList.filter(contact => contact.type === 1);
+       const fireContacts = this.formData.phoneList.filter(contact => contact.type === 2);
+       
+       return {
+         unitFull: unitContacts.length >= 1,
+         fireFull: fireContacts.length >= 1
+       };
+     },
+     
+     // 安全等级相关的计算属性
+     safetyLevelClass() {
+       const totalScore = this.calculateTotalScore();
+       const level = this.getSafetyLevelByScore(totalScore);
+       return this.getSafetyLevelClass(level);
+     },
+     
+     safetyLevelText() {
+       const totalScore = this.calculateTotalScore();
+       const level = this.getSafetyLevelByScore(totalScore);
+       return this.getSafetyLevelText(level);
+     },
+     
+     progressBarClass() {
+       const totalScore = this.calculateTotalScore();
+       const level = this.getSafetyLevelByScore(totalScore);
+       return this.getProgressBarClass(level);
+     },
+   },
   onLoad(options) {
     this.type = options.type || 'location';
     this.mode = options.mode || 'add';
@@ -780,7 +800,7 @@ export default {
     
     // 可出行大门管理方法
     isGateSelected(gateName) {
-      return this.formData.enterGateList.some(gate => gate.name === gateName);
+      return this.formData?.enterGateList?.some(gate => gate.name === gateName);
     },
     
     toggleGate(gateName) {
@@ -806,7 +826,7 @@ export default {
     // 联系人管理方法
     showContactModal(mode = 'add', index = -1) {
       // 如果是添加模式，检查是否还能添加联系人
-      if (mode === 'add' && !this.formData.phoneList.length >= 2) {
+      if (mode === 'add' && this.formData.phoneList.length >= 2) {
         uni.showToast({
           title: '最多只能配置2个联系人',
           icon: 'none'
@@ -940,7 +960,7 @@ export default {
     // 图片管理方法
     addImage() {
       if (this.formData.imgList.length >= 3) {
-            uni.showToast({
+        uni.showToast({
           title: '最多只能上传3张图片',
           icon: 'none'
         });
@@ -1195,8 +1215,23 @@ export default {
             }
           }
         }
-              });
-      },
+      });
+    },
+    
+    // 滚动到第一个错误位置
+    scrollToFirstError() {
+      // 延迟执行，确保DOM更新完成
+      this.$nextTick(() => {
+        const errorElements = document.querySelectorAll('.error-message');
+        if (errorElements.length > 0) {
+          const firstError = errorElements[0];
+          firstError.scrollIntoView({
+            behavior: 'smooth',
+            block: 'center'
+          });
+        }
+      });
+    },
   }
 }
 </script>

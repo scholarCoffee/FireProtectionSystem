@@ -116,6 +116,7 @@ export default {
     return {
       safeId: null,
       loading: false,
+      serverUrl: 'https://www.xiaobei.space',
       safetyData: {
         addressId: '',
         addressName: '',

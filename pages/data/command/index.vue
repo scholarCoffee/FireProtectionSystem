@@ -44,6 +44,7 @@ export default {
     data() {
         return {
             // 可以添加数据
+            serverUrl: 'https://www.xiaobei.space',
         }
     },
     methods: {

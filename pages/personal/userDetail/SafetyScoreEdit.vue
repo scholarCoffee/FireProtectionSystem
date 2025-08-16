@@ -6,7 +6,7 @@
         <view class="score-header">
           <text class="total-score-label">总分：</text>
           <text class="total-score-value">{{ calculateTotalScore() }}分</text>
-          <text class="total-score-level" :class="getSafetyLevelClass(getSafetyLevelByScore(calculateTotalScore()))">({{ getSafetyLevelText(getSafetyLevelByScore(calculateTotalScore())) }})</text>
+          <text class="total-score-level" :class="safetyLevelClass">({{ safetyLevelText }})</text>
         </view>
         
         <!-- 分数进度条 -->
@@ -14,8 +14,8 @@
           <view class="progress-bar">
             <view 
               class="progress-fill" 
-              :style="{ width: (calculateTotalScore() / 100) * 100 + '%' }"
-              :class="getSafetyLevelClass(getSafetyLevelByScore(calculateTotalScore()))"
+              :style="{ width: Math.min(calculateTotalScore(), 100) + '%' }"
+              :class="progressBarClass"
             ></view>
           </view>
           <view class="progress-labels">
@@ -117,6 +117,7 @@ export default {
   data() {
     return {
       mode: 'add', // add 或 edit
+      serverUrl: 'https://www.xiaobei.space',
       addressId: '',
       safeId: '',
       scoreItems: {},
@@ -199,6 +200,26 @@ export default {
           ]
         }
       ]
+    }
+  },
+  computed: {
+    // 安全等级相关的计算属性
+    safetyLevelClass() {
+      const totalScore = this.calculateTotalScore();
+      const level = this.getSafetyLevelByScore(totalScore);
+      return this.getSafetyLevelClass(level);
+    },
+    
+    safetyLevelText() {
+      const totalScore = this.calculateTotalScore();
+      const level = this.getSafetyLevelByScore(totalScore);
+      return this.getSafetyLevelText(level);
+    },
+    
+    progressBarClass() {
+      const totalScore = this.calculateTotalScore();
+      const level = this.getSafetyLevelByScore(totalScore);
+      return this.getSafetyLevelClass(level);
     }
   },
   onLoad(options) {

@@ -161,6 +161,7 @@ export default {
       currentImageIndex: 0, // 当前图片索引
       showCustomModal: false, // 控制自定义弹窗显示
       modalContent: '', // 弹窗内容
+      serverUrl: 'https://www.xiaobei.space',
       scrollTop: 0, // 滚动位置
     };
   },

@@ -46,6 +46,11 @@
 <script>
 export default {
   name: 'SafetyScoreDetail',
+  data() {
+    return {
+      serverUrl: 'https://www.xiaobei.space',
+    }
+  },
   props: {
     safetyScoreData: {
       type: Object,

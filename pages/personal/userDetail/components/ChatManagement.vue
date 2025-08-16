@@ -99,6 +99,7 @@ export default {
   },
   data() {
     return {
+      serverUrl: 'https://www.xiaobei.space',
       loading: false,
       groupList: [],
       filteredList: []

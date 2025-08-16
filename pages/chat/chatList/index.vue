@@ -67,6 +67,7 @@
         data() {
             return {
                 groupsList: [], // 群聊列表
+                serverUrl: 'https://www.xiaobei.space',
                 userInfo: {
                     nickName: '', 
                     avatarUrl: '',

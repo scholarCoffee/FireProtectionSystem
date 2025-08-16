@@ -56,6 +56,7 @@ export default {
             },
             chatType: 1, // 0-好友，1-群
             chatMessageList: [],
+            serverUrl: 'https://www.xiaobei.space',
             imgMsg: [],
             scrollToView: '',
             oldTime: 0,

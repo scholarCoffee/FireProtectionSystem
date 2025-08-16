@@ -79,7 +79,8 @@ export default {
     return {
       currentTab: 'location', // 当前标签页
       searchKeyword: '', // 搜索关键词
-      searchTimer: null // 搜索防抖定时器
+      searchTimer: null, // 搜索防抖定时器
+      serverUrl: 'https://www.xiaobei.space',
     }
   },
 
