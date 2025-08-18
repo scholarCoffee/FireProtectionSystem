@@ -7,7 +7,7 @@
         <!-- 默认图片配置 -->
         <view class="location-info-section">
           <view class="section-header">
-            <text class="section-title">默认图片 <text class="required">*</text></text>
+            <text class="section-title">展示图片<text class="required">*</text></text>
           </view>
           
           <view class="default-image-upload-area">
@@ -30,7 +30,7 @@
             <!-- 上传默认图片按钮 -->
             <view class="upload-default-btn" v-if="!formData.defaultImg" @tap="addDefaultImage">
               <image :src="serverUrl + '/static/icons/common/add-third-grey.png'" class="upload-icon" />
-              <text class="upload-text">上传默认图片</text>
+              <text class="upload-text">上传展示图片</text>
             </view>
             
             <!-- 错误提示 -->
@@ -1022,7 +1022,7 @@ export default {
             formData: {
               addressId: this.formData.addressId || this.editId || '',
               url: '/uploadImg/locationEdit',
-              name: new Date().getTime() + this.editId + Math.ceil(Math.random()*10),
+              name: 'locationImg_' + this.editId + Math.ceil(Math.random()*10),
             },
             success: (uploadRes) => {
               try {
@@ -1085,7 +1085,7 @@ export default {
             formData: {
               addressId: this.formData.addressId || this.editId || '',
               url: '/uploadImg/locationEdit',
-              name: 'default_' + new Date().getTime() + this.editId + Math.ceil(Math.random()*10),
+              name: 'locationDefaultImg_' + this.editId + Math.ceil(Math.random()*10),
             },
             success: (uploadRes) => {
               try {

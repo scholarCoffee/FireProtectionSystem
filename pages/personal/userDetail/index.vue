@@ -99,7 +99,7 @@
                     phone: ''
                 },
                 isLoggedIn: false, // 用户是否已登录
-                serverUrl: 'https://www.xiaobei.space',
+                serverUrl: 'http://172.20.10.2:3000',
                 showModifyModal: false, // 是否显示修改弹窗
                 modifyValue: '', // 修改的值
                 modifyType: '', // 修改类型
@@ -112,12 +112,22 @@
             // 非微信小程序：生成假数据
             if (!uni.getStorageSync('userInfo')) {
                 const mockUserInfo = {
-                    id: '687a6f59e83419906c0699f4',
-                    nickName: '测试用户-小创',
-                    avatarUrl: this.serverUrl + '/static/icons/chat/person-avatar.png',
-                    permissionStatus: 1 // 默认有权限
+                    id: 'o782m7VVE2mElMJV18aNxzYQaxts',
                 };
-                uni.setStorageSync('userInfo', mockUserInfo);
+                // 根据id
+                uni.request({
+                    url: this.serverUrl + '/user/getById',
+                    method: 'POST',
+                    data: {
+                        id: mockUserInfo.id
+                    },
+                    success: (res) => {
+                        if (res.data && res.data.code === 200) {
+                            mockUserInfo = res.data.data;
+                            uni.setStorageSync('userInfo', mockUserInfo);
+                        }
+                    }
+                });
             }
             // #endif
             this.getStorages(); // 获取本地存储的用户信息
@@ -189,7 +199,9 @@
                             name: 'file',
                             fileType: 'image',
                             formData: {
-                                id: this.userInfo.id
+                                id: this.userInfo.id,
+                                url: '/uploadImg/userImg',
+                                name: 'userImg_' + this.userInfo.id + Math.ceil(Math.random()*10),
                             },
                             success: (res) => {
                                 const backImg = JSON.parse(res.data).data;
@@ -273,9 +285,8 @@
                     duration: 1500
                 });
             },
-            // 微信一键登录新版，强制获取头像昵称
             async onGetUserInfo(e) {
-                if (!e.detail || !e.detail.userInfo) {
+                if (!e.detail?.userInfo) {
                     uni.showToast({
                         title: '需要授权获取头像昵称',
                         icon: 'none',
@@ -283,64 +294,64 @@
                     });
                     return;
                 }
+
                 uni.showLoading({ title: '登录中...' });
-                // 先获取微信登录code
-                uni.login({
-                    provider: 'weixin',
-                    success: (loginRes) => {
-                        const code = loginRes.code;
-                        const { nickName, avatarUrl } = e.detail.userInfo;
-                        // 你可以把 code、encryptedData、iv、userInfo 一起发给后端
-                        // 这里只做本地存储和状态更新
-                        const userInfo = {
-                            code: code,
-                            nickName: nickName,
-                            avatarUrl: avatarUrl,
-                            encryptedData: e.detail.encryptedData,
-                            permissionStatus: 1,
-                            id: e.detail.iv
-                        };
-                        uni.setStorageSync('userInfo', userInfo);
-                        this.userInfo.nickName = nickName;
-                        this.userInfo.avatarUrl = avatarUrl;
-                        this.userInfo.permissionStatus = 1;
-                        this.isLoggedIn = true;
-                        uni.hideLoading();
-                        uni.showToast({
-                            title: '登录成功',
-                            icon: 'success',
-                            duration: 1500
+                
+                try {
+                    // 1. 获取微信登录code
+                    const loginRes = await new Promise((resolve, reject) => {
+                        uni.login({
+                            provider: 'weixin',
+                            success: resolve,
+                            fail: reject
                         });
-                        // 调用接口存储用户信息
+                    });
+
+                    const { code } = loginRes;
+                    const { nickName, avatarUrl } = e.detail.userInfo;
+
+                    // 2. 仅将必要信息传给后端（依赖后端通过code获取openid）
+                    const res = await new Promise((resolve, reject) => {
                         uni.request({
-                            url: this.serverUrl + '/user/update', // 替换为你的后端登录接口
+                            url: this.serverUrl + '/user/loginOrUpdate', // 后端统一接口：登录或更新
                             method: 'POST',
                             data: {
-                                nickName: nickName,
-                                avatarUrl: avatarUrl,
-                                code: code,
+                                code, // 关键：用于后端获取openid
+                                nickName,
+                                avatarUrl,
                                 encryptedData: e.detail.encryptedData,
-                                permissionStatus: 1, 
-                                id: e.detail.iv,
                                 signature: e.detail.signature
                             },
-                            success: (res) => {
-                            
-                            },
-                            fail: () => {
-                               
-                            }
+                            success: resolve,
+                            fail: reject
                         });
-                    },
-                    fail: () => {
-                        uni.hideLoading();
-                        uni.showToast({
-                            title: '微信登录失败',
-                            icon: 'none',
-                            duration: 2000
-                        });
+                    });
+
+                    if (res.data?.code === 200 && res.data.data) {
+                        const serverUser = res.data.data;
+                        // 3. 存储后端返回的用户信息（包含唯一id）
+                        const userInfo = {
+                            id: serverUser.id, // 后端返回的唯一标识
+                            nickName: serverUser.nickName || nickName,
+                            avatarUrl: serverUser.avatarUrl || avatarUrl,
+                            permissionStatus: serverUser.permissionStatus || 1
+                        };
+                        uni.setStorageSync('userInfo', userInfo);
+                        
+                        // 更新页面数据
+                        this.userInfo = { ...this.userInfo, ...userInfo };
+                        this.isLoggedIn = true;
+                        
+                        uni.showToast({ title: '登录成功', icon: 'success' });
+                    } else {
+                        uni.showToast({ title: '登录失败', icon: 'none' });
                     }
-                });
+                } catch (err) {
+                    console.error('登录异常:', err);
+                    uni.showToast({ title: '登录失败', icon: 'none' });
+                } finally {
+                    uni.hideLoading();
+                }
             },
             
             // 处理微信返回的手机号信息

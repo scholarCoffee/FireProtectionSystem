@@ -263,8 +263,9 @@ export default {
                     fileType: 'image',
                     name: 'file',
                     formData: {
-                        url: fileNameTime(new Date()),
-                        name: new Date().getTime() + this.userInfo.id + Math.ceil(Math.random()*10),
+                        id: this.userInfo.id,
+                        url: '/uploadImg/chatImg',
+                        name: 'chatImg_' + this.userInfo.id + Math.ceil(Math.random()*10),
                     },
                     success: (res) => {
                         // 处理返回的数据

@@ -5,7 +5,7 @@
       <view>
         <!-- 头部图片区域 -->
         <view class="header-image">
-          <image :src="serverUrl + locationObj.defaultImg" class="detail-img" />
+          <image :src="serverUrl + locationObj.defaultImg" class="detail-img" mode="aspectFit" />
         </view>
 
         <!-- 信息卡片 -->
@@ -325,6 +325,8 @@ export default {
   overflow: hidden;
   transform: translateZ(0);
   will-change: transform;
+  padding: 2px;
+  background-color: #f8fafc;
 }
 .detail-img {
   width: 100%;
@@ -332,6 +334,9 @@ export default {
   object-fit: contain;
   transform: translateZ(0);
   will-change: transform;
+  border-radius: 6px;
+  background-color: #ffffff;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.12), 0 2px 8px rgba(0, 0, 0, 0.08);
 }
 .safety-tag {
   position: absolute;
@@ -473,6 +478,7 @@ export default {
   display: flex;
   gap: 12px;
   padding: 15px;
+  height: 120px;
 }
 
 .type-card {
