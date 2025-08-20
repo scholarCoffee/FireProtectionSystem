@@ -12,19 +12,28 @@
           <text class="tab-text">位置信息</text>
         </view>
 
-        <!-- <view 
+        <view 
           class="tab-item" 
           :class="{ active: currentTab === 'chat' }"
           @tap="switchTab('chat')"
         >
           <image :src="currentTab === 'chat' ? serverUrl + '/static/icons/chat/chat-active.png' : serverUrl + '/static/icons/chat/chat.png'" class="tab-icon" />
           <text class="tab-text">聊天管理</text>
-        </view> -->
+        </view>
+        
+        <view 
+          class="tab-item" 
+          :class="{ active: currentTab === 'command' }"
+          @tap="switchTab('command')"
+        >
+          <image :src="currentTab === 'command' ? serverUrl + '/static/icons/data/manage-active.png' : serverUrl + '/static/icons/data/manage.png'" class="tab-icon" />
+          <text class="tab-text">数据指挥</text>
+        </view>
       </view>
     </view>
 
     <!-- 搜索和操作栏 -->
-    <view class="action-bar">
+    <view class="action-bar" v-if="currentTab !== 'command'">
       <view class="search-container">
         <image :src="serverUrl + '/static/icons/location/search.png'" class="search-icon" />
         <input 
@@ -62,12 +71,50 @@
         ref="chatManagement"
       />
     </view>
+    
+    <!-- 数据指挥内容 -->
+    <view v-if="currentTab === 'command'" class="command-content">
+      <view class="command-list">
+        <view 
+          class="command-item" 
+          v-for="(config, key) in commandConfig" 
+          :key="key"
+          @tap="editCommand(key, config)"
+        >
+          <view class="item-header">
+            <view class="item-title">
+              <image :src="serverUrl + '/static/icons/data/' + config.icon + '.png'" class="command-avatar" />
+              <view class="title-info">
+                <text class="title-text">{{ config.title }}</text>
+                <text class="command-type">数据指挥</text>
+              </view>
+            </view>
+            <view class="item-actions">
+              <button class="action-icon-btn" @tap.stop="editCommand(key, config)">
+                <image :src="serverUrl + '/static/icons/chat/edit.png'" class="action-icon" />
+              </button>
+            </view>
+          </view>
+          <view class="item-content">
+            <view class="content-row">
+              <text class="label">功能描述：</text>
+              <text class="value">{{ config.desc }}</text>
+            </view>
+            <view class="content-row">
+              <text class="label">访问地址：</text>
+              <text class="value">{{ config.url }}</text>
+            </view>
+          </view>
+        </view>
+      </view>
+    </view>
   </view>
 </template>
 
 <script>
 import LocationManagement from './components/LocationManagement.vue'
 import ChatManagement from './components/ChatManagement.vue'
+import { commandConfig } from '@/commons/js/commandConfig.js'
 
 export default {
   name: 'DataManagement',
@@ -81,6 +128,8 @@ export default {
       searchKeyword: '', // 搜索关键词
       searchTimer: null, // 搜索防抖定时器
       serverUrl: 'https://www.xiaobei.space',
+      // 数据指挥配置
+      commandConfig: commandConfig
     }
   },
 
@@ -104,6 +153,8 @@ export default {
           return '根据关键字查询位置信息';
         case 'chat':
           return '根据关键字查询聊天信息';
+        case 'command':
+          return '搜索数据指挥功能';
         default:
           return '搜索...';
       }
@@ -134,6 +185,13 @@ export default {
         this.$refs.locationManagement.loadData();
       } else if (this.currentTab === 'chat' && this.$refs.chatManagement) {
         this.$refs.chatManagement.loadData();
+      } else if (this.currentTab === 'command') {
+        // 数据指挥页面不需要刷新，显示提示
+        uni.showToast({
+          title: '数据指挥功能已是最新',
+          icon: 'success',
+          duration: 1500
+        });
       }
     },
     
@@ -144,6 +202,14 @@ export default {
         url = `/pages/personal/userDetail/DataEdit?type=location&mode=add`;
       } else if (this.currentTab === 'chat') {
         url = `/pages/personal/userDetail/DataEdit?type=chat&mode=add`;
+      } else if (this.currentTab === 'command') {
+        // 数据指挥页面显示提示
+        uni.showToast({
+          title: '数据指挥功能无需新增',
+          icon: 'none',
+          duration: 2000
+        });
+        return;
       }
       
       if (url) {
@@ -152,6 +218,13 @@ export default {
         });
       }
     },
+    
+    // 编辑数据指挥配置
+    editCommand(key, config) {
+      uni.navigateTo({
+        url: `/pages/personal/userDetail/DataEdit?type=command&mode=edit&key=${key}&title=${encodeURIComponent(config.title)}&desc=${encodeURIComponent(config.desc)}&url=${encodeURIComponent(config.url)}`
+      });
+    }
   }
 }
 </script>
@@ -318,10 +391,46 @@ export default {
 
 /* 内容区域 */
 .location-content,
-.chat-content {
+.chat-content,
+.command-content {
   flex: 1;
   display: flex;
   flex-direction: column;
   min-height: 0; /* 允许flex子项收缩 */
+}
+
+/* 数据指挥样式 */
+.command-content {
+  padding: 20rpx;
+}
+
+.command-list {
+  display: flex;
+  flex-direction: column;
+  gap: 20rpx;
+}
+
+.command-item {
+  background: #fff;
+  border-radius: 16rpx;
+  padding: 20rpx;
+  box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.05);
+  transition: all 0.3s ease;
+  
+  &:active {
+    background-color: #f5f5f5;
+  }
+}
+
+.command-avatar {
+  width: 60rpx;
+  height: 60rpx;
+  border-radius: 50%;
+  margin-right: 16rpx;
+}
+
+.command-type {
+  font-size: 22rpx;
+  color: #666;
 }
 </style> 

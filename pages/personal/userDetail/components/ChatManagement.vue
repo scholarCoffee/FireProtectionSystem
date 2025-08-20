@@ -81,6 +81,50 @@
         </view>
       </view>
     </scroll-view>
+    
+    <!-- 添加成员弹窗 -->
+    <view v-if="showAddMemberModal" class="modal-overlay" @tap="closeAddMemberModal">
+      <view class="modal-content" @tap.stop>
+        <view class="modal-header">
+          <text class="modal-title">添加群成员</text>
+        </view>
+        <view class="modal-body">
+          <view class="input-group">
+            <text class="input-label">用户ID：</text>
+            <input 
+              v-model="newMemberId" 
+              class="modal-input"
+              placeholder="请输入用户ID"
+              maxlength="50"
+            />
+          </view>
+          <view class="input-group">
+            <text class="input-label">用户昵称：</text>
+            <input 
+              v-model="newMemberName" 
+              class="modal-input"
+              placeholder="请输入用户昵称"
+              maxlength="20"
+            />
+          </view>
+          <view class="input-group">
+            <text class="input-label">用户头像：</text>
+            <input 
+              v-model="newMemberAvatar" 
+              class="modal-input"
+              placeholder="请输入头像URL（可选）"
+              maxlength="200"
+            />
+          </view>
+        </view>
+        <view class="modal-footer">
+          <button class="modal-btn cancel-btn" @tap="closeAddMemberModal">取消</button>
+          <button class="modal-btn confirm-btn" @tap="confirmAddMember" :disabled="addingMember">
+            {{ addingMember ? '添加中...' : '确认添加' }}
+          </button>
+        </view>
+      </view>
+    </view>
   </view>
 </template>
 
@@ -102,7 +146,14 @@ export default {
       serverUrl: 'https://www.xiaobei.space',
       loading: false,
       groupList: [],
-      filteredList: []
+      filteredList: [],
+      // 添加成员相关
+      showAddMemberModal: false,
+      newMemberId: '',
+      newMemberName: '',
+      newMemberAvatar: '',
+      addingMember: false,
+      currentGroup: null
     }
   },
   
@@ -215,9 +266,11 @@ export default {
     },
     
     addMember(item) {
-      uni.navigateTo({
-        url: `/pages/personal/userDetail/DataEdit?type=chat&mode=addMember&groupId=${item.groupId}`
-      });
+      this.currentGroup = item;
+      this.showAddMemberModal = true;
+      this.newMemberId = '';
+      this.newMemberName = '';
+      this.newMemberAvatar = '';
     },
     
     removeMember(group, member) {
@@ -277,6 +330,68 @@ export default {
           duration: 2000
         });
       } finally {
+        uni.hideLoading();
+      }
+    },
+    
+    // 关闭添加成员弹窗
+    closeAddMemberModal() {
+      this.showAddMemberModal = false;
+      this.currentGroup = null;
+      this.newMemberId = '';
+      this.newMemberName = '';
+      this.newMemberAvatar = '';
+    },
+    
+    // 确认添加成员
+    async confirmAddMember() {
+      if (!this.newMemberId.trim() || !this.newMemberName.trim()) {
+        uni.showToast({
+          title: '请填写用户ID和昵称',
+          icon: 'none',
+          duration: 2000
+        });
+        return;
+      }
+      
+      try {
+        this.addingMember = true;
+        uni.showLoading({ title: '添加中...' });
+        
+        const result = await new Promise((resolve, reject) => {
+          uni.request({
+            url: this.serverUrl + '/chat/addMember',
+            method: 'POST',
+            data: {
+              groupId: this.currentGroup.groupId,
+              userId: this.newMemberId.trim(),
+              nickName: this.newMemberName.trim(),
+              avatarUrl: this.newMemberAvatar.trim() || ''
+            },
+            success: resolve,
+            fail: reject
+          });
+        });
+        
+        if (result.data && result.data.code === 200) {
+          uni.showToast({
+            title: '添加成功',
+            icon: 'success',
+            duration: 1500
+          });
+          this.closeAddMemberModal();
+          this.loadData(); // 重新加载数据
+        } else {
+          throw new Error(result.data?.msg || '添加失败');
+        }
+      } catch (error) {
+        uni.showToast({
+          title: error.message || '添加失败',
+          icon: 'none',
+          duration: 2000
+        });
+      } finally {
+        this.addingMember = false;
         uni.hideLoading();
       }
     },
@@ -558,5 +673,105 @@ export default {
 .more-text {
   font-size: 22rpx;
   color: #666;
+}
+
+/* 弹窗样式 */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal-content {
+  width: 80%;
+  max-width: 600rpx;
+  background: #fff;
+  border-radius: 16rpx;
+  overflow: hidden;
+  box-shadow: 0 8rpx 32rpx rgba(0, 0, 0, 0.2);
+}
+
+.modal-header {
+  padding: 30rpx;
+  text-align: center;
+  border-bottom: 1rpx solid #f0f0f0;
+}
+
+.modal-title {
+  font-size: 32rpx;
+  font-weight: 600;
+  color: #333;
+}
+
+.modal-body {
+  padding: 30rpx;
+}
+
+.input-group {
+  margin-bottom: 20rpx;
+}
+
+.input-label {
+  display: block;
+  font-size: 26rpx;
+  color: #333;
+  margin-bottom: 8rpx;
+  font-weight: 500;
+}
+
+.modal-input {
+  width: 100%;
+  height: 70rpx;
+  padding: 0 20rpx;
+  border: 2rpx solid #e0e0e0;
+  border-radius: 8rpx;
+  font-size: 26rpx;
+  color: #333;
+  background: #fafafa;
+  box-sizing: border-box;
+  
+  &:focus {
+    border-color: #1890ff;
+    background: #fff;
+  }
+}
+
+.modal-footer {
+  display: flex;
+}
+
+.modal-btn {
+  flex: 1;
+  height: 80rpx;
+  border: none;
+  font-size: 28rpx;
+  font-weight: 500;
+  background: transparent;
+  
+  &.cancel-btn {
+    color: #666;
+    &:active {
+      background: #f5f5f5;
+    }
+  }
+  
+  &.confirm-btn {
+    color: #1890ff;
+    
+    &:active {
+      background: #f0f9ff;
+    }
+    
+    &:disabled {
+      color: #ccc;
+    }
+  }
 }
 </style> 

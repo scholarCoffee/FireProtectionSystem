@@ -58,6 +58,21 @@
                     </view>
                 </view>
             </view>
+            
+            <!-- 权限管理入口 -->
+            <view class="column settings-column">
+                <view class="row settings-row" @tap="goToPermissionManagement">
+                    <view class="settings-content">
+                        <view class="settings-icon-wrapper permission-icon">
+                            <image :src= "serverUrl + '/static/icons/person/permission.png'" mode="aspectFit" class="settings-icon"></image>
+                        </view>
+                        <text class="settings-text">权限管理</text>
+                    </view>
+                    <view class="more">
+                        <image :src="serverUrl + '/static/icons/person/person.png'" mode="aspectFit"></image>
+                    </view>
+                </view>
+            </view>
             <view class="bt2" @tap="onQuitLogin">退出登录</view>
         </view>
         
@@ -99,7 +114,7 @@
                     phone: ''
                 },
                 isLoggedIn: false, // 用户是否已登录
-                serverUrl: 'http://172.20.10.2:3000',
+                serverUrl: 'http://192.168.1.3:3000',
                 showModifyModal: false, // 是否显示修改弹窗
                 modifyValue: '', // 修改的值
                 modifyType: '', // 修改类型
@@ -163,7 +178,9 @@
                     method: 'POST',
                     data,
                     success: (res) => {
+                        const { avatarUrl } = res.data.data;
                         if (res.data && res.data.code === 200) {
+                            this.userInfo.avatarUrl = this.serverUrl + avatarUrl;
                             uni.showToast({
                                 title: successMsg,
                                 icon: 'success',
@@ -206,9 +223,8 @@
                             success: (res) => {
                                 const backImg = JSON.parse(res.data).data;
                                 const oldUserInfo = uni.getStorageSync('userInfo');
-                                const newUserInfo = { ...oldUserInfo, avatarUrl: backImg };
+                                const newUserInfo = { ...oldUserInfo, avatarUrl: this.serverUrl + backImg };
                                 uni.setStorageSync('userInfo', newUserInfo);
-                                this.userInfo.avatarUrl = backImg;
                                 this.tempFilePaths = '';
                                 // 同步更新后端头像
                                 this.updateUserInfoToServer(
@@ -295,8 +311,7 @@
                     return;
                 }
 
-                uni.showLoading({ title: '登录中...' });
-                
+                uni.showLoading({ title: '登录中...' });            
                 try {
                     // 1. 获取微信登录code
                     const loginRes = await new Promise((resolve, reject) => {
@@ -333,7 +348,7 @@
                         const userInfo = {
                             id: serverUser.id, // 后端返回的唯一标识
                             nickName: serverUser.nickName || nickName,
-                            avatarUrl: serverUser.avatarUrl || avatarUrl,
+                            avatarUrl: this.serverUrl + serverUser.avatarUrl || avatarUrl,
                             permissionStatus: serverUser.permissionStatus || 1
                         };
                         uni.setStorageSync('userInfo', userInfo);
@@ -390,7 +405,7 @@
                         if (loginRes.code) {
                             // 调用后端接口解密手机号
                             uni.request({
-                                url: this.serverUrl + '/whitelistUserService/getPhoneNumber',
+                                url: this.serverUrl + '/user/getPhoneNumber',
                                 method: 'POST',
                                 data: {
                                     code: loginRes.code,
@@ -461,6 +476,13 @@
             goToDataManagement() {
                 uni.navigateTo({
                     url: '/pages/personal/userDetail/DataManagement'
+                });
+            },
+            
+            // 权限管理相关方法
+            goToPermissionManagement() {
+                uni.navigateTo({
+                    url: '/pages/personal/userDetail/PermissionManagement'
                 });
             }
         }
@@ -643,6 +665,11 @@
             align-items: center;
             justify-content: center;
             box-shadow: 0 4rpx 12rpx rgba(102, 126, 234, 0.3);
+            
+            &.permission-icon {
+                background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
+                box-shadow: 0 4rpx 12rpx rgba(255, 107, 107, 0.3);
+            }
         }
         
         .settings-icon {

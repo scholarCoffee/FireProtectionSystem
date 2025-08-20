@@ -142,7 +142,7 @@
                 // 非微信小程序：生成假数据
                 if (!uni.getStorageSync('userInfo')) {
                     const mockUserInfo = {
-                        id: '687a6f59e83419906c0699f4',
+                        id: 'o782m7VVE2mElMJV18aNxzYQaxts',
                         nickName: '测试用户-小创',
                         avatarUrl: this.serverUrl + '/static/icons/chat/person-avatar.png',
                         permissionStatus: 2 // 默认无权限

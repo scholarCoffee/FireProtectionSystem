@@ -380,6 +380,43 @@
           </picker>
         </view>
       </view>
+
+      <!-- Command表单 -->
+      <view v-if="type === 'command'" class="form-content">
+        <view class="form-item">
+          <text class="form-label">功能名称 <text class="required">*</text></text>
+          <input 
+            v-model="formData.commandTitle" 
+            class="form-input" 
+            placeholder="请输入功能名称"
+            maxlength="50"
+            @input="onCommandTitleInput"
+          />
+        </view>
+          
+        <view class="form-item description-item">
+          <text class="form-label">功能描述</text>
+          <textarea 
+            v-model="formData.commandDesc" 
+            class="form-textarea" 
+            placeholder="请输入功能描述"
+            maxlength="200"
+            auto-height
+            show-confirm-bar="false"
+          />
+        </view>
+            
+        <view class="form-item">
+          <text class="form-label">访问地址 <text class="required">*</text></text>
+          <input 
+            v-model="formData.commandUrl" 
+            class="form-input" 
+            placeholder="请输入访问地址"
+            maxlength="500"
+            @input="onCommandUrlInput"
+          />
+        </view>
+      </view>
     </scroll-view>
 
     <!-- 底部操作按钮 -->
@@ -401,9 +438,10 @@ export default {
   name: 'DataEdit',
   data() {
     return {
-      type: 'location', // location 或 safety
+      type: 'location', // location 或 safety 或 command
       mode: 'add', // add 或 edit
       editId: '', // 编辑时的ID
+      commandKey: '', // 数据指挥的key
       formData: {},
       // 错误状态
       errors: {},
@@ -486,10 +524,18 @@ export default {
     this.initLocationTypeOptions();
     this.initFormData();
     
+    // 如果是数据指挥编辑模式，设置初始数据
+    if (this.type === 'command' && options.key) {
+      this.commandKey = options.key;
+      this.formData.commandTitle = decodeURIComponent(options.title || '');
+      this.formData.commandDesc = decodeURIComponent(options.desc || '');
+      this.formData.commandUrl = decodeURIComponent(options.url || '');
+    }
+    
     // 检查是否有本地保存的安全评分
     this.checkLocalSafetyScore();
     
-    if (this.isEdit && this.editId) {
+    if (this.isEdit && this.editId && this.type !== 'command') {
       this.loadEditData();
     }
   },
@@ -531,6 +577,12 @@ export default {
           chatType: 1,
           chatDescription: '',
           chatStatus: 1
+        };
+      } else if (this.type === 'command') {
+        this.formData = {
+          commandTitle: '',
+          commandDesc: '',
+          commandUrl: ''
         };
       }
     },
@@ -639,6 +691,15 @@ export default {
       this.validateField('chatName', e.detail.value);
     },
     
+    // 数据指挥表单输入验证
+    onCommandTitleInput(e) {
+      this.validateField('commandTitle', e.detail.value);
+    },
+    
+    onCommandUrlInput(e) {
+      this.validateField('commandUrl', e.detail.value);
+    },
+    
     async saveData() {
       // 表单验证
       if (!this.validateForm()) {
@@ -664,6 +725,32 @@ export default {
       
       uni.showLoading({ title: this.isEdit ? '更新中...' : '保存中...' });
       try {
+        // 数据指挥直接保存到本地配置
+        if (this.type === 'command') {
+          // 导入配置文件并更新
+          const { updateCommandConfig } = await import('@/commons/js/commandConfig.js');
+          const success = updateCommandConfig(this.commandKey, {
+            title: this.formData.commandTitle,
+            desc: this.formData.commandDesc,
+            url: this.formData.commandUrl
+          });
+          
+          if (success) {
+            uni.showToast({
+              title: '配置已更新',
+              icon: 'success',
+              duration: 1500
+            });
+            
+            setTimeout(() => {
+              uni.navigateBack();
+            }, 1500);
+          } else {
+            throw new Error('配置更新失败');
+          }
+          return;
+        }
+        
         const url = this.type === 'location' 
           ? this.serverUrl + '/location/save'
           : this.serverUrl + '/chat/save';
@@ -700,7 +787,7 @@ export default {
         });
       } finally {
         uni.hideLoading();
-              }
+      }
       },
       
       // 先保存安全评分
@@ -791,6 +878,28 @@ export default {
             this.errors[fieldName] = '请输入聊天名称';
           }
         }
+      } else if (this.type === 'command') {
+        if (fieldName === 'commandTitle') {
+          if (!value || !value.trim()) {
+            this.errors[fieldName] = '请输入功能名称';
+          }
+        } else if (fieldName === 'commandUrl') {
+          if (!value || !value.trim()) {
+            this.errors[fieldName] = '请输入访问地址';
+          } else if (!this.isValidUrl(value)) {
+            this.errors[fieldName] = '请输入有效的URL地址';
+          }
+        }
+      }
+    },
+    
+    // URL验证方法
+    isValidUrl(string) {
+      try {
+        const url = new URL(string);
+        return url.protocol === 'http:' || url.protocol === 'https:';
+      } catch (_) {
+        return false;
       }
     },
     
@@ -829,6 +938,9 @@ export default {
         }
       } else if (this.type === 'chat') {
         this.validateField('chatName', this.formData.chatName);
+      } else if (this.type === 'command') {
+        this.validateField('commandTitle', this.formData.commandTitle);
+        this.validateField('commandUrl', this.formData.commandUrl);
       }
       
       return !Object.values(this.errors).some(error => error);
