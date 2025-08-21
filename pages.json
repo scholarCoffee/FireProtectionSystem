@@ -49,6 +49,13 @@
                 "navigationStyle": "default",
                 "navigationBarTitleText": "安全评分配置"
             }
+        },
+        {
+            "path": "pages/personal/userDetail/PermissionManagement",
+            "style": {
+                "navigationStyle": "default",
+                "navigationBarTitleText": "权限管理"
+            }
         }
     ],
     "subPackages": [

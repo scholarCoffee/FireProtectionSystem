@@ -1,38 +1,19 @@
 <template>
     <view class="content">
         <view class="page-content">
-            <!-- 四个功能按钮 -->
+            <!-- 功能按钮（从本地存储动态渲染） -->
             <view class="command-grid">
-                <view class="command-item" @click="goToWebview('data-analysis', '数据分析')">
+                <view 
+                    v-for="(item, key) in commandList" 
+                    :key="key" 
+                    class="command-item" 
+                    @click="goToWebviewByUrl(item.url, item.title)"
+                >
                     <view class="command-icon">
-                        <image :src="serverUrl + '/static/icons/data/analysis.png'" class="icon-img" />
+                        <image :src="serverUrl + '/static/icons/data/' + (item.icon || 'manage') + '.png'" class="icon-img" />
                     </view>
-                    <text class="command-title">数据分析</text>
-                    <text class="command-desc">实时数据监控与分析</text>
-                </view>
-                
-                <view class="command-item" @click="goToWebview('alarm-management', '报警管理')">
-                    <view class="command-icon">
-                        <image :src="serverUrl + '/static/icons/data/alarm.png'" class="icon-img" />
-                    </view>
-                    <text class="command-title">报警管理</text>
-                    <text class="command-desc">报警信息处理与统计</text>
-                </view>
-                
-                <view class="command-item" @click="goToWebview('device-monitor', '设备监控')">
-                    <view class="command-icon">
-                        <image :src="serverUrl + '/static/icons/data/device.png'" class="icon-img" />
-                    </view>
-                    <text class="command-title">设备监控</text>
-                    <text class="command-desc">设备状态实时监控</text>
-                </view>
-                
-                <view class="command-item" @click="goToWebview('report-system', '报表系统')">
-                    <view class="command-icon">
-                        <image :src="serverUrl + '/static/icons/data/report.png'" class="icon-img" />
-                    </view>
-                    <text class="command-title">报表系统</text>
-                    <text class="command-desc">数据报表生成与导出</text>
+                    <text class="command-title">{{ item.title }}</text>
+                    <text class="command-desc">{{ item.desc }}</text>
                 </view>
             </view>
         </view>
@@ -45,33 +26,42 @@ export default {
         return {
             // 可以添加数据
             serverUrl: 'https://www.xiaobei.space',
+            commandStorageKey: 'COMMAND_CONFIG_V1',
+            commandConfig: {}
         }
     },
+    computed: {
+        commandList() {
+            // 将对象按插入顺序转为数组
+            if (!this.commandConfig) return []
+            return Object.values(this.commandConfig)
+        }
+    },
+    onShow() {
+        this.loadCommandConfig()
+    },
     methods: {
-        goToWebview(type, title) {
-            // 根据类型构建不同的URL
-            let url = '';
-            switch(type) {
-                case 'data-analysis':
-                    url = 'https://example.com/data-analysis';
-                    break;
-                case 'alarm-management':
-                    url = 'https://example.com/alarm-management';
-                    break;
-                case 'device-monitor':
-                    url = 'https://example.com/device-monitor';
-                    break;
-                case 'report-system':
-                    url = 'https://example.com/report-system';
-                    break;
-                default:
-                    url = 'https://example.com';
+        loadCommandConfig() {
+            try {
+                const local = uni.getStorageSync(this.commandStorageKey)
+                if (local && typeof local === 'object') {
+                    this.commandConfig = local
+                } else {
+                    // 若本地无数据，则回退为空（由管理页负责初始化默认）
+                    this.commandConfig = {}
+                }
+            } catch (e) {
+                this.commandConfig = {}
             }
-            
-            // 跳转到webview页面
+        },
+        goToWebviewByUrl(url, title) {
+            if (!url) {
+                uni.showToast({ title: '未配置访问地址', icon: 'none' })
+                return
+            }
             uni.navigateTo({
-                url: `/subPackages/common/webview/index?url=${encodeURIComponent(url)}&title=${encodeURIComponent(title)}`
-            });
+                url: `/subPackages/common/webview/index?url=${encodeURIComponent(url)}&title=${encodeURIComponent(title || '数据指挥')}`
+            })
         }
     }
 }

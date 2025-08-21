@@ -73,24 +73,30 @@
               </view>
             </view>
             <view class="item-details">
-              <view class="sub-item">
-                <view class="sub-item-left">
-                  <view class="sub-item-left-top">
-                    <view class="sub-title">{{ itemConf.description || '' }}</view>
-                    <view class="sub-option">{{ getOptionLabel(itemConf) }}</view>
+                              <view class="sub-item">
+                  <view class="sub-item-left">
+                    <view class="sub-item-left-top">
+                      <view class="sub-title">{{ itemConf.description || '' }}</view>
+                      <view class="sub-option">{{ getOptionLabel(itemConf) }}</view>
+                    </view>
+                    <view class="sub-score">{{ getScoreLabelByConf(itemConf) }}</view>
                   </view>
-                  <view class="sub-score">{{ getScoreLabelByConf(itemConf) }}</view>
+                  <!-- 进度条移到sub-item下方 -->
+                  <view class="item-progress">
+                    <view class="progress-bar">
+                      <view class="progress-fill" :style="{ width: getScorePercent(itemConf) + '%', backgroundColor: safetyLevelInfo.cssColor }"></view>
+                    </view>
+                    <view class="progress-score-text">
+                      <text>{{ itemConf.actualScore || 0 }}/{{ itemConf.weight || 10 }}分</text>
+                    </view>
+                  </view>
+                  <!-- 备注信息（仅当存在且不为空时显示） -->
+                  <view class="remark-section" v-if="getRemarkText(itemConf)">
+                    <image :src="serverUrl + '/static/icons/location/description-info-active.png'" class="remark-icon" />
+                    <view class="remark-title">概述</view>
+                    <view class="remark-text">{{ getRemarkText(itemConf) }}</view>
+                  </view>
                 </view>
-                <!-- 进度条移到sub-item下方 -->
-                <view class="item-progress">
-                  <view class="progress-bar">
-                    <view class="progress-fill" :style="{ width: getScorePercent(itemConf) + '%', backgroundColor: safetyLevelInfo.cssColor }"></view>
-                  </view>
-                  <view class="progress-score-text">
-                    <text>{{ itemConf.actualScore || 0 }}/{{ itemConf.weight || 10 }}分</text>
-                  </view>
-                </view>
-              </view>
             </view>
           </view>
         </view>
@@ -254,6 +260,11 @@ export default {
     getScorePercent(itemConf) {
       if (itemConf.weight === 0) return 0; // 避免除以0
       return (itemConf.actualScore / itemConf.weight) * 100;
+    },
+    getRemarkText(itemConf) {
+      // 从实际数据中获取备注信息
+      const scoreObj = (this.safetyData.scoreItems || {})[itemConf.id] || {};
+      return scoreObj.remark || '';
     },
     toggleFilter() {
       this.isFilterExpanded = !this.isFilterExpanded;
@@ -565,6 +576,45 @@ export default {
   color: #FF8A65;
   font-weight: bold;
   text-align: right;
+}
+
+/* 备注信息样式 */
+.remark-section {
+  margin-top: 8px;
+  padding: 8px;
+  background: #f6f8ff;
+  border-radius: 6px;
+  border-left: 3px solid #667eea;
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  align-items: center;
+}
+
+.remark-icon {
+  width: 17px;
+  height: 17px;
+  margin-top: 0;
+  flex-shrink: 0;
+  opacity: 0.9;
+}
+
+.remark-title {
+  font-size: 12px;
+  color: #667eea; /* 统一为主色 */
+  font-weight: 600;
+  line-height: 16px;
+  white-space: nowrap;
+  margin-right: 2px;
+}
+
+.remark-text {
+  font-size: 13px;
+  color: #333;
+  flex: 1;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
 }
 /* 筛选区 */
 .filter-bar {

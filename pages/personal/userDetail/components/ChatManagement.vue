@@ -3,12 +3,12 @@
     <!-- 数据列表 -->
     <scroll-view class="data-list" scroll-y="true" @scrolltolower="loadMore">
       <view v-if="loading" class="loading-container">
-        <image :src="serverUrl + '/static/icons/common/loading.png'" class="loading-icon" />
+        <image :src="'/static/icons/common/loading.png'" class="loading-icon" />
         <text class="loading-text">加载中...</text>
       </view>
       
       <view v-else-if="filteredList.length === 0" class="empty-container">
-        <image :src="serverUrl + '/static/icons/common/no-data.png'" class="empty-icon" />
+        <image :src="'/static/icons/common/no-data.png'" class="empty-icon" />
         <text class="empty-text">暂无群组</text>
       </view>
       
@@ -16,7 +16,7 @@
         <view class="data-item" v-for="item in filteredList" :key="item.groupId">
           <view class="item-header">
             <view class="item-title">
-              <image :src="item.groupAvatar || serverUrl + '/static/icons/chat/defautl-group.png'" class="group-avatar" />
+              <image :src="serverUrl + item.groupAvatar || '/static/icons/chat/defautl-group.png'" class="group-avatar" />
               <view class="title-info">
                 <text class="title-text">{{ item.groupName }}</text>
                 <text class="member-count">{{ item.memberCount || 0 }}人</text>
@@ -24,13 +24,13 @@
             </view>
             <view class="item-actions">
               <button class="action-icon-btn" @tap="editGroup(item)">
-                <image :src="serverUrl + '/static/icons/chat/edit.png'" class="action-icon" />
+                <image :src="serverUrl + '/static/icons/common/edit-white.png'" class="action-icon" mode="aspectFit" />
               </button>
               <button class="action-icon-btn member-btn" @tap="manageMembers(item)">
-                <image :src="serverUrl + '/static/icons/chat/person-avatar.png'" class="action-icon" />
+                <image :src="serverUrl + '/static/icons/common/add-white.png'" class="action-icon" mode="aspectFit" />
               </button>
               <button class="action-icon-btn delete-btn" @tap="deleteGroup(item)">
-                <image :src="serverUrl + '/static/icons/chat/delete.png'" class="action-icon" />
+                <image :src="serverUrl + '/static/icons/common/delete-white.png'" class="action-icon" mode="aspectFit" />
               </button>
             </view>
           </view>
@@ -57,19 +57,19 @@
               <view class="members-header">
                 <text class="members-title">群成员 ({{ item.members.length }})</text>
                 <button class="add-member-btn" @tap="addMember(item)">
-                  <image :src="serverUrl + '/static/icons/chat/add.png'" class="add-icon" />
+                  <image :src="'/static/icons/chat/add.png'" class="add-icon" />
                   <text>添加成员</text>
                 </button>
               </view>
               <view class="members-list">
                 <view class="member-item" v-for="member in item.members.slice(0, 5)" :key="member.userId">
-                  <image :src="member.avatarUrl || serverUrl + '/static/icons/chat/person-avatar.png'" class="member-avatar" />
+                  <image :src="member.avatarUrl || '/static/icons/chat/person-avatar.png'" class="member-avatar" />
                   <view class="member-info">
                     <text class="member-name">{{ member.nickName }}</text>
                     <text class="member-role">{{ member.role === 1 ? '群主' : member.role === 2 ? '管理员' : '成员' }}</text>
                   </view>
                   <button class="remove-member-btn" @tap="removeMember(item, member)" v-if="member.role !== 1">
-                    <image :src="serverUrl + '/static/icons/chat/delete.png'" class="remove-icon" />
+                    <image :src="'/static/icons/chat/delete.png'" class="remove-icon" />
                   </button>
                 </view>
                 <view class="more-members" v-if="item.members.length > 5">
@@ -134,6 +134,7 @@ export default {
   props: {
     serverUrl: {
       type: String,
+      default: 'https://www.xiaobei.space',
       required: true
     },
     searchKeyword: {
@@ -143,10 +144,14 @@ export default {
   },
   data() {
     return {
-      serverUrl: 'https://www.xiaobei.space',
       loading: false,
       groupList: [],
       filteredList: [],
+      // 用户信息（用于拉取群列表）
+      userInfo: {
+        id: '',
+        permissionStatus: 2
+      },
       // 添加成员相关
       showAddMemberModal: false,
       newMemberId: '',
@@ -167,26 +172,45 @@ export default {
   },
   
   mounted() {
+    this.getStorages();
     this.loadData();
   },
   
   methods: {
+    // 读取本地用户，用于接口参数
+    getStorages() {
+      const userInfo = uni.getStorageSync('userInfo') || {}
+      this.userInfo.id = userInfo.id || ''
+      this.userInfo.permissionStatus = typeof userInfo.permissionStatus === 'number' ? userInfo.permissionStatus : 2
+    },
+
     async loadData() {
       this.loading = true;
       try {
         const result = await new Promise((resolve, reject) => {
           uni.request({
-            url: this.serverUrl + '/chat/groups',
-            method: 'GET',
+            url: this.serverUrl + '/group/getGroupList',
+            method: 'POST',
+            data: { permissionStatus: this.userInfo.permissionStatus, userId: this.userInfo.id },
             success: resolve,
             fail: reject
           });
         });
         
-        if (result.data && result.data.code === 200) {
-          this.groupList = result.data.data || [];
+        if (result.data && result.data.code === 200 && Array.isArray(result.data.data)) {
+          // 规范化字段与头像
+          this.groupList = (result.data.data || []).map(g => ({
+            groupId: g.groupId,
+            groupName: g.groupName || '未命名群组',
+            description: g.description || '',
+            ownerName: g.ownerName || '',
+            createTime: g.createTime || '',
+            groupAvatar: g.groupAvatar ? (this.serverUrl + g.groupAvatar) : '/static/icons/chat/defautl-group.png',
+            members: [],
+            memberCount: 0
+          }))
           // 为每个群组加载成员信息
-          await this.loadMembersForGroups();
+          // await this.loadMembersForGroups();
           this.filterData();
         } else {
           this.groupList = [];
@@ -523,17 +547,20 @@ export default {
 .item-actions {
   display: flex;
   gap: 12rpx;
+  margin-right: 12rpx;
 }
 
 .action-icon-btn {
-  width: 60rpx;
-  height: 60rpx;
+  height: 56rpx;
   border-radius: 8rpx;
-  background: #f5f5f5;
+  background: #1890ff;
   border: none;
   display: flex;
   align-items: center;
   justify-content: center;
+  line-height: 0;
+  overflow: hidden;
+  padding: 8px;
 }
 
 .action-icon-btn.member-btn {
@@ -547,6 +574,7 @@ export default {
 .action-icon {
   width: 32rpx;
   height: 32rpx;
+  display: block;
 }
 
 .item-content {

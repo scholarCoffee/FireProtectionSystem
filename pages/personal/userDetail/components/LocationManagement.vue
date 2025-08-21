@@ -117,7 +117,6 @@ export default {
       pageSize: 20,
       hasMore: true,
       total: 0,
-
     }
   },
   
@@ -138,8 +137,6 @@ export default {
   },
   
   methods: {
-
-    
     // 重置分页参数
     resetPagination() {
       this.page = 1;
@@ -378,8 +375,6 @@ export default {
   height: calc(100vh - 200rpx);
 }
 
-
-
 .loading-container, .empty-container {
   display: flex;
   flex-direction: column;
@@ -599,8 +594,6 @@ export default {
     transform: rotate(360deg);
   }
 }
-
-
 
 /* 添加淡入淡出效果 */
 .loading-more, .no-more {

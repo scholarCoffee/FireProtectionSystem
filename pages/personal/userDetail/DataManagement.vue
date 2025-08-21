@@ -83,7 +83,9 @@
         >
           <view class="item-header">
             <view class="item-title">
-              <image :src="serverUrl + '/static/icons/data/' + config.icon + '.png'" class="command-avatar" />
+              <view class="command-avatar" :class="avatarClassMap[config.icon] || 'avatar-grad-1'">
+                <image :src="serverUrl + '/static/icons/data/' + (config.icon || 'manage') + '.png'" class="avatar-img" />
+              </view>
               <view class="title-info">
                 <text class="title-text">{{ config.title }}</text>
                 <text class="command-type">数据指挥</text>
@@ -91,7 +93,7 @@
             </view>
             <view class="item-actions">
               <button class="action-icon-btn" @tap.stop="editCommand(key, config)">
-                <image :src="serverUrl + '/static/icons/chat/edit.png'" class="action-icon" />
+                <image :src="serverUrl + '/static/icons/common/edit-white.png'" class="action-icon" />
               </button>
             </view>
           </view>
@@ -107,6 +109,34 @@
           </view>
         </view>
       </view>
+
+      <!-- 本地编辑弹窗 -->
+      <view class="command-modal" v-if="showCommandModal" @tap="closeCommandModal">
+        <view class="modal-content" @tap.stop>
+          <view class="modal-header">
+            <text class="modal-title">{{ commandModalMode === 'add' ? '新增功能' : '编辑功能' }}</text>
+            <text class="modal-close" @tap="closeCommandModal">×</text>
+          </view>
+          <view class="modal-body">
+            <view class="modal-form-item">
+              <text class="modal-label">功能名称</text>
+              <input v-model="editForm.title" class="modal-input" placeholder="请输入功能名称" maxlength="50" />
+            </view>
+            <view class="modal-form-item">
+              <text class="modal-label">功能描述</text>
+              <textarea v-model="editForm.desc" class="modal-textarea" placeholder="请输入功能描述" maxlength="200" auto-height show-confirm-bar="false" />
+            </view>
+            <view class="modal-form-item">
+              <text class="modal-label">访问地址</text>
+              <input v-model="editForm.url" class="modal-input" placeholder="请输入访问地址" maxlength="500" />
+            </view>    
+          </view>
+          <view class="modal-footer">
+            <button class="footer-btn cancel" @tap="closeCommandModal">取消</button>
+            <button class="footer-btn confirm" @tap="saveCommand">保存</button>
+          </view>
+        </view>
+      </view>
     </view>
   </view>
 </template>
@@ -114,7 +144,7 @@
 <script>
 import LocationManagement from './components/LocationManagement.vue'
 import ChatManagement from './components/ChatManagement.vue'
-import { commandConfig } from '@/commons/js/commandConfig.js'
+import { commandConfig as defaultCommandConfig } from '@/commons/js/commandConfig.js'
 
 export default {
   name: 'DataManagement',
@@ -128,8 +158,22 @@ export default {
       searchKeyword: '', // 搜索关键词
       searchTimer: null, // 搜索防抖定时器
       serverUrl: 'https://www.xiaobei.space',
-      // 数据指挥配置
-      commandConfig: commandConfig
+      // 数据指挥配置（从本地存储加载，缺省使用默认配置）
+      commandConfig: {},
+      // 本地编辑弹窗
+      showCommandModal: false,
+      commandModalMode: 'edit', // add | edit
+      currentEditKey: '',
+      editForm: { title: '', desc: '', url: '' },
+      commandStorageKey: 'COMMAND_CONFIG_V1',
+      // 映射表：避免模板 :class 调用方法
+      avatarClassMap: {
+        analysis: 'avatar-grad-1',
+        alarm: 'avatar-grad-2',
+        device: 'avatar-grad-3',
+        report: 'avatar-grad-4',
+        manage: 'avatar-grad-1'
+      }
     }
   },
 
@@ -139,9 +183,29 @@ export default {
     if (this.currentTab === 'location' && this.$refs.locationManagement) {
       this.$refs.locationManagement.loadData();
     }
+    // 刷新本地指挥功能配置
+    this.loadCommandConfig();
   },
 
   methods: {
+    // 统一本地存储读写
+    loadCommandConfig() {
+      try {
+        const local = uni.getStorageSync(this.commandStorageKey)
+        if (local && typeof local === 'object') {
+          this.commandConfig = local
+        } else {
+          // 初始落库默认配置
+          this.commandConfig = { ...defaultCommandConfig }
+          uni.setStorageSync(this.commandStorageKey, this.commandConfig)
+        }
+      } catch (e) {
+        this.commandConfig = { ...defaultCommandConfig }
+      }
+    },
+    persistCommandConfig() {
+      uni.setStorageSync(this.commandStorageKey, this.commandConfig)
+    },
     switchTab(tab) {
       this.currentTab = tab;
       this.searchKeyword = ''; // 切换标签时清空搜索
@@ -186,44 +250,76 @@ export default {
       } else if (this.currentTab === 'chat' && this.$refs.chatManagement) {
         this.$refs.chatManagement.loadData();
       } else if (this.currentTab === 'command') {
-        // 数据指挥页面不需要刷新，显示提示
-        uni.showToast({
-          title: '数据指挥功能已是最新',
-          icon: 'success',
-          duration: 1500
-        });
+        this.loadCommandConfig();
+        uni.showToast({ title: '已刷新', icon: 'success', duration: 1000 })
       }
     },
     
     showAddModal() {
-      // 根据当前标签页跳转到不同的新增页面
-      let url = '';
+      // 保持原有位置/聊天新增逻辑
+      let url = ''
       if (this.currentTab === 'location') {
-        url = `/pages/personal/userDetail/DataEdit?type=location&mode=add`;
+        url = `/pages/personal/userDetail/DataEdit?type=location&mode=add`
       } else if (this.currentTab === 'chat') {
-        url = `/pages/personal/userDetail/DataEdit?type=chat&mode=add`;
+        url = `/pages/personal/userDetail/DataEdit?type=chat&mode=add`
       } else if (this.currentTab === 'command') {
-        // 数据指挥页面显示提示
-        uni.showToast({
-          title: '数据指挥功能无需新增',
-          icon: 'none',
-          duration: 2000
-        });
-        return;
+        this.openAddCommand()
+        return
       }
-      
-      if (url) {
-        uni.navigateTo({
-          url: url
-        });
-      }
+      if (url) uni.navigateTo({ url })
+    },
+
+    // 本地指挥配置：新增/编辑/保存/删除
+    openAddCommand() {
+      this.commandModalMode = 'add'
+      this.currentEditKey = ''
+      this.editForm = { title: '', desc: '', url: '' }
+      this.showCommandModal = true
     },
     
-    // 编辑数据指挥配置
+    // 编辑数据指挥配置（改为本地弹窗编辑）
     editCommand(key, config) {
-      uni.navigateTo({
-        url: `/pages/personal/userDetail/DataEdit?type=command&mode=edit&key=${key}&title=${encodeURIComponent(config.title)}&desc=${encodeURIComponent(config.desc)}&url=${encodeURIComponent(config.url)}`
-      });
+      this.commandModalMode = 'edit'
+      this.currentEditKey = key
+      this.editForm = { title: config.title || '', desc: config.desc || '', url: config.url || '' }
+      this.showCommandModal = true
+    },
+    deleteCommand(key) {
+      uni.showModal({
+        title: '确认删除',
+        content: '确定删除该功能吗？',
+        success: (res) => {
+          if (res.confirm) {
+            const next = { ...this.commandConfig }
+            delete next[key]
+            this.commandConfig = next
+            this.persistCommandConfig()
+            uni.showToast({ title: '已删除', icon: 'success', duration: 1000 })
+          }
+        }
+      })
+    },
+    closeCommandModal() {
+      this.showCommandModal = false
+    },
+    saveCommand() {
+      // 简单校验
+      if (!this.editForm.title || !this.editForm.url) {
+        uni.showToast({ title: '请填写名称与地址', icon: 'none' })
+        return
+      }
+      const next = { ...this.commandConfig }
+      if (this.commandModalMode === 'add') {
+        // 生成唯一key：title-时间戳
+        const key = `${Date.now()}`
+        next[key] = { ...this.editForm }
+      } else if (this.currentEditKey) {
+        next[this.currentEditKey] = { ...this.editForm }
+      }
+      this.commandConfig = next
+      this.persistCommandConfig()
+      this.showCommandModal = false
+      uni.showToast({ title: '已保存', icon: 'success', duration: 1000 })
     }
   }
 }
@@ -310,6 +406,7 @@ export default {
   background: #f5f5f5;
   border-radius: 24rpx;
   padding: 0 20rpx;
+  margin: 6rpx 0;
   height: 64rpx;
   border: 2rpx solid transparent;
   transition: all 0.3s ease;
@@ -404,6 +501,12 @@ export default {
   padding: 20rpx;
 }
 
+.command-toolbar {
+	display: flex;
+	justify-content: flex-end;
+	padding: 0 0 16rpx 0;
+}
+
 .command-list {
   display: flex;
   flex-direction: column;
@@ -423,14 +526,268 @@ export default {
 }
 
 .command-avatar {
-  width: 60rpx;
-  height: 60rpx;
+  width: 72rpx;
+  height: 72rpx;
   border-radius: 50%;
   margin-right: 16rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 6rpx 20rpx rgba(24, 144, 255, 0.12);
 }
+.avatar-img {
+  width: 36rpx;
+  height: 36rpx;
+  filter: brightness(0) invert(1);
+}
+.avatar-grad-1 { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+.avatar-grad-2 { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); }
+.avatar-grad-3 { background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); }
+.avatar-grad-4 { background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%); }
 
 .command-type {
   font-size: 22rpx;
   color: #666;
+}
+
+/* ===== 数据指挥区域样式增强 ===== */
+.command-list {
+	display: flex;
+	flex-direction: column;
+	gap: 20rpx;
+}
+
+.command-item {
+	background: #fff;
+	border-radius: 16rpx;
+	padding: 24rpx;
+	border: 1rpx solid rgba(24, 144, 255, 0.08);
+	box-shadow: 0 4rpx 16rpx rgba(24, 144, 255, 0.08);
+	transition: transform 0.2s ease, box-shadow 0.2s ease;
+
+	&:active {
+		transform: translateY(2rpx);
+		box-shadow: 0 2rpx 12rpx rgba(24, 144, 255, 0.12);
+	}
+}
+
+/* 头部区域 */
+.item-header {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	margin-bottom: 16rpx;
+}
+
+.item-title {
+	display: flex;
+	align-items: center;
+	gap: 16rpx;
+}
+
+.command-avatar {
+	width: 72rpx;
+	height: 72rpx;
+	border-radius: 50%;
+	box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.08);
+	border: 2rpx solid #f0f5ff;
+}
+
+.title-info {
+	display: flex;
+	flex-direction: column;
+	gap: 4rpx;
+}
+
+.title-text {
+	font-size: 28rpx;
+	font-weight: 700;
+	color: #2c3e50;
+	line-height: 1.2;
+}
+
+/* 操作按钮 */
+.item-actions {
+	display: flex;
+	align-items: center;
+	gap: 12rpx;
+}
+
+.action-icon-btn {
+	width: 50rpx;
+	height: 50rpx;
+	border: none;
+	background: linear-gradient(135deg, #1890ff 0%, #40a9ff 100%);
+	box-shadow: 0 4rpx 12rpx rgba(24, 144, 255, 0.25);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	transition: transform 0.2s ease, box-shadow 0.2s ease;
+	padding: 0;
+
+	&::after {
+		border: none;
+	}
+
+	&:active {
+		transform: scale(0.95);
+		box-shadow: 0 2rpx 8rpx rgba(24, 144, 255, 0.3);
+	}
+}
+
+.action-icon {
+	width: 32rpx;
+	height: 32rpx;
+	filter: brightness(0) invert(1);
+	opacity: 0.95;
+}
+
+.action-icon-btn.danger {
+	background: linear-gradient(135deg, #ff4d4f 0%, #ff7875 100%);
+	box-shadow: 0 4rpx 12rpx rgba(255, 77, 79, 0.25);
+}
+
+/* 内容区域 */
+.item-content {
+	display: flex;
+	flex-direction: column;
+	gap: 10rpx;
+}
+
+.content-row {
+	display: flex;
+	align-items: baseline;
+	gap: 8rpx;
+	padding: 8rpx 0;
+	border-bottom: 1rpx dashed #f0f0f0;
+}
+
+.content-row:last-child {
+	border-bottom: none;
+}
+
+.item-content .label {
+	min-width: 140rpx;
+	color: #8c8c8c;
+	font-size: 24rpx;
+}
+
+.item-content .value {
+	flex: 1;
+	color: #333;
+	font-size: 26rpx;
+	line-height: 1.5;
+	word-break: break-all;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+/* ===== 数据指挥区域样式增强 END ===== */
+
+/* ===== 本地编辑弹窗样式 ===== */
+.command-modal {
+	position: fixed;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	background: rgba(0, 0, 0, 0.6);
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	z-index: 1000;
+}
+
+.modal-content {
+	background: #ffffff;
+	border-radius: 16rpx;
+	width: 90%;
+	max-height: 80%;
+	display: flex;
+	flex-direction: column;
+	overflow: hidden;
+	box-shadow: 0 8rpx 24rpx rgba(0, 0, 0, 0.2);
+}
+
+.modal-header {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	padding: 12rpx 24rpx;
+	border-bottom: 1rpx solid #f0f0f0;
+	background: linear-gradient(135deg, #f8faff 0%, #f0f8ff 100%);
+}
+
+.modal-title {
+	font-size: 30rpx;
+	font-weight: 600;
+	color: #1890ff;
+}
+
+.modal-close {
+	font-size: 36rpx;
+	color: #999999;
+}
+
+.modal-body {
+	padding: 16rpx 24rpx;
+	overflow-y: auto;
+}
+
+.modal-form-item {
+	display: flex;
+	align-items: center;
+	padding: 12rpx 0;
+}
+
+.modal-label {
+	min-width: 160rpx;
+	font-size: 26rpx;
+	color: #666;
+}
+
+.modal-input {
+	flex: 1;
+	height: 72rpx;
+	padding: 0 16rpx;
+	border: 2rpx solid #e8f4ff;
+	border-radius: 12rpx;
+	background: #ffffff;
+	font-size: 26rpx;
+}
+
+.modal-textarea {
+	flex: 1;
+	min-height: 120rpx;
+	padding: 12rpx 16rpx;
+	border: 2rpx solid #e8f4ff;
+	border-radius: 12rpx;
+	background: #ffffff;
+	font-size: 26rpx;
+}
+
+.modal-footer {
+	display: flex;
+	gap: 16rpx;
+	padding: 12rpx 24rpx 20rpx 24rpx;
+	border-top: 1rpx solid #f0f0f0;
+	background: #ffffff;
+}
+
+.footer-btn {
+	flex: 1;
+	height: 68rpx;
+	border-radius: 12rpx;
+	border: none;
+	font-size: 26rpx;
+}
+
+.footer-btn.cancel {
+	background: #f5f5f5;
+	color: #666;
+}
+
+.footer-btn.confirm {
+	background: linear-gradient(135deg, #1890ff 0%, #40a9ff 100%);
+	color: #ffffff;
 }
 </style> 

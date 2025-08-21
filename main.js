@@ -2,7 +2,7 @@ import App from './App'
 import Vue from 'vue'
 import io from './commons/js/weapp.socket.io.js'
 Vue.config.productionTip = false
-// Vue.prototype.serverUrl = 'http://172.17.121.229:3000' 
+// Vue.prototype.serverUrl = 'https://www.xiaobei.space' 
 // Vue.prototype.socket = io('http://172.17.121.229:8002')
 Vue.prototype.serverUrl = 'https://www.xiaobei.space' 
 

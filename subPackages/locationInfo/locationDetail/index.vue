@@ -4,8 +4,8 @@
     <view class="page-content">
       <view>
         <!-- 头部图片区域 -->
-        <view class="header-image">
-          <image :src="serverUrl + locationObj.defaultImg" class="detail-img" mode="aspectFit" />
+        <view class="header-image" v-if="isShowHeaderImage">
+          <image v-show="locationObj.defaultImg" :src="locationObj.defaultImg ? (serverUrl + locationObj.defaultImg) : ''" class="detail-img" mode="aspectFit" />
         </view>
 
         <!-- 信息卡片 -->
@@ -43,7 +43,7 @@
                 <view class="drawing-preview" v-if="locationObj.imgList && locationObj.imgList.length > 0">
                   <swiper class="drawing-swiper" :indicator-dots="true" :autoplay="true" :interval="3000" :duration="500" indicator-color="rgba(255, 255, 255, 0.3)" indicator-active-color="#FFFFFF">
                     <swiper-item v-for="(img, index) in locationObj.imgList" :key="index">
-                      <image :src="`${serverUrl}${img}`" class="drawing-img" mode="aspectFit" />
+                      <image :src="img ? `${serverUrl}${img}` : ''" class="drawing-img" mode="aspectFit" />
                     </swiper-item>
                   </swiper>
                 </view>
@@ -88,7 +88,63 @@
               </view>
             </view>
           </view>
+          
+          <!-- 分割线 -->
+          <view class="divider" />
+          
+          <!-- 作战实景部署（仅重点单位；统一使用 battleDeploymentMaterials） -->
+          <view class="deployment-card" v-if="locationObj.type === 2 && locationObj.battleDeploymentMaterials && locationObj.battleDeploymentMaterials.length">
+            <view class="card-header">
+              <text class="card-title">作战实景部署</text>
+            </view>
+            <view class="deployment-section">
+              <view class="material-list">
+                <view class="material-item" v-for="(m, mi) in locationObj.battleDeploymentMaterials" :key="mi" v-if="m">
+                  <template v-if="isVideoPath(m)">
+                    <video
+                      :src="resolveMediaUrl(m)"
+                      class="deploy-video"
+                      controls
+                      preload="metadata"
+                      webkit-playsinline
+                      playsinline
+                      x5-video-player-type="h5"
+                      x5-video-player-fullscreen="true"
+                      @fullscreenchange="onVideoFullscreenChange"
+                      @error="handleVideoError(m)"
+                    ></video>
+                  </template>
+                  <template v-else>
+                    <image :src="resolveMediaUrl(m)" class="anim-thumb" mode="aspectFill" />
+                  </template>
+                </view>
+              </view>
+            </view>
+          </view>
 
+          <!-- 户主信息与反馈（仅高层小区） -->
+          <view class="owner-feedback-card" v-if="locationObj.type === 1 && (locationObj.householdOwnerName || locationObj.householdOwnerPhone || locationObj.householdFeedback)">
+            <view class="info-row" v-if="locationObj.householdOwnerName">
+              <text class="label">户主姓名：</text>
+              <text class="value">{{ locationObj.householdOwnerName }}</text>
+            </view>
+            <view class="info-row" v-if="locationObj.householdOwnerPhone">
+              <text class="label">联系电话：</text>
+              <text class="value">{{ locationObj.householdOwnerPhone }}</text>
+            </view>
+            <view class="info-row top-align" v-if="locationObj.householdFeedback">
+              <text class="label">户主反馈：</text>
+              <text class="value value-multiline">{{ locationObj.householdFeedback }}</text>
+            </view>
+          </view>
+
+          <!-- 搜救情况（仅高层小区） -->
+          <view class="rescue-card" v-if="locationObj.type === 1 && locationObj.rescueRemark">
+            <view class="info-row top-align">
+              <text class="label">搜救情况：</text>
+              <text class="value value-multiline">{{ locationObj.rescueRemark }}</text>
+            </view>
+          </view>
           <!-- 分割线 -->
           <view class="divider" />
 
@@ -118,7 +174,7 @@
         <view class="gallery-body">
           <swiper class="gallery-swiper" :current="currentImageIndex" @change="onSwiperChange">
             <swiper-item v-for="(img, index) in locationObj.imgList" :key="index">
-              <image :src="`${serverUrl}${img}`" class="gallery-img" mode="aspectFit" />
+              <image :src="img ? `${serverUrl}${img}` : ''" class="gallery-img" mode="aspectFit" />
             </swiper-item>
           </swiper>
           <view class="gallery-indicator">
@@ -162,7 +218,9 @@ export default {
       showCustomModal: false, // 控制自定义弹窗显示
       modalContent: '', // 弹窗内容
       serverUrl: 'https://www.xiaobei.space',
+      isShowHeaderImage: true,
       scrollTop: 0, // 滚动位置
+      isAnyVideoFullscreen: false,
     };
   },
   onLoad(data) {
@@ -202,6 +260,30 @@ export default {
         }
       });
     },
+    isVideoPath(path) {
+      if (!path || typeof path !== 'string') return false;
+      const lower = path.toLowerCase();
+      return lower.endsWith('.mp4') || lower.endsWith('.mov') || lower.endsWith('.avi') || lower.endsWith('.mkv') || lower.endsWith('.webm');
+    },
+    resolveMediaUrl(path) {
+      if (!path) return '';
+      // 已是绝对地址则直接返回
+      if (/^https?:\/\//i.test(path)) return path;
+      // 兼容以 '//' 开头的相对协议路径
+      if (/^\/\//.test(path)) return this.serverUrl + path.replace(/^\/+/, '/');
+      // 普通相对路径
+      return this.serverUrl + (path.startsWith('/') ? path : '/' + path);
+    },
+    handleVideoError(path) {
+      console.warn('视频播放失败：', path);
+      uni.showToast({ title: '视频加载失败', icon: 'none' });
+    },
+    onVideoFullscreenChange(e) {
+      // 兼容 H5 与小程序：进入全屏时隐藏头图避免遮挡，退出时恢复
+      const full = !!(e && (e.detail?.fullScreen !== undefined ? e.detail.fullScreen : e.detail));
+      this.isShowHeaderImage = !full;
+    },
+    // 兼容保留（不再主动全屏）
     getLocationTypeName() {
       // 直接用locationObj.type判断
       const typeMap = { 1: '高层小区', 2: '重点单位', 3: '沿街商铺' };
@@ -449,6 +531,13 @@ export default {
 .value {
   color: #333;
 }
+.top-align {
+  align-items: flex-start;
+}
+.value-multiline {
+  white-space: pre-wrap;
+  line-height: 1.6;
+}
 .phone-content {
   display: flex;
   align-items: center;
@@ -526,6 +615,7 @@ export default {
   display: -webkit-box;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 5;
+  line-clamp: 5;
   overflow: hidden;
   cursor: pointer;
   transition: color 0.2s ease;
@@ -806,8 +896,6 @@ export default {
 /* 出行大门样式 */
 .gate-list {
   flex-wrap: wrap;
-  padding-top: 15px;
-  padding-bottom: 15px;
 }
 
 .gate-items {
@@ -835,6 +923,124 @@ export default {
 .gate-name {
   color: #333;
   font-size: 14px;
+}
+.deployment-card {
+  background-color: #FFF;
+  margin: 10px;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+  overflow: hidden;
+}
+
+.owner-feedback-card, .rescue-card {
+  background-color: #FFF;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+/* 卡片头部（被误删后补回） */
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 15px;
+  border-bottom: 1px solid #f0f0f0;
+  background: linear-gradient(180deg, #ffffff, #f8f9fa);
+}
+.card-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: #333;
+}
+.deployment-section {
+  padding: 10px 15px;
+}
+.section-subtitle {
+  font-size: 13px;
+  color: #666;
+}
+.video-list, .anim-list, .material-list {
+  display: flex;
+  gap: 10px;
+  padding: 8px 0 4px 0;
+  flex-wrap: wrap;
+}
+.video-item, .material-item {
+  width: 100%; /* 单列大预览，更美观 */
+  position: relative; /* 让内部绝对定位元素可用 */
+}
+.deploy-video {
+  width: 100%;
+  height: 200px;
+  border-radius: 12px;
+  background: #000;
+  position: relative;
+  z-index: 1001; /* 避免被覆盖 */
+}
+.fullscreen-btn {
+  position: absolute;
+  right: 10px;
+  bottom: 10px;
+  background: rgba(0,0,0,0.5);
+  padding: 4px 10px;
+  border-radius: 12px;
+}
+.fullscreen-text {
+  color: #fff;
+  font-size: 12px;
+}
+.anim-item {
+  width: calc(33.33% - 7px);
+}
+.anim-thumb {
+  width: 100%;
+  height: 200px;
+  border-radius: 12px;
+  object-fit: cover;
+}
+.owner-row {
+  display: flex;
+  align-items: center;
+  padding: 10px 15px;
+}
+/* 户主信息与反馈合并卡片样式 */
+.owner-feedback-card {
+  background: #FFF;
+  border: none;
+}
+
+.owner-info-section, .feedback-section {
+  padding: 16px 15px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.owner-info-section:last-child, .feedback-section:last-child {
+  border-bottom: none;
+}
+
+.section-subtitle {
+  font-size: 13px;
+  color: #666;
+  font-weight: 600;
+  margin-bottom: 12px;
+  padding: 4px 8px;
+  background: #e8f4ff;
+  border-radius: 12px;
+  display: inline-block;
+}
+
+.feedback-content {
+  padding: 0;
+}
+.feedback-text {
+  font-size: 14px;
+  color: #333;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  background: #f8f9fa;
+  padding: 12px;
+  border-radius: 8px;
+  border-left: 3px solid #1890ff;
 }
 .page-content {
   padding-top: 0;
@@ -1035,5 +1241,21 @@ export default {
 
 .modal-btn:active {
   background: #096DD9;
+}
+
+/* 搜救情况样式 */
+.rescue-content {
+  padding: 16px 15px;
+}
+
+.rescue-text {
+  font-size: 14px;
+  color: #333;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  background: #f8f9fa;
+  padding: 12px;
+  border-radius: 8px;
+  border-left: 3px solid #1890ff;
 }
 </style>

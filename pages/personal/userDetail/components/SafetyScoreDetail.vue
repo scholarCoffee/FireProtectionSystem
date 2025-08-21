@@ -27,6 +27,8 @@
           </view>
           <view class="item-content">
             <text class="item-option">{{ item.option }}</text>
+            <!-- 显示备注信息 -->
+            <text v-if="item.remark" class="item-remark">{{ item.remark }}</text>
           </view>
         </view>
       </view>
@@ -44,6 +46,12 @@
 </template>
 
 <script>
+import { 
+  getScoreItemName, 
+  getSafetyLevelByScore, 
+  getSafetyLevelText 
+} from './safetyScoreData.js';
+
 export default {
   name: 'SafetyScoreDetail',
   data() {
@@ -62,22 +70,10 @@ export default {
     }
   },
   methods: {
-    // 获取评分项中文名称
-    getScoreItemName(key) {
-      const nameMap = {
-        'naturalWaterSource': '天然河流',
-        'outdoorHydrant': '周边消火栓',
-        'vehicleAccess': '单位通行',
-        'outdoorHydrantWater': '室外消火栓',
-        'controlRoom': '消防控制室好用',
-        'buildingHydrant': '室内消火栓',
-        'fireElevator': '有无消防电梯',
-        'stairwellType': '楼梯间类型',
-        'unitConnection': '单元之间是否贯通',
-        'emergencyTeam': '快速处置小分队'
-      };
-      return nameMap[key] || key;
-    },
+    // 使用导入的通用方法
+    getScoreItemName,
+    getSafetyLevelByScore,
+    getSafetyLevelText,
     
     // 计算安全评分总分
     calculateTotalScore() {
@@ -95,27 +91,6 @@ export default {
       }
       
       return totalScore;
-    },
-    
-    // 根据总分获取安全等级
-    getSafetyLevelByScore(totalScore) {
-      if (totalScore >= 90) {
-        return 1; // 优秀
-      } else if (totalScore >= 70) {
-        return 2; // 一般
-      } else {
-        return 3; // 较差
-      }
-    },
-    
-    // 获取安全等级文本
-    getSafetyLevelText(levelId) {
-      const levelMap = {
-        1: '优秀',
-        2: '一般',
-        3: '较差'
-      };
-      return levelMap[levelId] || '未知';
     },
     
     // 添加安全评分
@@ -267,6 +242,16 @@ export default {
   padding: 8rpx 12rpx;
   border-radius: 6rpx;
   border-left: 3rpx solid #1890ff;
+}
+
+.item-remark {
+  font-size: 22rpx;
+  color: #999;
+  line-height: 1.4;
+  background: #f0f0f0;
+  padding: 8rpx 12rpx;
+  border-radius: 6rpx;
+  border-left: 3rpx solid #ff9800;
 }
 
 /* 无数据样式 */

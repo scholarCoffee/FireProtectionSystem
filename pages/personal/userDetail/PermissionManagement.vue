@@ -1,66 +1,95 @@
 <template>
     <view class="permission-page">
-        <view class="header">
-            <text class="header-title">权限管理</text>
-            <text class="header-desc">管理您的功能使用权限</text>
-        </view>
-        
-        <view class="permission-list">
-            <!-- 群聊设置权限 -->
-            <view class="permission-item">
-                <view class="permission-info">
-                    <view class="permission-icon-wrapper">
-                        <image :src="serverUrl + '/static/icons/chat/chat.png'" mode="aspectFit" class="permission-icon"></image>
-                    </view>
-                    <view class="permission-content">
-                        <text class="permission-title">群聊设置</text>
-                        <text class="permission-desc">允许您创建和管理群聊，设置群聊规则</text>
-                    </view>
+        <!-- 可滚动内容区域：用户列表 + 权限说明 -->
+        <scroll-view class="content-scroll" scroll-y="true">
+            <!-- 用户列表 -->
+            <view class="user-list-section">
+                <view class="section-header">
+                    <text class="section-title">用户列表</text>
+                    <text class="user-count">共 {{ userList.length }} 人</text>
                 </view>
-                <view class="permission-control">
-                    <switch 
-                        :checked="permissions.groupChatSettings" 
-                        @change="onGroupChatSettingsChange"
-                        color="#07c160"
-                        :disabled="!canModifyPermissions"
-                    />
+                
+                <view class="user-list">
+                    <view 
+                        class="user-item" 
+                        v-for="(user, index) in userList" 
+                        :key="user.id"
+                        :class="{ 'current-user': user.id === currentUserId }"
+                    >
+                        <view class="user-info">
+                            <view class="user-avatar">
+                                <image 
+                                    :src="user.avatar || serverUrl + '/static/icons/person/default-avatar.png'" 
+                                    mode="aspectFill" 
+                                    class="avatar-img"
+                                />
+                                <view class="user-status" :class="statusClassMap[user.status] || 'status-active'">
+                                    {{ statusTextMap[user.status] || '正常' }}
+                                </view>
+                            </view>
+                            <view class="user-details">
+                                <text class="user-name">{{ user.name }}</text>
+                                <text class="user-role">{{ getUserRoleText(user.role) }}</text>
+                                <text class="user-phone">{{ user.phone || '未设置手机号' }}</text>
+                            </view>
+                        </view>
+                        
+                        <view class="user-permissions">
+                            <view class="permission-item">
+                                <text class="permission-label">群聊</text>
+                                <switch 
+                                    :checked="user.permissions.groupChat" 
+                                    @change="(e) => updateUserPermission(user.id, 'groupChat', e.detail.value)"
+                                    color="#07c160"
+                                    :disabled="!canManageUser(user)"
+                                />
+                            </view>
+                            
+                            <view class="permission-item">
+                                <text class="permission-label">设置</text>
+                                <switch 
+                                    :checked="user.permissions.settings" 
+                                    @change="(e) => updateUserPermission(user.id, 'settings', e.detail.value)"
+                                    color="#1890ff"
+                                    :disabled="!canManageUser(user)"
+                                />
+                            </view>
+                            
+                            <view class="permission-item">
+                                <text class="permission-label">权限管理</text>
+                                <switch 
+                                    :checked="user.permissions.admin" 
+                                    @change="(e) => updateUserPermission(user.id, 'admin', e.detail.value)"
+                                    color="#ff9500"
+                                    :disabled="!canManageUser(user)"
+                                />
+                            </view>
+                        </view>
+                    </view>
                 </view>
             </view>
             
-            <!-- 其他权限可以在这里添加 -->
-            <view class="permission-item disabled">
-                <view class="permission-info">
-                    <view class="permission-icon-wrapper disabled">
-                        <image :src="serverUrl + '/static/icons/data/manage.png'" mode="aspectFit" class="permission-icon"></image>
-                    </view>
-                    <view class="permission-content">
-                        <text class="permission-title">数据管理</text>
-                        <text class="permission-desc">管理消防数据和报告（暂未开放）</text>
-                    </view>
+            <!-- 权限说明 -->
+            <view class="permission-notice">
+                <view class="notice-header">
+                    <image :src="serverUrl + '/static/icons/person/person.png'" mode="aspectFit" class="notice-icon"></image>
+                    <text class="notice-title">权限说明</text>
                 </view>
-                <view class="permission-control">
-                    <switch :checked="false" disabled color="#07c160" />
+                <view class="notice-content">
+                    <text class="notice-text">• 群聊：允许用户参与群聊和创建群组</text>
+                    <text class="notice-text">• 设置：允许用户修改个人设置和系统配置</text>
+                    <text class="notice-text">• 权限管理：允许用户管理其他用户的权限（超级管理员）</text>
+                    <text class="notice-text">• 权限修改需要管理员审核，请谨慎操作</text>
                 </view>
             </view>
-        </view>
-        
-        <!-- 权限说明 -->
-        <view class="permission-notice">
-            <view class="notice-header">
-                <image :src="serverUrl + '/static/icons/person/person.png'" mode="aspectFit" class="notice-icon"></image>
-                <text class="notice-title">权限说明</text>
-            </view>
-            <view class="notice-content">
-                <text class="notice-text">• 群聊设置：允许您创建群聊、邀请成员、设置群聊规则</text>
-                <text class="notice-text">• 权限修改需要管理员审核，请耐心等待</text>
-                <text class="notice-text">• 如有疑问，请联系系统管理员</text>
-            </view>
-        </view>
+            <!-- 底部占位，避免被固定按钮遮挡 -->
+            <view class="scroll-spacer"></view>
+        </scroll-view>
         
         <!-- 保存按钮 -->
         <view class="save-section" v-if="hasChanges">
-            <button class="save-btn" @tap="savePermissions" :disabled="saving">
-                {{ saving ? '保存中...' : '保存权限设置' }}
+            <button class="save-btn" @tap="saveAllPermissions" :disabled="saving">
+                {{ saving ? '保存中...' : '保存所有权限设置' }}
             </button>
         </view>
     </view>
@@ -70,88 +99,197 @@
 export default {
     data() {
         return {
-            serverUrl: 'http://192.168.1.3:3000',
-            permissions: {
-                groupChatSettings: false
-            },
+            serverUrl: 'https://www.xiaobei.space',
+            currentUserId: '',
+            userList: [],
             originalPermissions: {},
             hasChanges: false,
             saving: false,
-            canModifyPermissions: true, // 是否可以修改权限
-            userInfo: {}
+            currentUserRole: 'user',
+            // 模板映射，避免 :class 调用方法
+            statusClassMap: {
+                active: 'status-active',
+                inactive: 'status-inactive',
+                pending: 'status-pending'
+            },
+            statusTextMap: {
+                active: '正常',
+                inactive: '禁用',
+                pending: '待审核'
+            }
         }
     },
     
     onLoad() {
-        this.loadUserInfo();
-        this.loadPermissions();
+        this.loadCurrentUser();
+        this.loadUserList();
     },
     
     methods: {
-        // 加载用户信息
-        loadUserInfo() {
+        // 加载当前用户信息
+        loadCurrentUser() {
             const userInfo = uni.getStorageSync('userInfo');
             if (userInfo) {
-                this.userInfo = userInfo;
+                this.currentUserId = userInfo.id;
+                this.currentUserRole = userInfo.role || 'user';
             }
         },
         
-        // 加载权限信息
-        async loadPermissions() {
+        // 加载用户列表
+        async loadUserList() {
             try {
                 uni.showLoading({ title: '加载中...' });
                 
                 const res = await new Promise((resolve, reject) => {
                     uni.request({
-                        url: this.serverUrl + '/user/getPermissions',
-                        method: 'POST',
-                        data: {
-                            userId: this.userInfo.id
-                        },
+                        url: this.serverUrl + '/user/list',
+                        method: 'GET',
+                        data: {},
                         success: resolve,
                         fail: reject
                     });
                 });
                 
                 if (res.data?.code === 200 && res.data.data) {
-                    const serverPermissions = res.data.data;
-                    this.permissions = {
-                        groupChatSettings: serverPermissions.groupChatSettings || false
-                    };
-                    // 保存原始权限状态
-                    this.originalPermissions = { ...this.permissions };
+                    this.userList = res.data.data.map(user => ({
+                        ...user,
+                        permissions: {
+                            groupChat: user.permissions?.groupChat || false,
+                            settings: user.permissions?.settings || false,
+                            admin: user.permissions?.admin || false
+                        }
+                    }));
                 } else {
-                    // 如果后端没有权限接口，使用默认权限
-                    this.permissions = {
-                        groupChatSettings: this.userInfo.permissionStatus >= 1
-                    };
-                    this.originalPermissions = { ...this.permissions };
+                    // 如果后端没有接口，使用模拟数据
+                    this.userList = this.getMockUserList();
                 }
+                
+                // 保存原始权限状态
+                this.saveOriginalPermissions();
             } catch (err) {
-                console.error('加载权限失败:', err);
-                // 使用默认权限
-                this.permissions = {
-                    groupChatSettings: this.userInfo.permissionStatus >= 1
-                };
-                this.originalPermissions = { ...this.permissions };
+                console.error('加载用户列表失败:', err);
+                // 使用模拟数据
+                this.userList = this.getMockUserList();
+                this.saveOriginalPermissions();
             } finally {
                 uni.hideLoading();
             }
         },
         
-        // 群聊设置权限变更
-        onGroupChatSettingsChange(e) {
-            this.permissions.groupChatSettings = e.detail.value;
-            this.checkChanges();
+        // 获取模拟用户列表
+        getMockUserList() {
+            return [
+                {
+                    id: '1',
+                    name: '张三',
+                    role: 'admin',
+                    status: 'active',
+                    phone: '13800138001',
+                    avatar: '',
+                    permissions: {
+                        groupChat: true,
+                        settings: true,
+                        admin: true
+                    }
+                },
+                {
+                    id: '2',
+                    name: '李四',
+                    role: 'manager',
+                    status: 'active',
+                    phone: '13800138002',
+                    avatar: '',
+                    permissions: {
+                        groupChat: true,
+                        settings: true,
+                        admin: false
+                    }
+                },
+                {
+                    id: '3',
+                    name: '王五',
+                    role: 'user',
+                    status: 'active',
+                    phone: '13800138003',
+                    avatar: '',
+                    permissions: {
+                        groupChat: true,
+                        settings: false,
+                        admin: false
+                    }
+                }
+            ];
+        },
+        
+        // 保存原始权限状态
+        saveOriginalPermissions() {
+            this.originalPermissions = {};
+            this.userList.forEach(user => {
+                this.originalPermissions[user.id] = { ...user.permissions };
+            });
+        },
+        
+        // 检查是否可以管理用户
+        canManageUser(user) {
+            if (this.currentUserRole === 'admin') return true;
+            if (this.currentUserRole === 'manager' && user.role !== 'admin') return true;
+            return false;
+        },
+        
+        // 获取用户状态样式类
+        getUserStatusClass(status) {
+            const statusMap = {
+                'active': 'status-active',
+                'inactive': 'status-inactive',
+                'pending': 'status-pending'
+            };
+            return statusMap[status] || 'status-active';
+        },
+        
+        // 获取用户状态文本
+        getUserStatusText(status) {
+            const statusMap = {
+                'active': '正常',
+                'inactive': '禁用',
+                'pending': '待审核'
+            };
+            return statusMap[status] || '正常';
+        },
+        
+        // 获取用户角色文本
+        getUserRoleText(role) {
+            const roleMap = {
+                'admin': '超级管理员',
+                'manager': '管理员',
+                'user': '普通用户'
+            };
+            return roleMap[role] || '普通用户';
+        },
+        
+        // 更新用户权限
+        updateUserPermission(userId, permissionType, value) {
+            const user = this.userList.find(u => u.id === userId);
+            if (user) {
+                user.permissions[permissionType] = value;
+                this.checkChanges();
+            }
         },
         
         // 检查是否有变更
         checkChanges() {
-            this.hasChanges = JSON.stringify(this.permissions) !== JSON.stringify(this.originalPermissions);
+            this.hasChanges = false;
+            for (const userId in this.originalPermissions) {
+                const original = this.originalPermissions[userId];
+                const current = this.userList.find(u => u.id === userId)?.permissions;
+                if (JSON.stringify(original) !== JSON.stringify(current)) {
+                    this.hasChanges = true;
+                    break;
+                }
+            }
         },
         
-        // 保存权限设置
-        async savePermissions() {
+        // 保存所有权限设置
+        async saveAllPermissions() {
             if (!this.hasChanges) return;
             
             try {
@@ -163,8 +301,10 @@ export default {
                         url: this.serverUrl + '/user/updatePermissions',
                         method: 'POST',
                         data: {
-                            userId: this.userInfo.id,
-                            permissions: this.permissions
+                            permissions: this.userList.map(user => ({
+                                userId: user.id,
+                                permissions: user.permissions
+                            }))
                         },
                         success: resolve,
                         fail: reject
@@ -173,15 +313,8 @@ export default {
                 
                 if (res.data?.code === 200) {
                     // 更新原始权限状态
-                    this.originalPermissions = { ...this.permissions };
+                    this.saveOriginalPermissions();
                     this.hasChanges = false;
-                    
-                    // 更新本地用户信息
-                    const userInfo = uni.getStorageSync('userInfo');
-                    if (userInfo) {
-                        userInfo.permissionStatus = this.permissions.groupChatSettings ? 1 : 0;
-                        uni.setStorageSync('userInfo', userInfo);
-                    }
                     
                     uni.showToast({
                         title: '权限设置已保存',
@@ -200,7 +333,11 @@ export default {
                 });
                 
                 // 恢复原始权限状态
-                this.permissions = { ...this.originalPermissions };
+                this.userList.forEach(user => {
+                    if (this.originalPermissions[user.id]) {
+                        user.permissions = { ...this.originalPermissions[user.id] };
+                    }
+                });
             } finally {
                 this.saving = false;
                 uni.hideLoading();
@@ -214,7 +351,16 @@ export default {
 .permission-page {
     min-height: 100vh;
     background: #f5f5f5;
-    padding-bottom: 120rpx;
+}
+
+.content-scroll {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 120rpx; /* 预留底部按钮高度 */
+    padding-top: 80rpx; /* 贴边衔接，降低顶部内边距 */
+    box-sizing: border-box;
 }
 
 .header {
@@ -222,7 +368,12 @@ export default {
     padding: 60rpx 40rpx 40rpx;
     color: #fff;
     text-align: center;
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+    position: relative;
 }
+
+.header::after { content: none; }
 
 .header-title {
     display: block;
@@ -238,80 +389,151 @@ export default {
     line-height: 1.5;
 }
 
-.permission-list {
-    margin: 30rpx;
+.user-list-section {
+    margin: 0 0 16rpx 0; /* 左右贴边，上边无间距与 header 无缝衔接 */
+    background: #fff;
+    border-radius: 0; /* 顶部不圆角，贴边卡片 */
+    overflow: hidden;
+    box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.04);
 }
 
-.permission-item {
-    background: #fff;
-    border-radius: 16rpx;
-    padding: 30rpx;
-    margin-bottom: 20rpx;
-    box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.05);
+.section-header {
+    padding: 20rpx 24rpx;
+    border-bottom: 1rpx solid #f0f0f0;
+    background: #f8f9fa;
     display: flex;
-    align-items: center;
     justify-content: space-between;
+    align-items: center;
+}
+
+.section-title {
+    font-size: 30rpx;
+    font-weight: 600;
+    color: #333;
+}
+
+.user-count {
+    font-size: 24rpx;
+    color: #666;
+    background: #e8f4ff;
+    padding: 6rpx 12rpx;
+    border-radius: 20rpx;
+}
+
+.user-list {
+    padding: 0;
+}
+
+.user-item {
+    padding: 18rpx 24rpx;
+    border-bottom: 1rpx solid #f5f5f5;
+    transition: background-color 0.2s ease;
     
-    &.disabled {
-        opacity: 0.6;
-        
-        .permission-icon-wrapper {
-            background: #ccc !important;
-        }
+    &:last-child {
+        border-bottom: none;
+    }
+    
+    &:hover {
+        background: #fafbfc;
+    }
+    
+    &.current-user {
+        background: linear-gradient(135deg, #e6f7ff 0%, #f0f8ff 100%);
+        border-left: 4rpx solid #1890ff;
     }
 }
 
-.permission-info {
+.user-info {
     display: flex;
     align-items: center;
-    flex: 1;
-    margin-right: 30rpx;
+    margin-bottom: 12rpx;
 }
 
-.permission-icon-wrapper {
-    width: 80rpx;
-    height: 80rpx;
-    background: linear-gradient(135deg, #07c160 0%, #00a854 100%);
-    border-radius: 16rpx;
+.user-avatar {
+    position: relative;
+    margin-right: 20rpx;
+}
+
+.avatar-img {
+    width: 64rpx;
+    height: 64rpx;
+    border-radius: 50%;
+    background: #f0f0f0;
+}
+
+.user-status {
+    position: absolute;
+    bottom: -4rpx;
+    right: -4rpx;
+    width: 24rpx;
+    height: 24rpx;
+    border-radius: 50%;
+    border: 2rpx solid #fff;
+    font-size: 20rpx;
     display: flex;
     align-items: center;
     justify-content: center;
-    margin-right: 24rpx;
-    box-shadow: 0 4rpx 12rpx rgba(7, 193, 96, 0.3);
+    color: #fff;
     
-    &.disabled {
-        background: #ccc !important;
-        box-shadow: none;
+    &.status-active {
+        background: #52c41a;
+    }
+    
+    &.status-inactive {
+        background: #ff4d4f;
+    }
+    
+    &.status-pending {
+        background: #faad14;
     }
 }
 
-.permission-icon {
-    width: 40rpx;
-    height: 40rpx;
-    filter: brightness(0) invert(1);
-}
-
-.permission-content {
+.user-details {
     flex: 1;
 }
 
-.permission-title {
+.user-name {
     display: block;
-    font-size: 32rpx;
+    font-size: 28rpx;
     font-weight: 600;
     color: #333;
     margin-bottom: 8rpx;
 }
 
-.permission-desc {
+.user-role {
     display: block;
-    font-size: 26rpx;
-    color: #666;
-    line-height: 1.4;
+    font-size: 24rpx;
+    color: #1890ff;
+    background: #e6f7ff;
+    padding: 4rpx 12rpx;
+    border-radius: 12rpx;
+    margin-bottom: 8rpx;
+    width: fit-content;
 }
 
-.permission-control {
-    flex-shrink: 0;
+.user-phone {
+    display: block;
+    font-size: 24rpx;
+    color: #666;
+}
+
+.user-permissions {
+    display: flex;
+    flex-direction: column;
+    gap: 16rpx;
+}
+
+.permission-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8rpx 0;
+}
+
+.permission-label {
+    font-size: 24rpx;
+    color: #333;
+    font-weight: 500;
 }
 
 .permission-notice {
@@ -361,6 +583,7 @@ export default {
     padding: 20rpx 30rpx;
     border-top: 1rpx solid #f0f0f0;
     box-shadow: 0 -2rpx 8rpx rgba(0, 0, 0, 0.05);
+    z-index: 10;
 }
 
 .save-btn {
@@ -384,5 +607,10 @@ export default {
         background: #ccc;
         box-shadow: none;
     }
+}
+
+/* 底部占位，避免被固定按钮遮挡 */
+.scroll-spacer {
+    height: 140rpx;
 }
 </style> 

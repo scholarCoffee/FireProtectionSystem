@@ -3,420 +3,36 @@
     <!-- 表单内容 -->
     <scroll-view class="form-container" scroll-y="true">
       <!-- Location表单 -->
-      <view v-if="type === 'location'" class="form-content">
-        <!-- 默认图片配置 -->
-        <view class="location-info-section">
-          <view class="section-header">
-            <text class="section-title">展示图片<text class="required">*</text></text>
-          </view>
-          
-          <view class="default-image-upload-area">
-            <!-- 已设置的默认图片 -->
-            <view class="default-image-preview" v-if="formData.defaultImg">
-              <image :src="serverUrl + formData.defaultImg" class="default-image" mode="aspectFill" />
-              <view class="image-overlay">
-                <view class="image-actions">
-                  <image :src="serverUrl + '/static/icons/common/delete-white.png'" class="action-icon delete-icon" @tap="deleteDefaultImage" />
-                </view>
-              </view>
-              <!-- 删除按钮 -->
-              <view class="delete-btn-overlay">
-                <button class="delete-btn-small" @tap="deleteDefaultImage">
-                  <image :src="serverUrl + '/static/icons/common/delete-white.png'" class="delete-icon-small" />
-                </button>
-              </view>
-            </view>
-            
-            <!-- 上传默认图片按钮 -->
-            <view class="upload-default-btn" v-if="!formData.defaultImg" @tap="addDefaultImage">
-              <image :src="serverUrl + '/static/icons/common/add-third-grey.png'" class="upload-icon" />
-              <text class="upload-text">上传展示图片</text>
-            </view>
-            
-            <!-- 错误提示 -->
-            <view v-if="errors.defaultImg" class="error-message">
-              <text class="error-text">{{ errors.defaultImg }}</text>
-            </view>
-          </view>
-        </view>
-        <!-- 位置信息区域 -->
-        <view class="config-section">
-          <view class="section-header">
-            <text class="section-title">位置信息</text>
-          </view>
-          <view class="form-item">
-            <text class="form-label">地址名称 <text class="required">*</text></text>
-            <input 
-              v-model="formData.addressName" 
-              class="form-input" 
-              placeholder="请输入地址名称"
-              maxlength="50"
-              @input="onAddressNameInput"
-            />
-          </view>
-          
-          <view class="form-item">
-            <text class="form-label">详细地址 <text class="required">*</text></text>
-            <input 
-              v-model="formData.addressExt" 
-              class="form-input" 
-              placeholder="请输入详细地址"
-              maxlength="200"
-              @input="onAddressExtInput"
-            />
-          </view>
-            
-          <view class="form-item">
-            <text class="form-label">地址代号 <text class="required">*</text></text>
-            <input 
-              v-model="formData.addressId" 
-              class="form-input" 
-              placeholder="请输入地址代号"
-              maxlength="20"
-              @input="onAddressIdInput"
-            />
-          </view>
-            
-          <view class="form-item">
-            <text class="form-label">全云景地址 <text class="required">*</text></text>
-            <input 
-              v-model="formData.allSenceLink" 
-              class="form-input" 
-              placeholder="请输入全云景链接"
-              maxlength="500"
-              @input="onAllSenceLinkInput"
-            />
-          </view>
-          
-          <view class="form-item">
-            <text class="form-label">位置类型 <text class="required">*</text></text>
-            <picker 
-              :value="formData.type - 1" 
-              :range="locationTypeOptions" 
-              range-key="label"
-              @change="onLocationTypeChange"
-              class="form-picker"
-            >
-              <view class="picker-display">
-                <text class="picker-text">{{ getLocationTypeText(formData.type) }}</text>
-                <image :src="serverUrl + '/static/icons/common/down.png'" class="picker-arrow" />
-              </view>
-            </picker>
-          </view>
-          
-          <view class="form-item description-item">
-            <text class="form-label">描述</text>
-            <textarea 
-              v-model="formData.description" 
-              class="form-textarea" 
-              placeholder="请输入描述信息"
-              maxlength="500"
-                auto-height
-                show-confirm-bar="false"
-            />
-          </view>
-        </view>
-
-        <!-- 安全信息区域 -->
-        <view class="safety-section">
-          <view class="section-header">
-            <text class="section-title">安全信息</text>
-            <view class="header-actions">
-              <image 
-                v-if="!formData.fireSafetyScore" 
-                :src="serverUrl + '/static/icons/common/add-sec-white.png'" 
-                class="action-icon add-icon" 
-                @tap="addSafetyScore" 
-              />
-              <image 
-                v-else 
-                :src="serverUrl + '/static/icons/common/edit-white.png'" 
-                class="action-icon edit-icon" 
-                @tap="editSafetyScore" 
-              />
-            </view>
-          </view>
-            
-          <view v-if="formData.fireSafetyScore" class="safety-content">
-            <view class="safety-summary">
-              <view class="safety-score-display">
-                <view class="score-display-content">
-                  <text class="score-label">总分:</text>
-                  <text class="score-value">{{ calculateTotalScore() }}分</text>
-                  <text class="level-value" :class="safetyLevelClass">
-                    ({{ safetyLevelText }})
-                  </text>
-                </view>
-                <!-- 分数进度条 -->
-                <view class="score-progress-section">
-                  <view class="progress-bar-container">
-                    <view class="progress-bar">
-                    <view 
-                       class="progress-fill" 
-                       :style="{ width: Math.min(calculateTotalScore(), 100) + '%' }"
-                       :class="progressBarClass"
-                     ></view>
-                    </view>
-                    <view class="progress-markers">
-                      <view class="marker">
-                        <text class="marker-text">0分</text>
-                      </view>
-                      <view class="marker">
-                        <text class="marker-text">50分</text>
-                      </view>
-                      <view class="marker">
-                        <text class="marker-text">100分</text>
-                      </view>
-                    </view>
-                  </view>
-                </view>
-              </view>
-            </view>
-          </view>
-          <view v-else class="empty-state">
-            <text class="empty-text">暂无安全评分信息，点击上方"+"添加</text>
-          </view>
-        </view>
-          
-        <!-- 可出行大门配置 -->
-        <view class="config-section">
-          <view class="section-header">
-            <text class="section-title">可出行大门配置</text>
-          </view>
-          
-          <view class="gate-list">
-            <view class="gate-item" v-for="(gate, index) in gateOptions" :key="index">
-              <text class="gate-name">{{ gate.name }}</text>
-              <switch 
-                class="gate-switch"
-                :checked="isGateSelected(gate.name)" 
-                @change="toggleGate(gate.name)"
-                color="#1890ff"
-              />
-            </view>
-          </view>
-            
-          <!-- 错误提示 -->
-          <view v-if="errors.enterGateList" class="error-message">
-            <text class="error-text">{{ errors.enterGateList }}</text>
-          </view>
-        </view>
-          
-        <!-- 联系人配置 -->
-        <view class="config-section">
-          <view class="section-header">
-            <text class="section-title">联系人配置</text>
-            <view class="header-actions">
-              <image :src="serverUrl + '/static/icons/common/add-sec-white.png'" class="action-icon add-icon" @tap="showContactModal('add')" />
-            </view>
-          </view>
-            
-          <view class="contact-list" v-if="formData.phoneList && formData.phoneList.length > 0">
-            <view class="contact-item" v-for="(contact, index) in formData.phoneList" :key="index">
-              <view class="contact-info">
-                <view class="contact-header">
-                  <text class="contact-name">{{ contact.name }}</text>
-                  <text class="contact-type">{{ getContactTypeText(contact.type) }}</text>
-                </view>
-                <text class="contact-phone">{{ contact.phone }}</text>
-              </view>
-              <view class="contact-actions">
-                <image :src="serverUrl + '/static/icons/common/edit-white.png'" class="action-icon edit-icon" @tap="showContactModal('edit', index)" />
-                <image :src="serverUrl + '/static/icons/common/delete-white.png'" class="action-icon delete-icon" @tap="deletePhoneContact(index)" />
-              </view>
-            </view>
-          </view>
-          <view v-else class="empty-state">
-            <text class="empty-text">暂无联系人，点击上方"+"添加</text>
-          </view>
-          
-          <!-- 错误提示 -->
-          <view v-if="errors.phoneList" class="error-message">
-            <text class="error-text">{{ errors.phoneList }}</text>
-          </view>
-        </view>
-
-        <!-- 联系人弹窗 -->
-        <view class="contact-modal" v-if="showContactModalFlag" @tap="hideContactModal">
-          <view class="modal-content" @tap.stop>
-            <view class="modal-header">
-              <text class="modal-title">{{ contactModalMode === 'add' ? '添加联系人' : '编辑联系人' }}</text>
-              <view class="close-btn" @tap="hideContactModal">
-                <text class="close-icon">×</text>
-              </view>
-            </view>  
-            <view class="modal-body">
-              <view class="form-group">
-                <text class="form-label">联系人姓名 <text class="required">*</text></text>
-              <input 
-                v-model="contactForm.name" 
-                class="form-modal-input" 
-                placeholder="请输入联系人姓名"
-                maxlength="20"
-              />
-            </view>
-            <view class="form-group">
-              <text class="form-label">联系电话 <text class="required">*</text></text>
-              <input 
-                v-model="contactForm.phone" 
-                class="form-modal-input" 
-                placeholder="请输入联系电话"
-                maxlength="15"
-                type="number" 
-              />
-            </view>
-          
-            <view class="form-group">
-              <text class="form-label">联系人类型 <text class="required">*</text></text>
-              <view class="contact-type-options">
-                <view 
-                  v-for="option in contactTypeOptions" 
-                  :key="option.value"
-                  class="type-option"
-                  :class="{ 
-                    'active': contactForm.type === option.value,
-                    'disabled': (option.value === 1 && contactTypeLimits.unitFull && contactModalMode === 'add') || 
-                              (option.value === 2 && contactTypeLimits.fireFull && contactModalMode === 'add')
-                  }"
-                  @tap="selectContactType(option.value)"
-                >
-                  <view class="checkbox">
-                    <view class="checkbox-inner" v-if="contactForm.type === option.value"></view>
-                  </view>
-                  <text class="type-label">{{ option.label }}</text>
-                </view>
-              </view>
-              </view>
-            </view>
-            <view class="modal-footer">
-              <button class="footer-btn cancel-btn" @tap="hideContactModal">取消</button>
-              <button class="footer-btn confirm-btn" @tap="saveContact">确定</button>
-            </view>
-          </view>
-        </view>
-          
-        <!-- 消防地图配置 -->
-        <view class="config-section">
-          <view class="section-header">
-            <text class="section-title">消防地图</text>
-          </view>
-          
-          <view class="image-upload-area">
-            <!-- 已上传的图片 -->
-            <view class="image-list" v-if="formData.imgList && formData.imgList.length > 0">
-              <view class="image-item" v-for="(img, index) in formData.imgList" :key="index">
-                <image :src="serverUrl + img" class="map-image" mode="aspectFill" />
-                <view class="image-overlay">
-                  <view class="image-actions">
-                    <image :src="serverUrl + '/static/icons/common/delete-white.png'" class="action-icon delete-icon" @tap="deleteImage(index)" />
-                  </view>
-                </view>
-              </view>
-            </view>
-            
-            <!-- 上传按钮 -->
-            <view class="upload-btn" v-if="formData.imgList && formData.imgList.length < 3" @tap="addImage">
-              <image :src="serverUrl + '/static/icons/common/add-third-grey.png'" class="upload-icon" />
-              <text class="upload-text">上传图片</text>
-            </view>
-          </view>
-        </view>
-      </view>
-
+      <LocationForm 
+        v-if="type === 'location'"
+        :formData="formData"
+        :errors="errors"
+        :serverUrl="serverUrl"
+        :locationTypeOptions="locationTypeOptions"
+        :editId="editId"
+        @validate-field="validateField"
+        @clear-error="clearError"
+        @add-safety-score="addSafetyScore"
+        @edit-safety-score="editSafetyScore"
+      />
       <!-- Chat表单 -->
-      <view v-if="type === 'chat'" class="form-content">
-        <view class="form-item">
-          <text class="form-label">聊天名称 <text class="required">*</text></text>
-          <input 
-            v-model="formData.chatName" 
-            class="form-input" 
-            placeholder="请输入聊天名称"
-            maxlength="50"
-            @input="onChatNameInput"
-          />
-        </view>
-          
-        <view class="form-item">
-          <text class="form-label">聊天类型</text>
-          <picker 
-            :value="formData.chatType - 1" 
-            :range="chatTypeOptions" 
-            range-key="label"
-            @change="onChatTypeChange"
-            class="form-picker"
-          >
-            <view class="picker-display">
-              <text>{{ getChatTypeText(formData.chatType) }}</text>
-              <image :src="serverUrl + '/static/icons/common/down.png'" class="picker-arrow" />
-            </view>
-          </picker>
-        </view>
-          
-        <view class="form-item description-item">
-          <text class="form-label">聊天描述</text>
-          <textarea 
-            v-model="formData.chatDescription" 
-            class="form-textarea" 
-            placeholder="请输入聊天描述"
-            maxlength="500"
-            auto-height
-            show-confirm-bar="false"
-          />
-        </view>
-            
-        <view class="form-item">
-          <text class="form-label">状态</text>
-          <picker 
-            :value="formData.chatStatus - 1" 
-            :range="chatStatusOptions" 
-            range-key="label"
-            @change="onChatStatusChange"
-            class="form-picker"
-          >
-            <view class="picker-display">
-              <text>{{ getChatStatusText(formData.chatStatus) }}</text>
-              <image :src="serverUrl + '/static/icons/common/down.png'" class="picker-arrow" />
-            </view>
-          </picker>
-        </view>
-      </view>
-
+      <ChatForm 
+        v-if="type === 'chat'"
+        :formData="formData"
+        :errors="errors"
+        :serverUrl="serverUrl"
+        @validate-field="validateField"
+      />
       <!-- Command表单 -->
-      <view v-if="type === 'command'" class="form-content">
-        <view class="form-item">
-          <text class="form-label">功能名称 <text class="required">*</text></text>
-          <input 
-            v-model="formData.commandTitle" 
-            class="form-input" 
-            placeholder="请输入功能名称"
-            maxlength="50"
-            @input="onCommandTitleInput"
-          />
-        </view>
-          
-        <view class="form-item description-item">
-          <text class="form-label">功能描述</text>
-          <textarea 
-            v-model="formData.commandDesc" 
-            class="form-textarea" 
-            placeholder="请输入功能描述"
-            maxlength="200"
-            auto-height
-            show-confirm-bar="false"
-          />
-        </view>
-            
-        <view class="form-item">
-          <text class="form-label">访问地址 <text class="required">*</text></text>
-          <input 
-            v-model="formData.commandUrl" 
-            class="form-input" 
-            placeholder="请输入访问地址"
-            maxlength="500"
-            @input="onCommandUrlInput"
-          />
-        </view>
-      </view>
+      <CommandForm 
+        v-if="type === 'command'"
+        :formData="formData"
+        :errors="errors"
+        :serverUrl="serverUrl"
+        @validate-field="validateField"
+      />
+      <!-- 底部占位，防止内容被固定按钮遮挡 -->
+      <view class="scroll-spacer"></view>
     </scroll-view>
 
     <!-- 底部操作按钮 -->
@@ -430,10 +46,16 @@
 <script>
 import { locationTabList } from '@/commons/mock/index.js'
 import SafetyScoreDetail from './components/SafetyScoreDetail.vue'
+import LocationForm from './components/LocationForm.vue'
+import ChatForm from './components/ChatForm.vue'
+import CommandForm from './components/CommandForm.vue'
 
 export default {
   components: {
-    SafetyScoreDetail
+    SafetyScoreDetail,
+    LocationForm,
+    ChatForm,
+    CommandForm
   },
   name: 'DataEdit',
   data() {
@@ -480,41 +102,41 @@ export default {
       localSafetyScore: null
     }
   },
-     computed: {
-     isEdit() {
-       return this.mode === 'edit';
-     },
-     
-     // 检查联系人类型是否已满
-     contactTypeLimits() {
-       const unitContacts = this.formData?.phoneList?.filter(contact => contact.type === 1);
-       const fireContacts = this.formData?.phoneList?.filter(contact => contact.type === 2);
-       
-       return {
+  computed: {
+    isEdit() {
+      return this.mode === 'edit';
+    },
+    
+    // 检查联系人类型是否已满
+    contactTypeLimits() {
+      const unitContacts = this.formData?.phoneList?.filter(contact => contact.type === 1);
+      const fireContacts = this.formData?.phoneList?.filter(contact => contact.type === 2);
+      
+      return {
          unitFull: unitContacts?.length >= 1,
          fireFull: fireContacts?.length >= 1
        };
      },
      
-     // 安全等级相关的计算属性
-     safetyLevelClass() {
-       const totalScore = this.calculateTotalScore();
-       const level = this.getSafetyLevelByScore(totalScore);
-       return this.getSafetyLevelClass(level);
-     },
-     
-     safetyLevelText() {
-       const totalScore = this.calculateTotalScore();
-       const level = this.getSafetyLevelByScore(totalScore);
-       return this.getSafetyLevelText(level);
-     },
-     
-     progressBarClass() {
-       const totalScore = this.calculateTotalScore();
-       const level = this.getSafetyLevelByScore(totalScore);
-       return this.getProgressBarClass(level);
-     },
-   },
+    // 安全等级相关的计算属性
+    safetyLevelClass() {
+      const totalScore = this.calculateTotalScore();
+      const level = this.getSafetyLevelByScore(totalScore);
+      return this.getSafetyLevelClass(level);
+    },
+    
+    safetyLevelText() {
+      const totalScore = this.calculateTotalScore();
+      const level = this.getSafetyLevelByScore(totalScore);
+      return this.getSafetyLevelText(level);
+    },
+    
+    progressBarClass() {
+      const totalScore = this.calculateTotalScore();
+      const level = this.getSafetyLevelByScore(totalScore);
+      return this.getProgressBarClass(level);
+    },
+  },
   onLoad(options) {
     this.type = options.type || 'location';
     this.mode = options.mode || 'add';
@@ -563,8 +185,6 @@ export default {
           safeLevelId: 1,
           description: '',
           safeId: '',
-          safeLevelName: '',
-          safeLevelScore: '',
           fireSafetyScore: null, // 安全信息字段，初始化为null
           enterGateList: [], // 可出行大门列表
           phoneList: [], // 联系人列表
@@ -622,10 +242,13 @@ export default {
               allSenceLink: responseData.allSenceLink || '',
               type: responseData.type || 1,
               safeLevelId: responseData.safeLevelId || 1,
-              safeLevelName: responseData.safeLevelName || '',
-              safeLevelScore: responseData.safeLevelScore || '',
               safeId: responseData.safeId || '',
               description: responseData.description || '',
+              householdOwnerName: responseData.householdOwnerName || '',
+              householdOwnerPhone: responseData.householdOwnerPhone || '',
+              householdFeedback: responseData.householdFeedback || '',
+              rescueRemark: responseData.rescueRemark || '',
+              battleDeploymentVideos: responseData.battleDeploymentVideos || [],
               // 处理安全信息，null时显示为空对象
               fireSafetyScore: responseData.fireSafetyScore || null,
               enterGateList: responseData.enterGateList || [],
@@ -754,7 +377,7 @@ export default {
         const url = this.type === 'location' 
           ? this.serverUrl + '/location/save'
           : this.serverUrl + '/chat/save';
-      
+        
         const result = await new Promise((resolve, reject) => {
           uni.request({
             url,
@@ -818,10 +441,10 @@ export default {
         } catch (error) {
           console.error('保存安全评分失败:', error);
           // 即使失败也继续保存地址信息
-        }
-      },
-      
-      // 工具方法
+      }
+    },
+    
+    // 工具方法
     getLocationTypeText(type) {
       const option = this.locationTypeOptions.find(item => item.value === type);
       return option ? option.label : '请选择类型';
@@ -840,6 +463,13 @@ export default {
     getContactTypeText(type) {
       const option = this.contactTypeOptions.find(item => item.value === type);
       return option ? option.label : '未知类型';
+    },
+    
+    // 清除错误信息
+    clearError(fieldName) {
+      if (this.errors[fieldName]) {
+        this.errors[fieldName] = '';
+      }
     },
     
     // 校验方法
@@ -865,7 +495,7 @@ export default {
           }
         } else if (fieldName === 'type') {
           if (!value) {
-            this.errors[fieldName] = '请选择位置类型';
+            this.errors[fieldName] = '请输入位置类型';
           }
         } else if (fieldName === 'defaultImg') {
           if (!value || !value.trim()) {
@@ -1108,7 +738,7 @@ export default {
     // 图片管理方法
     addImage() {
       if (this.formData.imgList.length >= 3) {
-        uni.showToast({
+            uni.showToast({
           title: '最多只能上传3张图片',
           icon: 'none'
         });
@@ -1318,16 +948,16 @@ export default {
       uni.navigateTo({
         url: `/pages/personal/userDetail/SafetyScoreEdit?mode=add&safeId=${this.formData.safeId}&addressId=${this.formData.addressId}`,
         events: {
-                      // 监听安全评分更新事件
-            safetyScoreUpdated: (data) => {
+          // 监听安全评分更新事件
+          safetyScoreUpdated: (data) => {
               if (data.isLocal) {
                 // 本地保存的安全评分
                 this.handleLocalSafetyScore(data);
               } else {
                 // 编辑模式的安全评分
                 this.handleEditSafetyScore(data);
-              }
             }
+          }
         }
       });
     },
@@ -1372,20 +1002,20 @@ export default {
     
     // 处理编辑模式的安全评分
     handleEditSafetyScore(data) {
-      // 更新本地数据
-      if (data.addressId === this.formData.addressId) {
-        this.formData.fireSafetyScore = {
-          scoreItems: data.scoreItems,
-          safeId: data.safeId
-        };
-        
-        // 显示更新成功提示
-        uni.showToast({
-          title: '安全评分已更新',
-          icon: 'success',
-          duration: 2000
-        });
-      }
+            // 更新本地数据
+            if (data.addressId === this.formData.addressId) {
+              this.formData.fireSafetyScore = {
+                scoreItems: data.scoreItems,
+                safeId: data.safeId
+              };
+              
+              // 显示更新成功提示
+              uni.showToast({
+                title: '安全评分已更新',
+                icon: 'success',
+                duration: 2000
+              });
+            }
     },
     
     // 检查本地保存的安全评分
@@ -1442,1127 +1072,20 @@ export default {
 .form-container {
   flex: 1;
   padding: 0;
-  padding-bottom: 100rpx; /* 底部间距，为两个按钮留出空间 */
+  padding-bottom: calc(120rpx + env(safe-area-inset-bottom)); /* 适配H5/iOS底部安全区 */
   height: calc(100vh - 80rpx);
   overflow-y: auto;
 }
 
-.form-content {
-  background: transparent;
-  padding: 0;
-  margin: 0;
-}
-
-/* 位置信息区域 */
-.location-info-section {
-  background: #ffffff;
-  overflow: hidden;
-  box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.05);
-  border-radius: 16rpx;
-  box-sizing: border-box;
-  
-  .section-header {
-    padding: 12rpx 24rpx;
-    border-bottom: 1rpx solid #f0f0f0;
-    background: #f8f9fa;
-    
-    .section-title {
-      font-size: 30rpx;
-      font-weight: 600;
-      color: #333333;
-    }
-  }
-}
-
-/* 安全信息区域 */
-.safety-section {      
-  margin-top: 20rpx;
-  background: #ffffff;
-  overflow: hidden;
-  border-radius: 16rpx;
-  box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.05);
-  
-  .section-header {
-    padding: 12rpx 20rpx;
-    border-bottom: 1rpx solid #f0f0f0;
-    background: #f8f9fa;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    
-    .section-title {
-      font-size: 30rpx;
-      font-weight: 600;
-      color: #333333;
-    }
-  }
-  
-  .safety-content {
-    padding: 12rpx 20rpx;
-    width: 100%;
-    box-sizing: border-box;
-    .safety-summary {
-      display: flex;
-      flex-direction: column;
-      box-sizing: border-box;
-      justify-content: flex-start;
-      align-items: flex-start;
-      width: 100%;
-      gap: 16rpx;
-    }
-    
-    .safety-score-display {
-      display: flex;
-      flex-direction: column;
-      align-items: flex-start;
-      box-sizing: border-box;
-      gap: 12rpx;
-      background: linear-gradient(135deg, #f8faff 0%, #f0f8ff 100%);
-      border: 1rpx solid #e6f4ff;
-      border-radius: 12rpx;
-      padding: 16rpx 20rpx;
-      transition: all 0.3s ease;
-      width: 100%;
-      min-width: 0;
-      .score-display-content {
-        display: flex;
-        align-items: center;
-        justify-content: flex-start;
-        width: 100%;
-        gap: 8rpx;
-      }
-      
-      &:hover {
-        transform: translateY(-2rpx);
-        box-shadow: 0 4rpx 16rpx rgba(24, 144, 255, 0.15);
-      }
-    }
-    
-    .score-label {
-      font-size: 26rpx;
-      color: #333333;
-      font-weight: 500;
-      white-space: nowrap;
-    }
-    
-    .score-value {
-      font-size: 32rpx;
-      color: #007aff;
-      font-weight: 700;
-      white-space: nowrap;
-    }
-    
-    .level-value {
-      font-size: 26rpx;
-      font-weight: 500;
-      white-space: nowrap;
-      
-      &.excellent {
-        color: #34c759;
-      }
-      
-      &.good {
-        color: #007aff;
-      }
-      
-      &.poor {
-        color: #ff9500;
-      }
-    }
-    
-    /* 分数进度条样式 */
-    .score-progress-section {
-      width: 100%;
-    }
-    
-    .progress-bar-container {
-      position: relative;
-      width: 100%;
-    }
-    
-    .progress-bar {
-      height: 14rpx;
-      background: #e8f4ff;
-      border-radius: 8rpx;
-      overflow: hidden;
-      position: relative;
-      width: 100%;
-    }
-    
-    .progress-fill {
-      height: 100%;
-      border-radius: 8rpx;
-      transition: width 0.6s ease;
-      
-      &.progress-excellent {
-        background: linear-gradient(90deg, #52c41a 0%, #73d13d 100%);
-      }
-      
-      &.progress-good {
-        background: linear-gradient(90deg, #1890ff 0%, #40a9ff 100%);
-      }
-      
-      &.progress-poor {
-        background: linear-gradient(90deg, #fa8c16 0%, #ffa940 100%);
-      }
-    }
-    
-    .progress-markers {
-      display: flex;
-      justify-content: space-between;
-      position: relative;
-      width: 100%;
-    }
-    
-    .marker {
-      position: relative;
-      width: 60rpx;
-      text-align: center;
-      
-      &::before {
-        content: '';
-        position: absolute;
-        top: -6rpx;
-        left: 50%;
-        transform: translateX(-50%);
-        width: 2rpx;
-        height: 10rpx;
-        background: #d9d9d9;
-      }
-    }
-    
-    .marker-text {
-      font-size: 20rpx;
-      color: #666666;
-      font-weight: 500;
-    }
-  }
-}
-.header-actions {
-  display: flex;
-  align-items: center;
-}
-
-/* 配置区域 */
-.config-section {
-  background: #ffffff;
-  margin-top: 20rpx;
-  overflow: hidden;
-  box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.05);
-  border-radius: 16rpx;
-
-  .section-header {
-    padding: 12rpx 20rpx;
-    border-bottom: 1rpx solid #f0f0f0;
-    background: #f8f9fa;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    
-    .section-title {
-      font-size: 30rpx;
-      font-weight: 600;
-      color: #333333;
-    }
-  }
-  
-  .gate-list,
-  .contact-list {
-    padding: 0 24rpx;
-  }
-  
-  .gate-item,
-  .contact-item {
-    padding: 16rpx 0;
-    border-bottom: 1rpx solid #f5f5f5;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    transition: background-color 0.2s ease;
-    
-    &:last-child {
-      border-bottom: none;
-    }
-    
-    &:hover {
-      background: #fafbfc;
-    }
-  }
-}
-
-/* 联系人弹窗样式 */
-.contact-modal {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: rgba(0, 0, 0, 0.7);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: 1000;
-  animation: fadeIn 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  backdrop-filter: blur(8rpx);
-}
-
-.modal-content {
-  width: 95%;
-  max-width: 600rpx;
-  border-radius: 32rpx;
-  overflow: hidden;
-  box-shadow: 
-    0 32rpx 64rpx rgba(0, 0, 0, 0.15),
-    0 8rpx 32rpx rgba(0, 0, 0, 0.1),
-    inset 0 1rpx 0 rgba(255, 255, 255, 0.8);
-  display: flex;
-  flex-direction: column;
-  animation: slideInUp 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-  border: 1rpx solid rgba(255, 255, 255, 0.2);
-}
-
-.modal-header {
-  display: flex;
-  justify-content: space-between;
-  padding: 16rpx 8rpx;
-  align-items: center;
-  background: linear-gradient(135deg, #1890ff 0%, #40a9ff 100%);
-  position: relative;
-  color: #ffffff;
-}
-.modal-title {
-  font-size: 24rpx;
-  font-weight: 600;
-  color: #ffffff;
-  flex: 1;
-  text-align: left;
-  padding-left: 20rpx;
-  letter-spacing: 0.5rpx;
-  text-shadow: 0 2rpx 4rpx rgba(0, 0, 0, 0.2);
-}
-
-.close-btn {
-  width: 40rpx;
-  height: 40rpx;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  font-size: 30rpx;
-  color: rgba(255, 255, 255, 0.9);
-  font-weight: 300;
-  border-radius: 50%;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  cursor: pointer;
-  background: rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(10rpx);
-  
-  &:active {
-    background: rgba(255, 255, 255, 0.2);
-    transform: scale(0.9) rotate(90deg);
-  }
-}
-
-.modal-body {
-  padding: 20rpx 20rpx;
-  display: flex;
-  flex-direction: column;
-  gap: 28rpx;
-  background: #ffffff;
-}
-
-.form-group {
-  display: flex;
-  flex-direction: column;
-  position: relative;
-}
-
-.form-label {
-  font-size: 30rpx;
-  color: #2c3e50;
-  font-weight: 600;
-  margin-bottom: 16rpx;
-  letter-spacing: 0.5rpx;
-  display: flex;
-  align-items: center;
-  position: relative;
-}
-
-.required {
-  color: #e74c3c;
-  margin-left: 6rpx;
-  font-weight: 700;
-  font-size: 32rpx;
-}
-
-.form-input {
-  height: 88rpx;
-  padding: 0 28rpx;
-  border: 2rpx solid #e1e8ed;
-  border-radius: 20rpx;
-  font-size: 30rpx;
-  color: #2c3e50;
-  box-sizing: border-box;
-  text-align: left;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Helvetica Neue', Helvetica, Arial, sans-serif;
-  letter-spacing: 0.5rpx;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  
-  &:focus {
-    background: #ffffff;
-    border-color: #1890ff;
-    box-shadow: 
-      0 0 0 6rpx rgba(24, 144, 255, 0.1),
-      inset 0 2rpx 4rpx rgba(0, 0, 0, 0.05);
-    outline: none;
-    transform: translateY(-2rpx);
-  }
-  
-  &::placeholder {
-    color: #95a5a6;
-    font-size: 30rpx;
-    font-weight: 400;
-  }
-}
-
-.form-modal-input {
-  height: 64rpx;
-  padding: 0 16rpx;
-  border: none;
-  border-radius: 12rpx;
-  font-size: 24rpx;
-  color: #333333;
-  box-sizing: border-box;
-  text-align: left;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Helvetica Neue', Helvetica, Arial, sans-serif;
-  letter-spacing: 0.5rpx;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
-  box-shadow: inset 0 2rpx 4rpx rgba(0, 0, 0, 0.05);
-}
-
-.contact-type-options {
-  display: flex;
-  flex-direction: column;
-  gap: 20rpx;
-}
-
-.type-option {
-  display: flex;
-  align-items: center;
-  padding: 16rpx 20rpx;
-  border: 2rpx solid #e1e8ed;
-  border-radius: 16rpx;
-  background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  cursor: pointer;
-  box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.05);
-  
-  &:active {
-    transform: scale(0.98) translateY(2rpx);
-  }
-  
-  &.active {
-    border-color: #1890ff;
-    background: linear-gradient(135deg, rgba(24, 144, 255, 0.08) 0%, rgba(24, 144, 255, 0.03) 100%);
-    box-shadow: 
-      0 0 0 6rpx rgba(24, 144, 255, 0.1),
-      0 4rpx 16rpx rgba(24, 144, 255, 0.15);
-    transform: translateY(-2rpx);
-  }
-}
-
-.checkbox {
-  width: 28rpx;
-  height: 28rpx;
-  border: 2rpx solid #cbd5e0;
-  border-radius: 6rpx;
-  margin-right: 16rpx;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  background: #ffffff;
-  
-  .type-option.active & {
-    border-color: #1890ff;
-    background: linear-gradient(135deg, #1890ff 0%, #40a9ff 100%);
-    box-shadow: 0 2rpx 8rpx rgba(24, 144, 255, 0.3);
-  }
-}
-
-.checkbox-inner {
-  width: 20rpx;
-  height: 20rpx;
-  background: transparent;
-  border-radius: 0;
-  transform: scale(0);
-  animation: checkmark 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
-  position: relative;
-  
-  /* 使用图片 */
-  background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="white"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>');
-  background-size: contain;
-  background-repeat: no-repeat;
-  background-position: center;
-}
-
-.type-label {
-  font-size: 24rpx;
-  color: #2c3e50;
-  font-weight: 500;
-  flex: 1;
-  
-  .type-option.active & {
-    color: #1890ff;
-    font-weight: 600;
-  }
-}
-
-@keyframes checkmark {
-  from {
-    transform: scale(0) rotate(-45deg);
-  }
-  to {
-    transform: scale(1) rotate(0deg);
-  }
-}
-
-.modal-footer {
-  display: flex;
-  padding: 10rpx;
-  border-top: 1rpx solid #e1e8ed;
-  background: #fff;
-  gap: 20rpx;
-}
-
-.footer-btn {
-  flex: 1;
-  height: 68rpx;
-  line-height: 68rpx;
-  border: none;
-  border-radius: 16rpx;
-  font-size: 24rpx;
-  font-weight: 600;
-  letter-spacing: 0.5rpx;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  cursor: pointer;
-  position: relative;
-  overflow: hidden;
-  
-  &:active {
-    transform: translateY(3rpx);
-  }
-  
-  &::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: -100%;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
-    transition: left 0.5s;
-  }
-  
-  &:active::before {
-    left: 100%;
-  }
-}
-
-.cancel-btn {
-  color: #636e72;
-}
-
-.confirm-btn {
-  background: linear-gradient(135deg, #1890ff 0%, #40a9ff 100%);
-  color: #ffffff; 
-  border-radius: 16rpx;
-  font-size: 24rpx;
-  font-weight: 600;
-  letter-spacing: 0.5rpx;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  cursor: pointer;
-  position: relative;
-  overflow: hidden;
-}
-
-/* 弹窗动画 */
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
-
-@keyframes slideInUp {
-  from {
-    opacity: 0;
-    transform: translateY(80rpx) scale(0.85);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
-}
-
-/* 表单项样式 */
-.form-item {
-  margin: 0;
-  padding: 0rpx 20rpx;
-  display: flex;
-  align-items: center;
-  min-height: 72rpx;
-  background: #ffffff;
-  transition: background-color 0.2s ease;
-  
-  &:last-child {
-    border-bottom: none;
-  }
-  
-  &:hover {
-    background: #fafbfc;
-  }
-}
-
-.form-label {
-  flex-shrink: 0;
-  font-size: 24rpx;
-  color: #333333;
-  font-weight: 600;
-  margin-right: 24rpx;
-  min-width: 160rpx;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Helvetica Neue', Helvetica, Arial, sans-serif;
-  letter-spacing: 0.5rpx;
-}
-
-.required {
-  color: #ff4d4f;
-  font-weight: 600;
-  margin-left: 4rpx;
-}
-
-.form-input {
-  flex: 1;
-  height: 64rpx;
-  padding: 0 16rpx;
-  border: none;
-  border-radius: 12rpx;
-  font-size: 24rpx;
-  color: #333333;
-  box-sizing: border-box;
-  text-align: left;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Helvetica Neue', Helvetica, Arial, sans-serif;
-  letter-spacing: 0.3rpx;
-  transition: all 0.3s ease;
-  
-  &:focus {
-    background: #ffffff;
-    box-shadow: 0 0 0 4rpx rgba(24, 144, 255, 0.1);
-    outline: none;
-  }
-  
-  &::placeholder {
-    color: #95a5a6;
-    font-size: 24rpx;
-    font-weight: 400;
-  }
-}
-
-.form-textarea {
-  flex: 1;
-  min-height: 64rpx;
-  padding: 0 16rpx;
-  border: none;
-  border-radius: 12rpx;
-  font-size: 24rpx;
-  color: #333333;
-  box-sizing: border-box;
-  text-align: left;
-  resize: none;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Helvetica Neue', Helvetica, Arial, sans-serif;
-  font-weight: 400;
-  line-height: 1.5;
-  transition: all 0.3s ease;
-  
-  &:focus {
-    background: #ffffff;
-    box-shadow: 0 0 0 4rpx rgba(24, 144, 255, 0.1);
-    outline: none;
-  }
-  
-  &::placeholder {
-    color: #999999;
-    font-size: 32rpx;
-    font-weight: 300;
-  }
-}
-
-/* 描述字段特殊样式 */
-.description-item {
-  align-items: flex-start;
-  margin-bottom: 20rpx;
-  min-height: 80rpx;
-  
-  .form-label {
-    display: flex;
-    align-items: center;
-    margin-top: 8rpx;
-  }
-  
-  .form-textarea {
-    min-height: 80rpx;
-    max-height: 240rpx;
-    overflow-y: auto;
-  }
-}
-
-/* 选择器样式 */
-.form-picker {
-  flex: 1;
-}
-
-.picker-display {
-  width: 100%;
-  height: 64rpx;
-  padding: 0 16rpx;
-  border: none;
-  border-radius: 12rpx;
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  font-size: 24rpx;
-  color: #333333;
-  box-sizing: border-box;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Helvetica Neue', Helvetica, Arial, sans-serif;
-  font-weight: 400;
-  transition: all 0.3s ease;
-  .picker-text {
-    margin-right: 16rpx;
-  }
-}
-
-.picker-arrow {
-  width: 32rpx;
-  height: 32rpx;
-  opacity: 0.6;
-}
-
-/* 安全评分显示样式 */
-.safety-score-item {
-  .safety-score-display {
-    flex: 1;
-    display: flex;
-    align-items: center;
-    justify-content: flex-end;
-  }
-  
-  .score-value {
-    font-size: 40rpx;
-    color: #1890ff;
-    font-weight: 700;
-    letter-spacing: 0.5rpx;
-    background: linear-gradient(135deg, #e6f7ff 0%, #f0f8ff 100%);
-    padding: 16rpx 24rpx;
-    border-radius: 12rpx;
-    border: 2rpx solid #bae7ff;
-  }
-}
-
-/* 安全等级显示样式 */
-.safety-level-item {
-  position: relative;
-  
-  .safety-level-display {
-  flex: 1;
-    display: flex;
-    align-items: center;
-    justify-content: flex-end;
-    gap: 16rpx;
-  }
-  
-  .safety-level-text {
-    font-size: 36rpx;
-    font-weight: 700;
-    letter-spacing: 0.5rpx;
-    padding: 16rpx 24rpx;
-  border-radius: 12rpx;
-    
-    &.safety-level-excellent {
-      color: #52c41a;
-      background: linear-gradient(135deg, #f6ffed 0%, #d9f7be 100%);
-      border: 2rpx solid #b7eb8f;
-    }
-    
-    &.safety-level-general {
-      color: #1890ff;
-      background: linear-gradient(135deg, #e6f7ff 0%, #cceeff 100%);
-      border: 2rpx solid #91d5ff;
-    }
-    
-    &.safety-level-poor {
-      color: #fa8c16;
-      background: linear-gradient(135deg, #fff7e6 0%, #ffe7ba 100%);
-      border: 2rpx solid #ffd591;
-    }
-  }
-}
-
-/* 大门配置样式 */
-.gate-name {
-  font-size: 24rpx;
-  color: #2c3e50;
-  font-weight: 600;
-  letter-spacing: 0.3rpx;
-}
-
-.gate-switch {
-  transform: scale(0.8);
-}
-
-/* 联系人样式 */
-.contact-info {
-  flex: 1;
-  margin-right: 16rpx;
-}
-
-.contact-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 8rpx;
-}
-
-.contact-name {
-  font-size: 24rpx;
-  font-weight: 600;
-  color: #2c3e50;
-  flex: 1;
-  letter-spacing: 0.3rpx;
-}
-
-.contact-type {
-  font-size: 24rpx;
-  color: #1890ff;
-  background: linear-gradient(135deg, #e6f7ff 0%, #cceeff 100%);
-  padding: 8rpx 16rpx;
-  border-radius: 8rpx;
-  margin-left: 16rpx;
-  font-weight: 500;
-}
-
-.contact-phone {
-  font-size: 24rpx;
-  color: #34495e;
-  font-weight: 400;
-}
-
-/* 图片上传区域样式 */
-.image-upload-area {
-  padding: 24rpx;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 16rpx;
-  align-items: flex-start;
-}
-
-/* 默认图片上传区域样式 */
-.default-image-upload-area {
-  padding: 24rpx;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-}
-
-.default-image-preview {
-  position: relative;
-  width: 300rpx;
-  height: 200rpx;
-  border-radius: 16rpx;
-  overflow: hidden;
-  background: #f5f5f5;
-  box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.1);
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
-  
-  &:hover {
-    transform: translateY(-4rpx);
-    box-shadow: 0 8rpx 24rpx rgba(0, 0, 0, 0.15);
-  }
-}
-
-.default-image {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.upload-default-btn {
-  width: 300rpx;
-  height: 200rpx;
-  border: 2rpx dashed #d9d9d9;
-  border-radius: 16rpx;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  background: #fafbfc;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  
-  &:hover {
-    border-color: #1890ff;
-    background: #f0f8ff;
-    transform: translateY(-2rpx);
-  }
-  
-  &:active {
-    transform: scale(0.98);
-  }
-}
-
-/* 删除按钮覆盖层样式 */
-.delete-btn-overlay {
-  position: absolute;
-  top: 8rpx;
-  right: 8rpx;
-  z-index: 10;
-}
-
-.delete-btn-small {
-  background: linear-gradient(135deg, #ff4d4f 0%, #ff7875 100%);
-  color: #ffffff;
-  border: none;
-  padding: 8rpx 8rpx;
-  font-size: 20rpx;
-  font-weight: 600;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  box-shadow: 0 2rpx 8rpx rgba(255, 77, 79, 0.4);
-  
-  &:hover {
-    transform: translateY(-2rpx);
-    box-shadow: 0 4rpx 12rpx rgba(255, 77, 79, 0.6);
-  }
-  
-  &:active {
-    transform: scale(0.95);
-    box-shadow: 0 1rpx 4rpx rgba(255, 77, 79, 0.8);
-  }
-}
-
-.delete-icon-small {
-  width: 24rpx;
-  height: 24rpx;
-  filter: brightness(0) invert(1);
-}
-
-.delete-btn-small text {
-  color: #ffffff;
-  font-size: 20rpx;
-  font-weight: 600;
-  line-height: 1;
-}
-
-/* 图片列表样式 */
-.image-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 16rpx;
-}
-
-.image-item {
-  position: relative;
-  width: 200rpx;
-  height: 150rpx;
-  border-radius: 16rpx;
-  overflow: hidden;
-  background: #f5f5f5;
-  box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.1);
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
-  
-  &:hover {
-    transform: translateY(-4rpx);
-    box-shadow: 0 8rpx 24rpx rgba(0, 0, 0, 0.15);
-  }
-}
-
-.map-image {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.image-overlay {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: rgba(0, 0, 0, 0.6);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  opacity: 0;
-  transition: opacity 0.3s ease;
-  border-radius: 16rpx;
-}
-
-/* 上传按钮样式 */
-.upload-btn {
-  width: 200rpx;
-  height: 150rpx;
-  border: 2rpx dashed #d9d9d9;
-  border-radius: 16rpx;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  background: #fafbfc;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  
-  &:hover {
-    border-color: #1890ff;
-    background: #f0f8ff;
-    transform: translateY(-2rpx);
-  }
-  
-  &:active {
-    transform: scale(0.98);
-  }
-}
-
-.upload-icon {
-  width: 68rpx;
-  height: 68rpx;
-  margin-bottom: 12rpx;
-  opacity: 0.6;
-}
-
-.upload-text {
-  font-size: 24rpx;
-  color: #666666;
-  font-weight: 500;
-}
-
-/* 空状态样式调整 */
-.empty-upload-state {
-  width: 100%;
-  padding: 48rpx 24rpx;
-  text-align: center;
-  color: #95a5a6;
-  font-size: 28rpx;
-  background: #fafbfc;
-  border-radius: 12rpx;
-  border: 2rpx dashed #d9d9d9;
-}
-
-.image-item:hover .image-overlay {
-  opacity: 1;
-}
-
-.image-actions {
-  display: flex;
-  gap: 16rpx;
-}
-
-/* 操作图标样式 */
-.action-icon {
-  width: 32rpx;
-  height: 32rpx;
-  padding: 6rpx;
-  border-radius: 12rpx;
-  background: #f5f5f5;
-  transition: all 0.3s ease;
-  
-  &:active {
-    background: #e6e6e6;
-    transform: scale(0.95);
-  }
-}
-
-.add-icon {
-  background: linear-gradient(135deg, #1890ff 0%, #096dd9 100%);
-  
-  &:active {
-    background: linear-gradient(135deg, #1890ff 0%, #096dd9 100%);
-  }
-}
-
-.edit-icon {
-  background: linear-gradient(135deg, #1890ff 0%, #096dd9 100%);
-  
-  &:active {
-    background: linear-gradient(135deg, #096dd9 0%, #0050b3 100%);
-  }
-}
-
-.delete-icon {
-  background: linear-gradient(135deg, #ff4d4f 0%, #ff7875 100%);
-  margin-left: 16rpx;
-  &:active {
-    background: linear-gradient(135deg, #ff7875 0%, #ffa39e 100%);
-  }
-}
-
-
-
-/* 空状态样式 */
-.empty-state {
-  padding: 48rpx 24rpx;
-  text-align: center;
-  color: #95a5a6;
-  font-size: 28rpx;
-  background: #fafbfc;
-  border-radius: 12rpx;
-  margin: 10rpx 24rpx;
-  border: 2rpx dashed #d9d9d9;
-}
-
-.empty-text {
-  color: #95a5a6;
-  font-size: 28rpx;
-    font-weight: 400;
-  }
-  
-/* 错误提示样式 */
-.error-message {
-  padding: 16rpx 24rpx;
-  margin: 0 24rpx 16rpx 24rpx;
-  background: linear-gradient(135deg, #fff2f0 0%, #ffebee 100%);
-  border: 1rpx solid #ffccc7;
-  border-radius: 12rpx;
-  animation: shake 0.5s ease-in-out;
-}
-
-.error-text {
-  color: #ff4d4f;
-  font-size: 24rpx;
-  font-weight: 500;
-  display: flex;
-  align-items: center;
-  
-  &::before {
-    content: '⚠';
-    margin-right: 8rpx;
-    font-size: 28rpx;
-  }
-}
-
-@keyframes shake {
-  0%, 100% { transform: translateX(0); }
-  25% { transform: translateX(-4rpx); }
-  75% { transform: translateX(4rpx); }
+/* 占位，确保最后一块内容不会被底部按钮遮挡（scroll-view 对 padding 支持有限时的兜底） */
+.scroll-spacer {
+  height: calc(140rpx + env(safe-area-inset-bottom));
 }
 
 /* 底部按钮 */
 .footer {
   display: flex;
-  padding: 16rpx 20rpx;
+  padding: 16rpx 20rpx calc(16rpx + env(safe-area-inset-bottom)) 20rpx;
   gap: 24rpx;
   background: #ffffff;
   border-top: 1rpx solid #e8f4ff;
@@ -2572,14 +1095,35 @@ export default {
   right: 0;
   z-index: 100;
 }
-  
+
+.footer-btn {
+  flex: 1;
+  height: 68rpx;
+  line-height: 68rpx;
+  border-radius: 16rpx;
+  font-size: 24rpx;
+  font-weight: 600;
+  border: none;
+  transition: all 0.2s ease;
+  position: relative;
+  overflow: hidden;
+
+  &::before {
+    display: none;
+  }
+
+  &:active {
+    transform: scale(0.98);
+  }
+}
+
 .cancel-btn {
   background: #f5f5f5;
   color: #666666;
   font-weight: 400;
   font-size: 24rpx;
   border: none !important;
-
+  
   &::after {
     border: none !important;
   }
@@ -2598,175 +1142,19 @@ export default {
   overflow: hidden;
 }
 
-
-
 /* 移动端优化 */
 @media (max-width: 750rpx) {
-  .section-container {
-    margin: 20rpx 24rpx;
-  }
-  
-  .section-header {
-    padding: 16rpx 20rpx;
-  }
-  
-  .form-item {
-    padding: 0rpx 20rpx;
-    min-height: 88rpx;
-  }
-  
-  .form-label {
-    font-size: 24rpx;
-    min-width: 140rpx;
-    margin-right: 24rpx;
-  }
-  
-  .form-input,
-  .form-textarea,
-  .picker-display {
-    font-size: 24rpx;
-  }
-  
-  .form-input {
-    height: 68rpx;
-    padding: 0 20rpx;
-  }
-  
-  .form-textarea {
-    min-height: 68rpx;
-    padding: 0 20rpx;
-  }
-  
-  .picker-display {
-    height: 68rpx;
-    padding: 0 20rpx;
-  }
-  
   .footer {
     padding: 16rpx 24rpx 30rpx 24rpx;
     gap: 20rpx;
-  }
-  
-  .safety-content {
-    padding: 10rpx 16rpx;
-    
-    .safety-summary {
-      flex-direction: column ;
-      gap: 10rpx ;
-    }
-    
-    .safety-score-display {
-      padding: 12rpx ;
-      flex-direction: column ;
-      gap: 6rpx ;
-      width: 100% ;
-    }
-    
-    .score-label {
-      font-size: 24rpx ;
-    }
-    
-    .score-value {
-      font-size: 30rpx ;
-    }
-    
-    .level-value {
-      font-size: 26rpx ;
-    }
-    
-    .score-progress-section {
-      margin: 10rpx 0 ;
-    }
-    
-    .progress-bar {
-      height: 12rpx ;
-    }
-    
-    .marker {
-      width: 50rpx ;
-    }
-    
-    .marker-text {
-      font-size: 18rpx ;
-    }
   }
 }
 
 /* 超小屏幕优化 */
 @media (max-width: 600rpx) {
-  .section-container {
-    margin: 16rpx 20rpx;
-  }
-  
-  .section-header {
-    padding: 16rpx 20rpx;
-  }
-  
-  .form-item {
-    padding: 0rpx 20rpx;
-    min-height: 80rpx;
-  }
-  
-  .form-label {
-    font-size: 28rpx;
-    min-width: 120rpx;
-    margin-right: 20rpx;
-  }
-  
-  .form-input,
-  .form-textarea,
-  .picker-display {
-    font-size: 28rpx;
-  }
-  
-  .form-input {
-    height: 60rpx;
-    padding: 0 16rpx;
-  }
-  
-  .form-textarea {
-    min-height: 60rpx;
-    padding: 0 20rpx;
-  }
-  
-  .picker-display {
-    height: 60rpx;
-    padding: 0 16rpx;
+  .footer {
+    padding: 16rpx 20rpx 30rpx 20rpx;
+    gap: 16rpx;
   }
 }
 </style> 
-<style lang="scss">
-/* 提升 uni 提示层层级，确保在联系人弹窗 (.contact-modal, z-index: 1000) 之上显示 */
-:deep(.uni-toast),
-:deep(.uni-toast__box) {
-  z-index: 3000 !important;
-}
-
-:deep(.uni-mask) {
-  z-index: 2999 !important;
-}
-
-/* 微信小程序兼容性样式 */
-@media screen and (max-width: 750rpx) {
-  .safety-section {
-    .safety-content {
-      .safety-summary {
-        flex-direction: column !important;
-        align-items: flex-start !important;
-      }
-      
-      .safety-score-display {
-        flex-direction: column !important;
-        align-items: flex-start !important;
-        width: 100% !important;
-      }
-      
-      .score-display-content {
-        flex-direction: column !important;
-        align-items: flex-start !important;
-        gap: 8rpx !important;
-      }
-    }
-  }
-}
-</style>

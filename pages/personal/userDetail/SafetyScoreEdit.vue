@@ -65,6 +65,19 @@
                     <image :src="serverUrl + '/static/icons/common/check-green.png'" class="check-icon" />
                   </view>
                 </view>
+                
+                <!-- 备注输入框 -->
+                <view class="remark-section" v-if="item.score !== undefined">
+                  <textarea 
+                    v-model="item.remark" 
+                    class="remark-input" 
+                    :placeholder="getRemarkPlaceholder(key, item.score)"
+                    maxlength="200"
+                    auto-height
+                    show-confirm-bar="false"
+                  />
+                  <text class="remark-count">{{ (item.remark || '').length }}/200</text>
+                </view>
               </view>
             </view>
           </view>
@@ -112,6 +125,17 @@
 </template>
 
 <script>
+import { 
+  scoreStandardList, 
+  scoreItemsConfig, 
+  getScoreItemName, 
+  getScoreItemOptions,
+  getSafetyLevelByScore,
+  getSafetyLevelText,
+  getSafetyLevelClass,
+  getProgressBarClass
+} from './components/safetyScoreData.js';
+
 export default {
   name: 'SafetyScoreEdit',
   data() {
@@ -122,104 +146,27 @@ export default {
       safeId: '',
       scoreItems: {},
       showScoreStandardModal: false, // 控制评分标准弹窗的显示
-      scoreStandardList: [ // 评分标准列表
-        {
-          title: '天然河流',
-          scores: [
-            { text: '有', points: 10 },
-            { text: '无', points: 0 }
-          ]
-        },
-        {
-          title: '周边消火栓',
-          scores: [
-            { text: '有', points: 10 },
-            { text: '无', points: 0 }
-          ]
-        },
-        {
-          title: '单位通行',
-          scores: [
-            { text: '云梯通行', points: 10 },
-            { text: '消防车通行', points: 5 },
-            { text: '消防车不通行', points: 0 }
-          ]
-        },
-        {
-          title: '室外消火栓',
-          scores: [
-            { text: '有水', points: 10 },
-            { text: '无水', points: 0 }
-          ]
-        },
-        {
-          title: '消防控制室',
-          scores: [
-            { text: '能启泵排烟', points: 10 },
-            { text: '只启泵', points: 5 },
-            { text: '都不可', points: 0 }
-          ]
-        },
-        {
-          title: '室内消火栓',
-          scores: [
-            { text: '都有水', points: 10 },
-            { text: '部分没水', points: 5 },
-            { text: '全部没水', points: 0 }
-          ]
-        },
-        {
-          title: '消防电梯',
-          scores: [
-            { text: '全部有', points: 10 },
-            { text: '部分有', points: 5 },
-            { text: '都没有', points: 0 }
-          ]
-        },
-        {
-          title: '楼梯间类型',
-          scores: [
-            { text: '都是防烟楼梯间', points: 10 },
-            { text: '部分是防烟楼梯间', points: 5 },
-            { text: '都不是', points: 0 }
-          ]
-        },
-        {
-          title: '单元贯通',
-          scores: [
-            { text: '都贯通', points: 10 },
-            { text: '部分贯通', points: 5 },
-            { text: '全不贯通', points: 0 }
-          ]
-        },
-        {
-          title: '快速处置小分队',
-          scores: [
-            { text: '有', points: 10 },
-            { text: '无', points: 0 }
-          ]
-        }
-      ]
+      scoreStandardList: scoreStandardList // 使用导入的评分标准列表
     }
   },
   computed: {
     // 安全等级相关的计算属性
     safetyLevelClass() {
       const totalScore = this.calculateTotalScore();
-      const level = this.getSafetyLevelByScore(totalScore);
-      return this.getSafetyLevelClass(level);
+      const level = getSafetyLevelByScore(totalScore);
+      return getSafetyLevelClass(level);
     },
     
     safetyLevelText() {
       const totalScore = this.calculateTotalScore();
-      const level = this.getSafetyLevelByScore(totalScore);
-      return this.getSafetyLevelText(level);
+      const level = getSafetyLevelByScore(totalScore);
+      return getSafetyLevelText(level);
     },
     
     progressBarClass() {
       const totalScore = this.calculateTotalScore();
-      const level = this.getSafetyLevelByScore(totalScore);
-      return this.getSafetyLevelClass(level);
+      const level = getSafetyLevelByScore(totalScore);
+      return getProgressBarClass(level);
     }
   },
   onLoad(options) {
@@ -233,90 +180,28 @@ export default {
     }
   },
   methods: {
+    // 导入的函数，使其在模板中可用
+    getScoreItemName,
+    getScoreItemOptions,
+    getSafetyLevelByScore,
+    getSafetyLevelText,
+    getSafetyLevelClass,
+    getProgressBarClass,
+    
     // 初始化评分项
     initScoreItems() {
       this.scoreItems = {
-        naturalWaterSource: { score: 10, option: '有', itemId: 'naturalWaterSource' },
-        outdoorHydrant: { score: 10, option: '有', itemId: 'outdoorHydrant' },
-        vehicleAccess: { score: 10, option: '云梯通行', itemId: 'vehicleAccess' },
-        outdoorHydrantWater: { score: 10, option: '有水', itemId: 'outdoorHydrantWater' },
-        controlRoom: { score: 10, option: '能启泵排烟', itemId: 'controlRoom' },
-        buildingHydrant: { score: 10, option: '都有水', itemId: 'buildingHydrant' },
-        fireElevator: { score: 10, option: '全部有', itemId: 'fireElevator' },
-        stairwellType: { score: 10, option: '都是防烟楼梯间', itemId: 'stairwellType' },
-        unitConnection: { score: 10, option: '都贯通', itemId: 'unitConnection' },
-        emergencyTeam: { score: 10, option: '有', itemId: 'emergencyTeam' }
+        naturalWaterSource: { score: 10, option: '有', itemId: 'naturalWaterSource', remark: '' },
+        outdoorHydrant: { score: 10, option: '有', itemId: 'outdoorHydrant', remark: '' },
+        vehicleAccess: { score: 10, option: '云梯通行', itemId: 'vehicleAccess', remark: '' },
+        outdoorHydrantWater: { score: 10, option: '有水', itemId: 'outdoorHydrantWater', remark: '' },
+        controlRoom: { score: 10, option: '能启泵排烟', itemId: 'controlRoom', remark: '' },
+        buildingHydrant: { score: 10, option: '都有水', itemId: 'buildingHydrant', remark: '' },
+        fireElevator: { score: 10, option: '全部有', itemId: 'fireElevator', remark: '' },
+        stairwellType: { score: 10, option: '都是防烟楼梯间', itemId: 'stairwellType', remark: '' },
+        unitConnection: { score: 10, option: '都贯通', itemId: 'unitConnection', remark: '' },
+        emergencyTeam: { score: 10, option: '有', itemId: 'emergencyTeam', remark: '' }
       };
-    },
-    
-    // 获取评分项中文名称
-    getScoreItemName(key) {
-      const nameMap = {
-        'naturalWaterSource': '天然河流',
-        'outdoorHydrant': '周边消火栓',
-        'vehicleAccess': '单位通行',
-        'outdoorHydrantWater': '室外消火栓',
-        'controlRoom': '消防控制室好用',
-        'buildingHydrant': '室内消火栓',
-        'fireElevator': '有无消防电梯',
-        'stairwellType': '楼梯间类型',
-        'unitConnection': '单元之间是否贯通',
-        'emergencyTeam': '快速处置小分队'
-      };
-      return nameMap[key] || key;
-    },
-    
-    // 获取评分项选项
-    getScoreItemOptions(key) {
-      const optionsMap = {
-        naturalWaterSource: [
-          { score: 10, text: '有' },
-          { score: 0, text: '无' }
-        ],
-        outdoorHydrant: [
-          { score: 10, text: '有' },
-          { score: 0, text: '无' }
-        ],
-        vehicleAccess: [
-          { score: 10, text: '云梯通行' },
-          { score: 5, text: '消防车通行' },
-          { score: 0, text: '消防车不通行' }
-        ],
-        outdoorHydrantWater: [
-          { score: 10, text: '有水' },
-          { score: 0, text: '无水' }
-        ],
-        controlRoom: [
-          { score: 10, text: '能启泵排烟' },
-          { score: 5, text: '只启泵' },
-          { score: 0, text: '都不可' }
-        ],
-        buildingHydrant: [
-          { score: 10, text: '都有水' },
-          { score: 5, text: '部分没水' },
-          { score: 0, text: '全部没水' }
-        ],
-        fireElevator: [
-          { score: 10, text: '全部有' },
-          { score: 5, text: '部分有' },
-          { score: 0, text: '都没有' }
-        ],
-        stairwellType: [
-          { score: 10, text: '都是防烟楼梯间' },
-          { score: 5, text: '部分是防烟楼梯间' },
-          { score: 0, text: '都不是' }
-        ],
-        unitConnection: [
-          { score: 10, text: '都贯通' },
-          { score: 5, text: '部分贯通' },
-          { score: 0, text: '全不贯通' }
-        ],
-        emergencyTeam: [
-          { score: 10, text: '有' },
-          { score: 0, text: '无' }
-        ]
-      };
-      return optionsMap[key] || [];
     },
     
     // 选择选项
@@ -324,8 +209,16 @@ export default {
       this.scoreItems[key] = {
         score: option.score,
         option: option.text,
-        itemId: key
+        itemId: key,
+        remark: this.scoreItems[key]?.remark || '' // 保留原有备注
       };
+    },
+    
+    // 获取备注占位符文本
+    getRemarkPlaceholder(key, score) {
+      const options = getScoreItemOptions(key);
+      const option = options.find(opt => opt.score === score);
+      return option ? option.remark : '请填写备注信息';
     },
     
     // 计算总分
@@ -337,41 +230,6 @@ export default {
         }
       }
       return totalScore;
-    },
-    
-    // 根据总分获取安全等级
-    getSafetyLevelByScore(totalScore) {
-      if (totalScore >= 90) {
-        return 1; // 优秀
-      } else if (totalScore >= 70) {
-        return 2; // 一般
-      } else {
-        return 3; // 较差
-      }
-    },
-    
-    // 获取安全等级文本
-    getSafetyLevelText(levelId) {
-      const levelMap = {
-        1: '优秀',
-        2: '一般',
-        3: '较差'
-      };
-      return levelMap[levelId] || '未知';
-    },
-
-    // 获取安全等级颜色类
-    getSafetyLevelClass(levelId) {
-      switch (levelId) {
-        case 1:
-          return 'level-excellent';
-        case 2:
-          return 'level-good';
-        case 3:
-          return 'level-poor';
-        default:
-          return '';
-      }
     },
     
     // 加载编辑数据
@@ -645,15 +503,15 @@ export default {
   border-radius: 4rpx;
   transition: width 0.3s ease-in-out;
   
-  &.level-excellent {
+  &.progress-excellent {
     background: linear-gradient(135deg, #52c41a 0%, #73d13d 100%);
   }
   
-  &.level-good {
+  &.progress-good {
     background: linear-gradient(135deg, #1890ff 0%, #40a9ff 100%);
   }
   
-  &.level-poor {
+  &.progress-poor {
     background: linear-gradient(135deg, #fa8c16 0%, #faad14 100%);
   }
 }
@@ -821,6 +679,73 @@ export default {
   width: 32rpx;
   height: 32rpx;
   opacity: 0.8;
+}
+
+/* 备注区域样式 */
+.remark-section {
+  margin-top: 20rpx;
+  border-radius: 16rpx;
+  position: relative;
+  transition: all 0.3s ease;
+  
+  &:hover {
+    border-color: #91d5ff;
+    background: linear-gradient(135deg, #f0f8ff 0%, #e6f7ff 100%);
+    box-shadow: 0 4rpx 16rpx rgba(24, 144, 255, 0.1);
+  }
+}
+
+.remark-input {
+  width: 100%;
+  min-height: 100rpx;
+  padding: 20rpx 24rpx;
+  border: 2rpx solid #e1e8ed;
+  border-radius: 12rpx;
+  font-size: 26rpx;
+  color: #333333;
+  background: #ffffff;
+  resize: none;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  line-height: 1.6;
+  transition: all 0.3s ease;
+  box-shadow: inset 0 2rpx 8rpx rgba(0, 0, 0, 0.05);
+  box-sizing: border-box;
+  
+  &:focus {
+    border-color: #1890ff;
+    box-shadow: 0 0 0 6rpx rgba(24, 144, 255, 0.15), inset 0 2rpx 8rpx rgba(0, 0, 0, 0.05);
+    outline: none;
+    transform: translateY(-2rpx);
+  }
+  
+  &::placeholder {
+    color: #999999;
+    font-size: 24rpx;
+    font-weight: 400;
+    font-style: italic;
+  }
+}
+
+.remark-count {
+  position: absolute;
+  bottom: 12rpx;
+  right: 24rpx;
+  font-size: 22rpx;
+  color: #666666;
+  font-weight: 500;
+  background: rgba(255, 255, 255, 0.9);
+  padding: 6rpx 12rpx;
+  border-radius: 20rpx;
+  backdrop-filter: blur(10rpx);
+  border: 1rpx solid #e8f4f8;
+  transition: all 0.3s ease;
+  
+  &::before {
+    content: '字符数：';
+    margin-right: 4rpx;
+    color: #999999;
+    font-size: 20rpx;
+  }
 }
 /* 底部按钮 */
 .footer {

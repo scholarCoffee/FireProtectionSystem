@@ -69,7 +69,7 @@
                         <text class="settings-text">权限管理</text>
                     </view>
                     <view class="more">
-                        <image :src="serverUrl + '/static/icons/person/person.png'" mode="aspectFit"></image>
+                        <image :src="serverUrl + '/static/icons/common/right.png'" mode="aspectFit"></image>
                     </view>
                 </view>
             </view>
@@ -114,7 +114,7 @@
                     phone: ''
                 },
                 isLoggedIn: false, // 用户是否已登录
-                serverUrl: 'http://192.168.1.3:3000',
+                serverUrl: 'https://www.xiaobei.space',
                 showModifyModal: false, // 是否显示修改弹窗
                 modifyValue: '', // 修改的值
                 modifyType: '', // 修改类型
