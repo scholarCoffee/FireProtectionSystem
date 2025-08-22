@@ -126,8 +126,7 @@
 
 <script>
 import { 
-  scoreStandardList, 
-  scoreItemsConfig, 
+  scoreStandardList,
   getScoreItemName, 
   getScoreItemOptions,
   getSafetyLevelByScore,

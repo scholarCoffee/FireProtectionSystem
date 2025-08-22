@@ -8,7 +8,6 @@
                     <text class="section-title">用户列表</text>
                     <text class="user-count">共 {{ userList.length }} 人</text>
                 </view>
-                
                 <view class="user-list">
                     <view 
                         class="user-item" 

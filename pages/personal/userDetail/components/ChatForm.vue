@@ -9,7 +9,7 @@
       <view class="form-item">
         <text class="form-label">聊天名称 <text class="required">*</text></text>
         <input 
-          v-model="formData.chatName" 
+          v-model="localForm.chatName" 
           class="form-input" 
           placeholder="请输入聊天名称"
           maxlength="50"
@@ -20,14 +20,14 @@
       <view class="form-item">
         <text class="form-label">聊天类型</text>
         <picker 
-          :value="formData.chatType - 1" 
+          :value="localForm.chatType - 1" 
           :range="chatTypeOptions" 
           range-key="label"
           @change="onChatTypeChange"
           class="form-picker"
         >
           <view class="picker-display">
-            <text class="picker-text">{{ getChatTypeText(formData.chatType) }}</text>
+            <text class="picker-text">{{ getChatTypeText(localForm.chatType) }}</text>
             <image :src="serverUrl + '/static/icons/common/down.png'" class="picker-arrow" />
           </view>
         </picker>
@@ -36,7 +36,7 @@
       <view class="form-item description-item">
         <text class="form-label">聊天描述</text>
         <textarea 
-          v-model="formData.chatDescription" 
+          v-model="localForm.chatDescription" 
           class="form-textarea" 
           placeholder="请输入聊天描述"
           maxlength="500"
@@ -48,14 +48,14 @@
       <view class="form-item">
         <text class="form-label">状态</text>
         <picker 
-          :value="formData.chatStatus - 1" 
+          :value="localForm.chatStatus - 1" 
           :range="chatStatusOptions" 
           range-key="label"
           @change="onChatStatusChange"
           class="form-picker"
         >
           <view class="picker-display">
-            <text class="picker-text">{{ getChatStatusText(formData.chatStatus) }}</text>
+            <text class="picker-text">{{ getChatStatusText(localForm.chatStatus) }}</text>
             <image :src="serverUrl + '/static/icons/common/down.png'" class="picker-arrow" />
           </view>
         </picker>
@@ -68,21 +68,23 @@
 export default {
   name: 'ChatForm',
   props: {
-    formData: {
-      type: Object,
-      required: true
-    },
-    errors: {
-      type: Object,
-      required: true
-    },
     serverUrl: {
       type: String,
       required: true
+    },
+    initialData: {
+      type: Object,
+      default: () => ({})
     }
   },
   data() {
     return {
+      localForm: {
+        chatName: '',
+        chatType: 1,
+        chatDescription: '',
+        chatStatus: 1
+      },
       chatTypeOptions: [
         { value: 1, label: '群聊' },
         { value: 2, label: '私聊' },
@@ -94,18 +96,40 @@ export default {
       ]
     }
   },
+  created() {
+    this.setFormData(this.initialData)
+  },
   methods: {
+    // 对外暴露
+    getFormData() {
+      return { ...this.localForm }
+    },
+    setFormData(data = {}) {
+      this.localForm = {
+        chatName: data.chatName || '',
+        chatType: data.chatType || 1,
+        chatDescription: data.chatDescription || '',
+        chatStatus: data.chatStatus || 1
+      }
+    },
+    validate() {
+      if (!this.localForm.chatName || !String(this.localForm.chatName).trim()) {
+        uni.showToast({ title: '请输入聊天名称', icon: 'none' })
+        return false
+      }
+      return true
+    },
     // 聊天相关方法
     onChatTypeChange(e) {
-      this.formData.chatType = this.chatTypeOptions[e.detail.value].value;
+      this.localForm.chatType = this.chatTypeOptions[e.detail.value].value;
     },
     
     onChatStatusChange(e) {
-      this.formData.chatStatus = this.chatStatusOptions[e.detail.value].value;
+      this.localForm.chatStatus = this.chatStatusOptions[e.detail.value].value;
     },
     
     onChatNameInput(e) {
-      this.$emit('validate-field', 'chatName', e.detail.value);
+      this.localForm.chatName = e.detail.value
     },
     
     getChatTypeText(type) {

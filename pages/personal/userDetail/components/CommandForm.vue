@@ -9,7 +9,7 @@
       <view class="form-item">
         <text class="form-label">功能名称 <text class="required">*</text></text>
         <input 
-          v-model="formData.commandTitle" 
+          v-model="localForm.commandTitle" 
           class="form-input" 
           placeholder="请输入功能名称"
           maxlength="50"
@@ -20,7 +20,7 @@
       <view class="form-item description-item">
         <text class="form-label">功能描述</text>
         <textarea 
-          v-model="formData.commandDesc" 
+          v-model="localForm.commandDesc" 
           class="form-textarea" 
           placeholder="请输入功能描述"
           maxlength="200"
@@ -32,7 +32,7 @@
       <view class="form-item">
         <text class="form-label">访问地址 <text class="required">*</text></text>
         <input 
-          v-model="formData.commandUrl" 
+          v-model="localForm.commandUrl" 
           class="form-input" 
           placeholder="请输入访问地址"
           maxlength="500"
@@ -47,27 +47,64 @@
 export default {
   name: 'CommandForm',
   props: {
-    formData: {
-      type: Object,
-      required: true
-    },
-    errors: {
-      type: Object,
-      required: true
-    },
     serverUrl: {
       type: String,
       required: true
+    },
+    initialData: {
+      type: Object,
+      default: () => ({})
     }
   },
+  data() {
+    return {
+      localForm: {
+        commandTitle: '',
+        commandDesc: '',
+        commandUrl: ''
+      }
+    }
+  },
+  created() {
+    this.setFormData(this.initialData)
+  },
   methods: {
+    // 暴露给父组件使用
+    getFormData() {
+      return { ...this.localForm }
+    },
+    setFormData(data = {}) {
+      this.localForm = {
+        commandTitle: data.commandTitle || '',
+        commandDesc: data.commandDesc || '',
+        commandUrl: data.commandUrl || ''
+      }
+    },
+    validate() {
+      if (!this.localForm.commandTitle || !String(this.localForm.commandTitle).trim()) {
+        uni.showToast({ title: '请输入功能名称', icon: 'none' })
+        return false
+      }
+      if (!this.localForm.commandUrl || !String(this.localForm.commandUrl).trim()) {
+        uni.showToast({ title: '请输入访问地址', icon: 'none' })
+        return false
+      }
+      try {
+        const u = new URL(this.localForm.commandUrl)
+        if (!(u.protocol === 'http:' || u.protocol === 'https:')) throw new Error('bad')
+      } catch (e) {
+        uni.showToast({ title: '请输入有效的URL地址', icon: 'none' })
+        return false
+      }
+      return true
+    },
     // 数据指挥表单输入验证
     onCommandTitleInput(e) {
-      this.$emit('validate-field', 'commandTitle', e.detail.value);
+      this.localForm.commandTitle = e.detail.value
     },
     
     onCommandUrlInput(e) {
-      this.$emit('validate-field', 'commandUrl', e.detail.value);
+      this.localForm.commandUrl = e.detail.value
     },
 
     // ===== 本地存储工具（与管理页/入口页统一） =====
@@ -90,10 +127,10 @@ export default {
     saveCurrentToLocal(editKey) {
       const commands = this.loadLocalCommands()
       const payload = {
-        title: this.formData.commandTitle || '',
-        desc: this.formData.commandDesc || '',
-        url: this.formData.commandUrl || '',
-        icon: this.formData.icon || 'manage'
+        title: this.localForm.commandTitle || '',
+        desc: this.localForm.commandDesc || '',
+        url: this.localForm.commandUrl || '',
+        icon: this.localForm.icon || 'manage'
       }
       const next = { ...commands }
       if (editKey) {

@@ -5,7 +5,6 @@
         <view class="section-header">
           <text class="section-title">展示图片<text class="required">*</text></text>
         </view>
-        
         <view class="default-image-upload-area">
           <!-- 已设置的默认图片 -->
           <view class="default-image-preview" v-if="formData.defaultImg">
@@ -16,20 +15,17 @@
               </button>
             </view>
           </view>
-          
           <!-- 上传默认图片按钮 -->
           <view class="upload-default-btn" v-if="!formData.defaultImg" @tap="addDefaultImage">
             <image :src="serverUrl + '/static/icons/common/add-third-grey.png'" class="upload-icon" />
             <text class="upload-text">上传展示图片</text>
           </view>
-          
           <!-- 错误提示 -->
           <view v-if="errors.defaultImg" class="error-message">
             <text class="error-text">{{ errors.defaultImg }}</text>
           </view>
         </view>
       </view>
-  
       <!-- 位置信息区域 -->
       <view class="config-section">
         <view class="section-header">
@@ -320,10 +316,10 @@
         </view>
         <view class="deployment-section">
           <!-- 已上传：视频或动画（图片），仅 1 个 -->
-          <view v-if="formData.battleDeploymentVideos && formData.battleDeploymentVideos.length > 0" class="video-wrapper">
+          <view v-if="formData.battleDeploymentMaterials && formData.battleDeploymentMaterials.length > 0" class="video-wrapper">
             <video 
-              v-if="isVideoPath(formData.battleDeploymentVideos[0])" 
-              :src="resolveVideoUrl(formData.battleDeploymentVideos[0])" 
+              v-if="isVideoPath(formData.battleDeploymentMaterials[0])" 
+              :src="resolveImageUrl(formData.battleDeploymentMaterials[0])" 
               class="deploy-video" 
               controls
               preload="metadata"
@@ -335,7 +331,7 @@
               enable-progress-gesture="true"
               vslide-gesture-in-fullscreen="true"
             ></video>
-            <image v-else :src="resolveImageUrl(formData.battleDeploymentVideos[0])" class="deploy-image" mode="aspectFill" />
+            <image v-else :src="resolveImageUrl(formData.battleDeploymentMaterials[0])" class="deploy-image" mode="aspectFill" />
             <!-- 删除按钮放在右上角 -->
             <view class="delete-btn-overlay">
               <button class="delete-btn-small" @tap="deleteDeploymentMedia">
@@ -398,6 +394,7 @@
   </template>
   
   <script>
+  import { locationTabList } from '@/commons/mock/index.js'
   import { 
     getSafetyLevelByScore, 
     getSafetyLevelText, 
@@ -408,29 +405,44 @@
   export default {
     name: 'LocationForm',
     props: {
-      formData: {
-        type: Object,
-        required: true
-      },
-      errors: {
-        type: Object,
-        required: true
-      },
       serverUrl: {
         type: String,
-        required: true
-      },
-      locationTypeOptions: {
-        type: Array,
         required: true
       },
       editId: {
         type: String,
         default: ''
+      },
+      initialData: {
+        type: Object,
+        default: () => ({})
       }
     },
     data() {
       return {
+        // 子组件本地状态
+        formData: {
+          addressName: '',
+          addressExt: '',
+          addressId: '',
+          allSenceLink: '',
+          type: 1,
+          safeLevelId: 1,
+          description: '',
+          safeId: '',
+          battleDeploymentMaterials: [],
+          householdOwnerName: '',
+          householdOwnerPhone: '',
+          householdFeedback: '',
+          rescueRemark: '',
+          fireSafetyScore: null,
+          enterGateList: [],
+          phoneList: [],
+          imgList: [],
+          defaultImg: ''
+        },
+        errors: {},
+        locationTypeOptions: [], // 位置类型选项
         gateOptions: [
           { name: '东门', type: 1 },
           { name: '南门', type: 2 },
@@ -454,18 +466,12 @@
       }
     },
     created() {
-      // 初始化扩展字段，确保响应式
-      if (!this.formData.battleDeploymentVideos) this.$set(this.formData, 'battleDeploymentVideos', [])
-      if (!this.formData.battleDeploymentAnimations) this.$set(this.formData, 'battleDeploymentAnimations', [])
-      if (this.formData.householdOwnerName === undefined) this.$set(this.formData, 'householdOwnerName', '')
-      if (this.formData.householdOwnerPhone === undefined) this.$set(this.formData, 'householdOwnerPhone', '')
-      if (this.formData.householdFeedback === undefined) this.$set(this.formData, 'householdFeedback', '')
-      if (this.formData.rescueRemark === undefined) this.$set(this.formData, 'rescueRemark', '')
-    },
-    
-    mounted() {
-      // 处理数据回显，确保字段正确映射
-      this.handleDataMapping();
+      // 初始化位置类型选项
+      this.locationTypeOptions = locationTabList.map(item => ({
+        value: item.type,
+        label: item.name
+      }));
+      this.setFormData(this.initialData)
     },
     computed: {
       contactTypeLimits() {
@@ -496,46 +502,44 @@
         return getProgressBarClass(level);
       }
     },
-    methods: {
-      // 处理数据回显和字段映射
-      handleDataMapping() {
-        // 处理作战实景部署字段映射（兼容新旧字段名）
-        if (this.formData.battleDeploymentMaterials && this.formData.battleDeploymentMaterials.length > 0) {
-          // 如果存在 battleDeploymentMaterials，将其映射到 battleDeploymentVideos
-          this.formData.battleDeploymentVideos = [...this.formData.battleDeploymentMaterials];
+    methods: {      
+      // 暴露给父组件
+      getFormData() { return { ...this.formData } },
+      setFormData(data = {}) {
+        this.formData = data
+      },
+      validate() {
+        this.errors = {}
+        const fd = this.formData
+        const must = v => v && String(v).trim()
+        if (!must(fd.addressName)) this.errors.addressName = '请输入地址名称'
+        if (!must(fd.addressExt)) this.errors.addressExt = '请输入详细地址'
+        if (!must(fd.addressId)) this.errors.addressId = '请输入地址代号'
+        if (!must(fd.allSenceLink)) this.errors.allSenceLink = '请输入全云景地址'
+        if (!fd.type) this.errors.type = '请输入位置类型'
+        if (!must(fd.defaultImg)) this.errors.defaultImg = '必须配置一张默认图片'
+        if (!Array.isArray(fd.enterGateList) || fd.enterGateList.length === 0) this.errors.enterGateList = '至少需要选择一个可出行大门'
+        if (!Array.isArray(fd.phoneList) || fd.phoneList.length === 0) this.errors.phoneList = '至少需要配置一个联系人'
+        if (!Array.isArray(fd.imgList) || fd.imgList.length === 0) this.errors.imgList = '至少需要配置一张消防地图'
+        const ok = Object.values(this.errors).every(e => !e)
+        if (!ok) {
+          const msg = Object.values(this.errors).find(e => !!e) || '请完善必填项'
+          uni.showToast({ title: msg, icon: 'none' })
         }
-        
-        // 确保户主信息字段存在且不为 undefined
-        if (this.formData.householdOwnerName === undefined) this.formData.householdOwnerName = '';
-        if (this.formData.householdOwnerPhone === undefined) this.formData.householdOwnerPhone = '';
-        if (this.formData.householdFeedback === undefined) this.formData.householdFeedback = '';
-        if (this.formData.rescueRemark === undefined) this.formData.rescueRemark = '';
-        
-        // 确保作战实景部署字段存在
-        if (!this.formData.battleDeploymentVideos) this.formData.battleDeploymentVideos = [];
+        return ok
       },
-      
       // 输入事件处理
-      onAddressNameInput(e) {
-        this.$emit('validate-field', 'addressName', e.detail.value);
-      },
+      onAddressNameInput(e) {},
       
-      onAddressExtInput(e) {
-        this.$emit('validate-field', 'addressExt', e.detail.value);
-      },
+      onAddressExtInput(e) {},
       
-      onAddressIdInput(e) {
-        this.$emit('validate-field', 'addressId', e.detail.value);
-      },
+      onAddressIdInput(e) {},
       
-      onAllSenceLinkInput(e) {
-        this.$emit('validate-field', 'allSenceLink', e.detail.value);
-      },
+      onAllSenceLinkInput(e) {},
       
       onLocationTypeChange(e) {
         const newType = this.locationTypeOptions[e.detail.value].value;
         const oldType = this.formData.type;
-        
         // 如果类型发生变化，处理相关字段
         if (newType !== oldType) {
           // 保存原有信息，用于后续反填
@@ -546,7 +550,7 @@
             rescueRemark: this.formData.rescueRemark || ''
           };
           
-          const originalBattleDeployment = this.formData.battleDeploymentVideos || [];
+          const originalBattleDeployment = this.formData.battleDeploymentMaterials || [];
           
           // 清空相关字段
           if (oldType === 1) {
@@ -557,7 +561,7 @@
           }
           
           if (oldType === 2) {
-            this.formData.battleDeploymentVideos = [];
+            this.formData.battleDeploymentMaterials = [];
           }
           
           // 如果切换到高层小区（type=1），反填户主信息
@@ -570,14 +574,11 @@
           
           // 如果切换到重点单位（type=2），反填作战实景部署
           if (newType === 2 && originalBattleDeployment.length > 0) {
-            this.formData.battleDeploymentVideos = [...originalBattleDeployment];
-            // 同时更新 battleDeploymentMaterials 字段以保持一致性
             this.formData.battleDeploymentMaterials = [...originalBattleDeployment];
           }
         }
         
         this.formData.type = newType;
-        this.$emit('validate-field', 'type', this.formData.type);
       },
       
       getLocationTypeText(type) {
@@ -607,9 +608,7 @@
           });
         }
         
-        if (this.errors.enterGateList) {
-          this.$emit('clear-error', 'enterGateList');
-        }
+        if (this.errors.enterGateList) { this.errors.enterGateList = '' }
       },
       
       // 联系人管理方法
@@ -703,9 +702,7 @@
           };
         }
               
-        if (this.errors.phoneList) {
-          this.$emit('clear-error', 'phoneList');
-        }
+        if (this.errors.phoneList) { this.errors.phoneList = '' }
         
         uni.showToast({
           title: this.contactModalMode === 'add' ? '联系人添加成功' : '联系人更新成功',
@@ -729,9 +726,7 @@
             if (res.confirm) {
               this.formData.phoneList.splice(index, 1);
               
-              if (this.errors.phoneList) {
-                this.$emit('clear-error', 'phoneList');
-              }
+              if (this.errors.phoneList) { this.errors.phoneList = '' }
             }
           }
         });
@@ -813,20 +808,6 @@
         const p = String(path).toLowerCase()
         return p.endsWith('.mp4') || p.endsWith('.mov') || p.endsWith('.m4v') || p.endsWith('.webm') || p.endsWith('.ogg')
       },
-
-      // 解析视频URL（微信小程序兼容）
-      resolveVideoUrl(path) {
-        if (!path) return '';
-        // 如果已经是完整的HTTPS URL，直接返回
-        if (path.startsWith('https://')) return path;
-        // 如果是相对路径，拼接服务器地址
-        if (path.startsWith('/')) {
-          return this.serverUrl + path;
-        }
-        // 其他情况，添加斜杠后拼接
-        return this.serverUrl + '/' + path;
-      },
-
       // 解析图片URL（微信小程序兼容）
       resolveImageUrl(path) {
         if (!path) return '';
@@ -844,125 +825,85 @@
       chooseDeploymentMedia() {
         this.showMediaSheet = true
       },
-
-      // 作战实景部署：上传视频（仅 1 个）
-      addDeploymentVideo() {
-        uni.chooseVideo({
-          sourceType: ['album','camera'],
-          compressed: true,
+            // 作战实景部署：统一上传方法（视频或动画）
+      addDeploymentMedia(mediaType) {
+        const isVideo = mediaType === 'video';
+        const chooseMethod = isVideo ? uni.chooseVideo : uni.chooseImage;
+        const chooseOptions = isVideo ? {
+          sourceType: ['album', 'camera'],
+          compressed: true
+        } : {
+          count: 1,
+          sizeType: ['compressed'],
+          sourceType: ['album', 'camera']
+        };
+        
+        chooseMethod({
+          ...chooseOptions,
           success: (res) => {
-            const filePath = res.tempFilePath
+            const filePath = isVideo ? res.tempFilePath : 
+              (res.tempFilePaths && res.tempFilePaths[0]) || (res.tempFiles && res.tempFiles[0]?.path) || '';
+            
             if (!filePath) {
-              uni.showToast({ title: '未选择有效视频', icon: 'none' });
-              return
+              uni.showToast({ 
+                title: `未选择有效${isVideo ? '视频' : '图片'}`, 
+                icon: 'none' 
+              });
+              return;
             }
-            this.uploadingDeployment = true
+            
+            this.uploadingDeployment = true;
             uni.uploadFile({
               url: this.serverUrl + '/files/upload',
               filePath,
               name: 'file',
-              fileType: 'video',
+              fileType: isVideo ? 'video' : 'image',
               formData: {
                 addressId: this.formData.addressId || this.editId || '',
-                url: '/uploadVideo/locationEdit',
-                name: 'battleVideo_' + (this.editId || 'temp') + '_' + Date.now()
+                url: isVideo ? '/uploadVideo/locationEdit' : '/uploadImg/locationEdit',
+                name: `battle${isVideo ? 'Video' : 'Anim'}_${this.editId || 'temp'}_${Date.now()}`
               },
               success: (uploadRes) => {
                 try {
-                  const parsed = typeof uploadRes.data === 'string' ? JSON.parse(uploadRes.data) : uploadRes.data
-                  const backPath = parsed?.data || ''
-                  if (!backPath) throw new Error('上传返回为空')
+                  const parsed = typeof uploadRes.data === 'string' ? JSON.parse(uploadRes.data) : uploadRes.data;
+                  const backPath = parsed?.data || '';
+                  if (!backPath) throw new Error('上传返回为空');
                   
-                  // 调试信息
-                  console.log('视频上传成功，返回路径:', backPath);
-                  console.log('完整视频URL:', this.resolveVideoUrl(backPath));
+                  this.formData.battleDeploymentMaterials = [backPath];
                   
-                  // 强制刷新：先清空再赋值，触发响应式更新
-                  this.formData.battleDeploymentVideos = []
-                  this.$nextTick(() => {
-                    this.formData.battleDeploymentVideos = [backPath]
-                    // 同时更新 battleDeploymentMaterials 字段以保持一致性
-                    this.formData.battleDeploymentMaterials = [backPath]
-                  })
-                  uni.showToast({ title: '视频上传成功', icon: 'success' })
+                  uni.showToast({ 
+                    title: `${isVideo ? '视频' : '动画'}上传成功`, 
+                    icon: 'success' 
+                  });
                 } catch (e) {
-                  console.error('视频解析失败:', e);
-                  uni.showToast({ title: '视频解析失败', icon: 'none' })
+                  console.error(`${isVideo ? '视频' : '动画'}解析失败:`, e);
+                  uni.showToast({ 
+                    title: `${isVideo ? '视频' : '动画'}解析失败`, 
+                    icon: 'none' 
+                  });
                 }
               },
               fail: (err) => {
-                console.error('视频上传失败:', err);
-                uni.showToast({ title: '上传失败: ' + (err?.errMsg || ''), icon: 'none' })
+                console.error(`${isVideo ? '视频' : '动画'}上传失败:`, err);
+                uni.showToast({ 
+                  title: `上传失败: ${err?.errMsg || ''}`, 
+                  icon: 'none' 
+                });
               },
               complete: () => {
-                this.uploadingDeployment = false
+                this.uploadingDeployment = false;
               }
-            })
+            });
           },
           fail: () => uni.showToast({ title: '取消选择', icon: 'none' })
-        })
+        });
       },
+      
       // 自定义选择器
       closeSheet() { this.showMediaSheet = false },
       onSelectSheet(type) {
-        this.showMediaSheet = false
-        if (type === 'video') this.addDeploymentVideo()
-        else this.addDeploymentAnimation()
-      },
-      deleteDeploymentVideo(index) {
-        uni.showModal({
-          title: '确认删除',
-          content: '确定删除该视频吗？',
-          success: (res) => {
-            if (res.confirm) this.formData.battleDeploymentVideos.splice(index, 1)
-          }
-        })
-      },
-      // 作战实景部署：上传动画（图片，亦仅 1 个）
-      addDeploymentAnimation() {
-        uni.chooseImage({
-          count: 1,
-          sizeType: ['compressed'],
-          sourceType: ['album','camera'],
-          success: (res) => {
-            const filePath = (res.tempFilePaths && res.tempFilePaths[0]) || (res.tempFiles && res.tempFiles[0]?.path) || ''
-            if (!filePath) { uni.showToast({ title: '未选择有效文件', icon: 'none' }); return }
-            this.uploadingDeployment = true
-            uni.uploadFile({
-              url: this.serverUrl + '/files/upload',
-              filePath,
-              name: 'file',
-              fileType: 'image',
-              formData: {
-                addressId: this.formData.addressId || this.editId || '',
-                url: '/uploadImg/locationEdit',
-                name: 'battleAnim_' + (this.editId || 'temp') + '_' + Date.now()
-              },
-              success: (uploadRes) => {
-                try {
-                  const parsed = typeof uploadRes.data === 'string' ? JSON.parse(uploadRes.data) : uploadRes.data
-                  const backPath = parsed?.data || ''
-                  if (!backPath) throw new Error('上传返回为空')
-                  // 强制刷新：先清空再赋值，触发响应式更新
-                  this.formData.battleDeploymentVideos = []
-                  this.$nextTick(() => {
-                    this.formData.battleDeploymentVideos = [backPath]
-                    // 同时更新 battleDeploymentMaterials 字段以保持一致性
-                    this.formData.battleDeploymentMaterials = [backPath]
-                  })
-                  uni.showToast({ title: '动画上传成功', icon: 'success' })
-                } catch (e) {
-                  uni.showToast({ title: '文件解析失败', icon: 'none' })
-                }
-              },
-              fail: (err) => uni.showToast({ title: '上传失败: ' + (err?.errMsg || ''), icon: 'none' }),
-              complete: () => {
-                this.uploadingDeployment = false
-              }
-            })
-          },
-          fail: () => uni.showToast({ title: '取消选择', icon: 'none' })
-        })
+        this.showMediaSheet = false;
+        this.addDeploymentMedia(type);
       },
       deleteDeploymentMedia() {
         uni.showModal({
@@ -970,21 +911,12 @@
           content: '确定删除该作战素材吗？',
           success: (res) => {
             if (res.confirm) {
-                // 强制刷新：先清空再赋值，触发响应式更新
-                this.formData.battleDeploymentVideos = []
-                // 同时清空 battleDeploymentMaterials 字段以保持一致性
                 this.formData.battleDeploymentMaterials = []
-                this.$nextTick(() => {
-                    // 确保数组被清空后，页面重新渲染
-                    this.$forceUpdate()
-                })
                 uni.showToast({ title: '删除成功', icon: 'success' })
             }
           }
         })
       },
-
-      // 搜救备注已改为单一描述，无需选择器
       // 默认图片管理方法
       addDefaultImage() {
         uni.chooseImage({
@@ -1083,191 +1015,34 @@
   </script>
 
 <style lang="scss" scoped>
-/* 位置信息区域 */
-.location-info-section {
+/* 通用区域样式 */
+.location-info-section,
+.safety-section,
+.config-section {
   background: #ffffff;
+  margin-top: 20rpx;
   overflow: hidden;
   box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.05);
   border-radius: 16rpx;
-  box-sizing: border-box;
   
-  .section-header {
-    padding: 12rpx 24rpx;
-    border-bottom: 1rpx solid #f0f0f0;
-    background: #f8f9fa;
-    
-    .section-title {
-      font-size: 30rpx;
-      font-weight: 600;
-      color: #333333;
-    }
+  &:first-child {
+    margin-top: 0;
   }
 }
 
-/* 安全信息区域 */
-.safety-section {      
-  margin-top: 20rpx;
-  background: #ffffff;
-  overflow: hidden;
-  border-radius: 16rpx;
-  box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.05);
+/* 通用区域头部样式 */
+.section-header {
+  padding: 12rpx 20rpx;
+  border-bottom: 1rpx solid #f0f0f0;
+  background: #f8f9fa;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
   
-  .section-header {
-    padding: 12rpx 20rpx;
-    border-bottom: 1rpx solid #f0f0f0;
-    background: #f8f9fa;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    
-    .section-title {
-      font-size: 30rpx;
-      font-weight: 600;
-      color: #333333;
-    }
-  }
-  
-  .safety-content {
-    padding: 12rpx 20rpx;
-    width: 100%;
-    box-sizing: border-box;
-    
-    .safety-summary {
-      display: flex;
-      flex-direction: column;
-      box-sizing: border-box;
-      justify-content: flex-start;
-      align-items: flex-start;
-      width: 100%;
-      gap: 16rpx;
-    }
-    
-    .safety-score-display {
-      display: flex;
-      flex-direction: column;
-      align-items: flex-start;
-      box-sizing: border-box;
-      gap: 12rpx;
-      background: linear-gradient(135deg, #f8faff 0%, #f0f8ff 100%);
-      border: 1rpx solid #e6f4ff;
-      border-radius: 12rpx;
-      padding: 16rpx 20rpx;
-      transition: all 0.3s ease;
-      width: 100%;
-      min-width: 0;
-      
-      .score-display-content {
-        display: flex;
-        align-items: center;
-        justify-content: flex-start;
-        width: 100%;
-        gap: 8rpx;
-      }
-      
-      &:hover {
-        transform: translateY(-2rpx);
-        box-shadow: 0 4rpx 16rpx rgba(24, 144, 255, 0.15);
-      }
-    }
-    
-    .score-label {
-      font-size: 26rpx;
-      color: #333333;
-      font-weight: 500;
-      white-space: nowrap;
-    }
-    
-    .score-value {
-      font-size: 32rpx;
-      color: #007aff;
-      font-weight: 700;
-      white-space: nowrap;
-    }
-    
-    .level-value {
-      font-size: 26rpx;
-      font-weight: 500;
-      white-space: nowrap;
-      
-      &.excellent {
-        color: #34c759;
-      }
-      
-      &.good {
-        color: #007aff;
-      }
-      
-      &.poor {
-        color: #ff9500;
-      }
-    }
-    
-    /* 分数进度条样式 */
-    .score-progress-section {
-      width: 100%;
-    }
-    
-    .progress-bar-container {
-      position: relative;
-      width: 100%;
-    }
-    
-    .progress-bar {
-      height: 14rpx;
-      background: #e8f4ff;
-      border-radius: 8rpx;
-      overflow: hidden;
-      position: relative;
-      width: 100%;
-    }
-    
-    .progress-fill {
-      height: 100%;
-      border-radius: 8rpx;
-      transition: width 0.6s ease;
-      
-      &.progress-excellent {
-        background: linear-gradient(90deg, #52c41a 0%, #73d13d 100%);
-      }
-      
-      &.progress-good {
-        background: linear-gradient(90deg, #1890ff 0%, #40a9ff 100%);
-      }
-      
-      &.progress-poor {
-        background: linear-gradient(90deg, #fa8c16 0%, #ffa940 100%);
-      }
-    }
-    
-    .progress-markers {
-      display: flex;
-      justify-content: space-between;
-      position: relative;
-      width: 100%;
-    }
-    
-    .marker {
-      position: relative;
-      width: 60rpx;
-      text-align: center;
-      
-      &::before {
-        content: '';
-        position: absolute;
-        top: -6rpx;
-        left: 50%;
-        transform: translateX(-50%);
-        width: 2rpx;
-        height: 10rpx;
-        background: #d9d9d9;
-      }
-    }
-    
-    .marker-text {
-      font-size: 20rpx;
-      color: #666666;
-      font-weight: 500;
-    }
+  .section-title {
+    font-size: 30rpx;
+    font-weight: 600;
+    color: #333333;
   }
 }
 
@@ -1276,50 +1051,176 @@
   align-items: center;
 }
 
-/* 配置区域 */
-.config-section {
-  background: #ffffff;
-  margin-top: 20rpx;
-  overflow: hidden;
-  box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.05);
-  border-radius: 16rpx;
+/* 位置信息区域特殊设置 */
+.location-info-section .section-header {
+  padding: 12rpx 24rpx;
+}
 
-  .section-header {
-    padding: 12rpx 20rpx;
-    border-bottom: 1rpx solid #f0f0f0;
-    background: #f8f9fa;
+/* 安全信息区域内容 */
+.safety-content {
+  padding: 12rpx 20rpx;
+  width: 100%;
+  box-sizing: border-box;
+  
+  .safety-summary {
     display: flex;
-    justify-content: space-between;
-    align-items: center;
-    
-    .section-title {
-      font-size: 30rpx;
-      font-weight: 600;
-      color: #333333;
-    }
+    flex-direction: column;
+    box-sizing: border-box;
+    justify-content: flex-start;
+    align-items: flex-start;
+    width: 100%;
+    gap: 16rpx;
   }
   
-  .gate-list,
-  .contact-list {
-    padding: 0 24rpx;
-  }
-  
-  .gate-item,
-  .contact-item {
-    padding: 16rpx 0;
-    border-bottom: 1rpx solid #f5f5f5;
+  .safety-score-display {
     display: flex;
-    justify-content: space-between;
-    align-items: center;
-    transition: background-color 0.2s ease;
+    flex-direction: column;
+    align-items: flex-start;
+    box-sizing: border-box;
+    gap: 12rpx;
+    background: linear-gradient(135deg, #f8faff 0%, #f0f8ff 100%);
+    border: 1rpx solid #e6f4ff;
+    border-radius: 12rpx;
+    padding: 16rpx 20rpx;
+    transition: all 0.3s ease;
+    width: 100%;
+    min-width: 0;
     
-    &:last-child {
-      border-bottom: none;
+    .score-display-content {
+      display: flex;
+      align-items: center;
+      justify-content: flex-start;
+      width: 100%;
+      gap: 8rpx;
     }
     
     &:hover {
-      background: #fafbfc;
+      transform: translateY(-2rpx);
+      box-shadow: 0 4rpx 16rpx rgba(24, 144, 255, 0.15);
     }
+  }
+  
+  .score-label {
+    font-size: 26rpx;
+    color: #333333;
+    font-weight: 500;
+    white-space: nowrap;
+  }
+  
+  .score-value {
+    font-size: 32rpx;
+    color: #007aff;
+    font-weight: 700;
+    white-space: nowrap;
+  }
+  
+  .level-value {
+    font-size: 26rpx;
+    font-weight: 500;
+    white-space: nowrap;
+    
+    &.excellent {
+      color: #34c759;
+    }
+    
+    &.good {
+      color: #007aff;
+    }
+    
+    &.poor {
+      color: #ff9500;
+    }
+  }
+  
+  /* 分数进度条样式 */
+  .score-progress-section {
+    width: 100%;
+  }
+  
+  .progress-bar-container {
+    position: relative;
+    width: 100%;
+  }
+  
+  .progress-bar {
+    height: 14rpx;
+    background: #e8f4ff;
+    border-radius: 8rpx;
+    overflow: hidden;
+    position: relative;
+    width: 100%;
+  }
+  
+  .progress-fill {
+    height: 100%;
+    border-radius: 8rpx;
+    transition: width 0.6s ease;
+    
+    &.progress-excellent {
+      background: linear-gradient(90deg, #52c41a 0%, #73d13d 100%);
+    }
+    
+    &.progress-good {
+      background: linear-gradient(90deg, #1890ff 0%, #40a9ff 100%);
+    }
+    
+    &.progress-poor {
+      background: linear-gradient(90deg, #fa8c16 0%, #ffa940 100%);
+    }
+  }
+  
+  .progress-markers {
+    display: flex;
+    justify-content: space-between;
+    position: relative;
+    width: 100%;
+  }
+  
+  .marker {
+    position: relative;
+    width: 60rpx;
+    text-align: center;
+    
+    &::before {
+      content: '';
+      position: absolute;
+      top: -6rpx;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 2rpx;
+      height: 10rpx;
+      background: #d9d9d9;
+    }
+  }
+  
+  .marker-text {
+    font-size: 20rpx;
+    color: #666666;
+    font-weight: 500;
+  }
+}
+
+/* 配置区域内容 */
+.gate-list,
+.contact-list {
+  padding: 0 24rpx;
+}
+
+.gate-item,
+.contact-item {
+  padding: 16rpx 0;
+  border-bottom: 1rpx solid #f5f5f5;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: background-color 0.2s ease;
+  
+  &:last-child {
+    border-bottom: none;
+  }
+  
+  &:hover {
+    background: #fafbfc;
   }
 }
 
@@ -1410,7 +1311,8 @@
   position: relative;
 }
 
-.form-label {
+/* 弹窗中的表单标签样式 */
+.form-group .form-label {
   font-size: 30rpx;
   color: #2c3e50;
   font-weight: 600;
@@ -1420,7 +1322,7 @@
   position: relative;
 }
 
-.required {
+.form-group .required {
   color: #e74c3c;
   margin-left: 6rpx;
   font-weight: 700;
@@ -1564,17 +1466,10 @@
   color: #636e72;
 }
 
+/* 确认按钮继承footer-btn的样式，只需要特殊背景 */
 .confirm-btn {
   background: linear-gradient(135deg, #1890ff 0%, #40a9ff 100%);
-  color: #ffffff; 
-  border-radius: 16rpx;
-  font-size: 24rpx;
-  font-weight: 600;
-  letter-spacing: 0.5rpx;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  cursor: pointer;
-  position: relative;
-  overflow: hidden;
+  color: #ffffff;
 }
 
 /* 弹窗动画 */
@@ -1617,7 +1512,8 @@
   }
 }
 
-.form-label {
+/* 表单项中的标签样式 */
+.form-item .form-label {
   flex-shrink: 0;
   font-size: 24rpx;
   color: #333333;
@@ -1628,7 +1524,7 @@
   letter-spacing: 0.5rpx;
 }
 
-.required {
+.form-item .required {
   color: #ff4d4f;
   font-weight: 600;
   margin-left: 4rpx;
@@ -1965,9 +1861,7 @@
   100% { transform: rotate(360deg); }
 }
 
-.anim-gap {
-  margin-top: 16rpx;
-}
+
 
 /* 自定义底部选择器样式：纯白底、无阴影 */
 .sheet-mask {
@@ -1993,7 +1887,7 @@
   font-size: 30rpx;
   color: #333;
 }
-.sheet-item:last-child { }
+
 .sheet-cancel {
   margin-top: 12rpx;
   height: 96rpx;
