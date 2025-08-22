@@ -16,7 +16,7 @@
         <view class="data-item" v-for="item in filteredList" :key="item.groupId">
           <view class="item-header">
             <view class="item-title">
-              <image :src="serverUrl + item.groupAvatar || '/static/icons/chat/defautl-group.png'" class="group-avatar" />
+              <image :src="serverUrl + (item.groupAvatar || '/static/group/group.png')" class="group-avatar" />
               <view class="title-info">
                 <text class="title-text">{{ item.groupName }}</text>
                 <text class="member-count">{{ item.memberCount || 0 }}人</text>
@@ -191,7 +191,7 @@ export default {
           uni.request({
             url: this.serverUrl + '/group/getGroupList',
             method: 'POST',
-            data: { permissionStatus: this.userInfo.permissionStatus, userId: this.userInfo.id },
+            data: { isAll: true, userId: this.userInfo.id },
             success: resolve,
             fail: reject
           });
@@ -205,7 +205,7 @@ export default {
             description: g.description || '',
             ownerName: g.ownerName || '',
             createTime: g.createTime || '',
-            groupAvatar: g.groupAvatar ? (this.serverUrl + g.groupAvatar) : '/static/icons/chat/defautl-group.png',
+            groupAvatar: g.groupAvatar || '/static/group/group.png',
             members: [],
             memberCount: 0
           }))

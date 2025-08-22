@@ -19,17 +19,17 @@
                         <view class="user-info">
                             <view class="user-avatar">
                                 <image 
-                                    :src="user.avatar || serverUrl + '/static/icons/person/default-avatar.png'" 
+                                    :src="serverUrl + (user.avatar || '/static/icons/person/default-avatar.png')" 
                                     mode="aspectFill" 
                                     class="avatar-img"
                                 />
                                 <view class="user-status" :class="statusClassMap[user.status] || 'status-active'">
-                                    {{ statusTextMap[user.status] || '正常' }}
+                                    <text class="status-text">{{ statusTextMap[user.status] || '正常' }}</text>
                                 </view>
                             </view>
                             <view class="user-details">
                                 <text class="user-name">{{ user.name }}</text>
-                                <text class="user-role">{{ getUserRoleText(user.role) }}</text>
+                                <text class="user-role">{{ getUserRoleText(user.permissionStatus) }}</text>
                                 <text class="user-phone">{{ user.phone || '未设置手机号' }}</text>
                             </view>
                         </view>
@@ -105,7 +105,7 @@ export default {
             originalPermissions: {},
             hasChanges: false,
             saving: false,
-            currentUserRole: 'user',
+            currentUserRole: 0, // 默认普通用户
             // 模板映射，避免 :class 调用方法
             statusClassMap: {
                 active: 'status-active',
@@ -116,6 +116,12 @@ export default {
                 active: '正常',
                 inactive: '禁用',
                 pending: '待审核'
+            },
+            // 微信小程序兼容的状态映射
+            statusMap: {
+                'active': { text: '正常', class: 'status-active' },
+                'inactive': { text: '禁用', class: 'status-inactive' },
+                'pending': { text: '待审核', class: 'status-pending' }
             }
         }
     },
@@ -131,7 +137,7 @@ export default {
             const userInfo = uni.getStorageSync('userInfo');
             if (userInfo) {
                 this.currentUserId = userInfo.id;
-                this.currentUserRole = userInfo.role || 'user';
+                this.currentUserRole = userInfo.permissionStatus || 0; // 使用 permissionStatus
             }
         },
         
@@ -160,66 +166,24 @@ export default {
                         }
                     }));
                 } else {
-                    // 如果后端没有接口，使用模拟数据
-                    this.userList = this.getMockUserList();
+                    throw new Error('获取用户列表失败');
                 }
                 
                 // 保存原始权限状态
                 this.saveOriginalPermissions();
             } catch (err) {
                 console.error('加载用户列表失败:', err);
-                // 使用模拟数据
-                this.userList = this.getMockUserList();
-                this.saveOriginalPermissions();
+                uni.showToast({
+                    title: '加载用户列表失败',
+                    icon: 'none',
+                    duration: 2000
+                });
             } finally {
                 uni.hideLoading();
             }
         },
         
-        // 获取模拟用户列表
-        getMockUserList() {
-            return [
-                {
-                    id: '1',
-                    name: '张三',
-                    role: 'admin',
-                    status: 'active',
-                    phone: '13800138001',
-                    avatar: '',
-                    permissions: {
-                        groupChat: true,
-                        settings: true,
-                        admin: true
-                    }
-                },
-                {
-                    id: '2',
-                    name: '李四',
-                    role: 'manager',
-                    status: 'active',
-                    phone: '13800138002',
-                    avatar: '',
-                    permissions: {
-                        groupChat: true,
-                        settings: true,
-                        admin: false
-                    }
-                },
-                {
-                    id: '3',
-                    name: '王五',
-                    role: 'user',
-                    status: 'active',
-                    phone: '13800138003',
-                    avatar: '',
-                    permissions: {
-                        groupChat: true,
-                        settings: false,
-                        admin: false
-                    }
-                }
-            ];
-        },
+
         
         // 保存原始权限状态
         saveOriginalPermissions() {
@@ -229,41 +193,51 @@ export default {
             });
         },
         
-        // 检查是否可以管理用户
+        // 检查是否可以管理用户（根据接口返回的 permissionStatus）
         canManageUser(user) {
-            if (this.currentUserRole === 'admin') return true;
-            if (this.currentUserRole === 'manager' && user.role !== 'admin') return true;
+            if (this.currentUserRole === 2) return true; // 超级管理员可以管理所有用户
+            if (this.currentUserRole === 1 && user.permissionStatus !== 2) return true; // 管理员可以管理非超级管理员用户
             return false;
         },
         
-        // 获取用户状态样式类
+        // 获取用户状态样式类（微信小程序兼容）
         getUserStatusClass(status) {
+            // #ifdef MP-WEIXIN
+            return this.statusMap[status]?.class || 'status-active';
+            // #endif
+            // #ifndef MP-WEIXIN
             const statusMap = {
                 'active': 'status-active',
                 'inactive': 'status-inactive',
                 'pending': 'status-pending'
             };
             return statusMap[status] || 'status-active';
+            // #endif
         },
         
-        // 获取用户状态文本
+        // 获取用户状态文本（微信小程序兼容）
         getUserStatusText(status) {
+            // #ifdef MP-WEIXIN
+            return this.statusMap[status]?.text || '正常';
+            // #endif
+            // #ifndef MP-WEIXIN
             const statusMap = {
                 'active': '正常',
                 'inactive': '禁用',
                 'pending': '待审核'
             };
             return statusMap[status] || '正常';
+            // #endif
         },
         
-        // 获取用户角色文本
-        getUserRoleText(role) {
+        // 获取用户角色文本（根据接口返回的 permissionStatus）
+        getUserRoleText(permissionStatus) {
             const roleMap = {
-                'admin': '超级管理员',
-                'manager': '管理员',
-                'user': '普通用户'
+                2: '超级管理员',
+                1: '管理员',
+                0: '普通用户'
             };
-            return roleMap[role] || '普通用户';
+            return roleMap[permissionStatus] || '普通用户';
         },
         
         // 更新用户权限
@@ -359,7 +333,9 @@ export default {
     left: 0;
     right: 0;
     bottom: 120rpx; /* 预留底部按钮高度 */
+    // #ifdef H5
     padding-top: 80rpx; /* 贴边衔接，降低顶部内边距 */
+    // #endif
     box-sizing: border-box;
 }
 
@@ -465,15 +441,15 @@ export default {
     position: absolute;
     bottom: -4rpx;
     right: -4rpx;
-    width: 24rpx;
-    height: 24rpx;
-    border-radius: 50%;
+    min-width: 32rpx;
+    height: 32rpx;
+    border-radius: 16rpx;
     border: 2rpx solid #fff;
-    font-size: 20rpx;
     display: flex;
     align-items: center;
     justify-content: center;
-    color: #fff;
+    padding: 0 8rpx;
+    box-sizing: border-box;
     
     &.status-active {
         background: #52c41a;
@@ -486,6 +462,14 @@ export default {
     &.status-pending {
         background: #faad14;
     }
+}
+
+.status-text {
+    font-size: 20rpx;
+    color: #fff;
+    font-weight: 500;
+    white-space: nowrap;
+    line-height: 1;
 }
 
 .user-details {

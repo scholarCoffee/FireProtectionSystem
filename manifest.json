@@ -94,5 +94,11 @@
     "uniStatistics" : {
         "enable" : false
     },
+    // 新增：配置网络超时（视频加载可能耗时，避免默认超时导致失败）
+    "networkTimeout": {
+        "request": 60000, // 普通接口请求超时（60秒）
+        "downloadFile": 120000, // 视频/文件下载超时（120秒，核心配置）
+        "uploadFile": 60000 // 若涉及视频上传，也可延长此超时
+    },
     "vueVersion" : "2"
 }

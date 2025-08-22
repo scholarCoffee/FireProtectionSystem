@@ -9,7 +9,7 @@
         <view class="default-image-upload-area">
           <!-- 已设置的默认图片 -->
           <view class="default-image-preview" v-if="formData.defaultImg">
-            <image :src="serverUrl + formData.defaultImg" class="default-image" mode="aspectFill" />
+            <image :src="resolveImageUrl(formData.defaultImg)" class="default-image" mode="aspectFill" />
             <view class="delete-btn-overlay">
               <button class="delete-btn-small" @tap="deleteDefaultImage">
                 <image :src="serverUrl + '/static/icons/common/delete-white.png'" class="delete-icon-small" />
@@ -296,7 +296,7 @@
           <!-- 已上传的图片 -->
           <view class="image-list" v-if="formData.imgList && formData.imgList.length > 0">
             <view class="image-item" v-for="(img, index) in formData.imgList" :key="index">
-              <image :src="serverUrl + img" class="map-image" mode="aspectFill" />
+              <image :src="resolveImageUrl(img)" class="map-image" mode="aspectFill" />
               <view class="image-overlay">
                 <view class="image-actions">
                   <image :src="serverUrl + '/static/icons/common/delete-white.png'" class="action-icon delete-icon" @tap="deleteImage(index)" />
@@ -321,8 +321,21 @@
         <view class="deployment-section">
           <!-- 已上传：视频或动画（图片），仅 1 个 -->
           <view v-if="formData.battleDeploymentVideos && formData.battleDeploymentVideos.length > 0" class="video-wrapper">
-            <video v-if="isVideoPath(formData.battleDeploymentVideos[0])" :src="serverUrl + formData.battleDeploymentVideos[0]" class="deploy-video" controls></video>
-            <image v-else :src="serverUrl + formData.battleDeploymentVideos[0]" class="deploy-image" mode="aspectFill" />
+            <video 
+              v-if="isVideoPath(formData.battleDeploymentVideos[0])" 
+              :src="resolveVideoUrl(formData.battleDeploymentVideos[0])" 
+              class="deploy-video" 
+              controls
+              preload="metadata"
+              webkit-playsinline
+              playsinline
+              x5-video-player-type="h5"
+              x5-video-player-fullscreen="true"
+              show-fullscreen-btn="true"
+              enable-progress-gesture="true"
+              vslide-gesture-in-fullscreen="true"
+            ></video>
+            <image v-else :src="resolveImageUrl(formData.battleDeploymentVideos[0])" class="deploy-image" mode="aspectFill" />
             <!-- 删除按钮放在右上角 -->
             <view class="delete-btn-overlay">
               <button class="delete-btn-small" @tap="deleteDeploymentMedia">
@@ -801,6 +814,32 @@
         return p.endsWith('.mp4') || p.endsWith('.mov') || p.endsWith('.m4v') || p.endsWith('.webm') || p.endsWith('.ogg')
       },
 
+      // 解析视频URL（微信小程序兼容）
+      resolveVideoUrl(path) {
+        if (!path) return '';
+        // 如果已经是完整的HTTPS URL，直接返回
+        if (path.startsWith('https://')) return path;
+        // 如果是相对路径，拼接服务器地址
+        if (path.startsWith('/')) {
+          return this.serverUrl + path;
+        }
+        // 其他情况，添加斜杠后拼接
+        return this.serverUrl + '/' + path;
+      },
+
+      // 解析图片URL（微信小程序兼容）
+      resolveImageUrl(path) {
+        if (!path) return '';
+        // 如果已经是完整的HTTPS URL，直接返回
+        if (path.startsWith('https://')) return path;
+        // 如果是相对路径，拼接服务器地址
+        if (path.startsWith('/')) {
+          return this.serverUrl + path;
+        }
+        // 其他情况，添加斜杠后拼接
+        return this.serverUrl + '/' + path;
+      },
+
       // 作战实景部署：统一选择器
       chooseDeploymentMedia() {
         this.showMediaSheet = true
@@ -833,6 +872,11 @@
                   const parsed = typeof uploadRes.data === 'string' ? JSON.parse(uploadRes.data) : uploadRes.data
                   const backPath = parsed?.data || ''
                   if (!backPath) throw new Error('上传返回为空')
+                  
+                  // 调试信息
+                  console.log('视频上传成功，返回路径:', backPath);
+                  console.log('完整视频URL:', this.resolveVideoUrl(backPath));
+                  
                   // 强制刷新：先清空再赋值，触发响应式更新
                   this.formData.battleDeploymentVideos = []
                   this.$nextTick(() => {
@@ -842,10 +886,12 @@
                   })
                   uni.showToast({ title: '视频上传成功', icon: 'success' })
                 } catch (e) {
+                  console.error('视频解析失败:', e);
                   uni.showToast({ title: '视频解析失败', icon: 'none' })
                 }
               },
               fail: (err) => {
+                console.error('视频上传失败:', err);
                 uni.showToast({ title: '上传失败: ' + (err?.errMsg || ''), icon: 'none' })
               },
               complete: () => {
@@ -923,17 +969,17 @@
           title: '确认删除',
           content: '确定删除该作战素材吗？',
           success: (res) => {
-                         if (res.confirm) {
-               // 强制刷新：先清空再赋值，触发响应式更新
-               this.formData.battleDeploymentVideos = []
-               // 同时清空 battleDeploymentMaterials 字段以保持一致性
-               this.formData.battleDeploymentMaterials = []
-               this.$nextTick(() => {
-                 // 确保数组被清空后，页面重新渲染
-                 this.$forceUpdate()
-               })
-               uni.showToast({ title: '删除成功', icon: 'success' })
-             }
+            if (res.confirm) {
+                // 强制刷新：先清空再赋值，触发响应式更新
+                this.formData.battleDeploymentVideos = []
+                // 同时清空 battleDeploymentMaterials 字段以保持一致性
+                this.formData.battleDeploymentMaterials = []
+                this.$nextTick(() => {
+                    // 确保数组被清空后，页面重新渲染
+                    this.$forceUpdate()
+                })
+                uni.showToast({ title: '删除成功', icon: 'success' })
+            }
           }
         })
       },
@@ -1652,6 +1698,7 @@
   min-height: 120rpx; /* 区块整体最小高度 */
   
   .form-label {
+    margin-top: 14rpx;
     display: flex;
     align-items: center;
   }

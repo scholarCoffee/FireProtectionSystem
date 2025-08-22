@@ -335,7 +335,7 @@ export default {
 
 /* 标签页 */
 .tab-container {
-  background: linear-gradient(135deg, #ffffff 0%, #f8faff 100%);
+  background: #fff;
   border-bottom: 1rpx solid rgba(24, 144, 255, 0.1);
   box-shadow: 0 2rpx 8rpx rgba(24, 144, 255, 0.05);
 }
