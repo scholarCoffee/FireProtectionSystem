@@ -248,7 +248,8 @@ export default {
               householdOwnerPhone: responseData.householdOwnerPhone || '',
               householdFeedback: responseData.householdFeedback || '',
               rescueRemark: responseData.rescueRemark || '',
-              battleDeploymentVideos: responseData.battleDeploymentVideos || [],
+              battleDeploymentVideos: responseData.battleDeploymentMaterials || [],
+              battleDeploymentMaterials: responseData.battleDeploymentMaterials || [],
               // 处理安全信息，null时显示为空对象
               fireSafetyScore: responseData.fireSafetyScore || null,
               enterGateList: responseData.enterGateList || [],
