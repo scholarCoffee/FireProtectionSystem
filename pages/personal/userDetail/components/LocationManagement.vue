@@ -21,7 +21,6 @@
          </view>
       </view>
     </view>
-    
     <!-- 数据列表 -->
     <scroll-view 
       class="data-list" 
@@ -318,7 +317,7 @@ export default {
   flex: 1;
   display: flex;
   flex-direction: column;
-  height: 100%; /* 确保容器有明确的高度 */
+  height: 100vh; /* 确保容器有明确的高度（安卓小程序需要固定视口高度） */
   overflow: hidden; /* 防止内容溢出 */
 }
 
@@ -371,8 +370,9 @@ export default {
 .data-list {
   flex: 1;
   padding: 0;
-  padding-bottom: 120rpx;
-  height: calc(100vh - 200rpx);
+  padding-bottom: calc(120rpx + env(safe-area-inset-bottom));
+  /* 明确的高度以启用安卓小程序 scroll-view 滚动 */
+  height: calc(100vh - 120rpx);
 }
 
 .loading-container, .empty-container {

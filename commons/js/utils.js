@@ -102,6 +102,27 @@ export const fileNameTime = (date) => {
     return `${year}${month}${day}`;
 }
 
+// 生成时间戳（YYYYMMDD_HHmmss）
+export const nowStamp = (date = new Date()) => {
+    const d = new Date(date);
+    const pad = (n) => (n < 10 ? ('0' + n) : '' + n);
+    return (
+        d.getFullYear() +
+        pad(d.getMonth() + 1) +
+        pad(d.getDate()) + '_' +
+        pad(d.getHours()) +
+        pad(d.getMinutes()) +
+        pad(d.getSeconds())
+    );
+}
+
+// 拼接带日期时间子目录的上传url（确保以/开头）
+export const withDatedPath = (basePath, date = new Date()) => {
+    const stamp = nowStamp(date);
+    const base = String(basePath || '').startsWith('/') ? basePath : ('/' + basePath);
+    return `${base}/${stamp}`;
+}
+
 // 未读消息管理
 let unreadCount = 0;
 

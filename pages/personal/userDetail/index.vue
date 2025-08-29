@@ -102,7 +102,7 @@
 </template>
 
 <script>
-    import { clearUnreadCount } from '@/commons/js/utils.js';
+    import { clearUnreadCount, withDatedPath } from '@/commons/js/utils.js';
     export default {
         data() {
             return {
@@ -217,7 +217,7 @@
                             fileType: 'image',
                             formData: {
                                 id: this.userInfo.id,
-                                url: '/uploadImg/userImg',
+                                url: withDatedPath('/uploadImg/userImg'),
                                 name: 'userImg_' + this.userInfo.id + Math.ceil(Math.random()*10),
                             },
                             success: (res) => {

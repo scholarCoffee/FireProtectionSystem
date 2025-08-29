@@ -37,7 +37,7 @@
     </view>
 </template>
 <script>
-import { dateTime, spaceTime, fileNameTime } from '@/commons/js/utils.js'; // 导入 dateTime 函数
+import { dateTime, spaceTime, fileNameTime, withDatedPath } from '@/commons/js/utils.js'; // 导入工具
 import Submit from '@/componets/submit'
 export default {
     data() {
@@ -106,6 +106,7 @@ export default {
         return false
     },
     methods: {
+        withDatedPath,
         // 自定义后退方法
         customBackMethod() {
             this.socket.emit('leaveChatRoomServer', this.userInfo.id, this.currentUserInfo.id, this.chatType);
@@ -264,7 +265,7 @@ export default {
                     name: 'file',
                     formData: {
                         id: this.userInfo.id,
-                        url: '/uploadImg/chatImg',
+                        url: this.withDatedPath('/uploadImg/chatImg'),
                         name: 'chatImg_' + this.userInfo.id + Math.ceil(Math.random()*10),
                     },
                     success: (res) => {

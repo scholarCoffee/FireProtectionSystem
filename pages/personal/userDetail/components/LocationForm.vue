@@ -1,399 +1,409 @@
 <template>
-    <view class="location-form">
-      <!-- 默认图片配置 -->
-      <view class="location-info-section">
-        <view class="section-header">
-          <text class="section-title">展示图片<text class="required">*</text></text>
+  <view class="location-form">
+    <!-- 默认图片配置 -->
+    <view class="location-info-section">
+      <view class="section-header">
+        <text class="section-title">展示图片<text class="required">*</text></text>
+      </view>
+      <view class="default-image-upload-area">
+        <!-- 已设置的默认图片 -->
+        <view class="default-image-preview" v-if="formData.defaultImg">
+          <image :src="resolveImageUrl(formData.defaultImg)" class="default-image" mode="aspectFill" />
+          <view class="delete-btn-overlay">
+            <button class="delete-btn-small" @tap="deleteDefaultImage">
+              <image :src="serverUrl + '/static/icons/common/delete-white.png'" class="delete-icon-small" />
+            </button>
+          </view>
         </view>
-        <view class="default-image-upload-area">
-          <!-- 已设置的默认图片 -->
-          <view class="default-image-preview" v-if="formData.defaultImg">
-            <image :src="resolveImageUrl(formData.defaultImg)" class="default-image" mode="aspectFill" />
-            <view class="delete-btn-overlay">
-              <button class="delete-btn-small" @tap="deleteDefaultImage">
-                <image :src="serverUrl + '/static/icons/common/delete-white.png'" class="delete-icon-small" />
-              </button>
+        <!-- 上传默认图片按钮 -->
+        <view class="upload-default-btn" v-if="!formData.defaultImg" @tap="addDefaultImage">
+          <image :src="serverUrl + '/static/icons/common/add-third-grey.png'" class="upload-icon" />
+          <text class="upload-text">上传展示图片</text>
+        </view>
+        <!-- 错误提示 -->
+        <view v-if="errors.defaultImg" class="error-message">
+          <text class="error-text">{{ errors.defaultImg }}</text>
+        </view>
+      </view>
+    </view>
+    <!-- 位置信息区域 -->
+    <view class="config-section">
+      <view class="section-header">
+        <text class="section-title">位置信息</text>
+      </view>
+      <view class="form-item">
+        <text class="form-label">地址名称 <text class="required">*</text></text>
+        <input 
+          v-model="formData.addressName" 
+          class="form-input" 
+          placeholder="请输入地址名称"
+          maxlength="50"
+          @input="onAddressNameInput"
+        />
+      </view>
+      
+      <view class="form-item">
+        <text class="form-label">详细地址 <text class="required">*</text></text>
+        <input 
+          v-model="formData.addressExt" 
+          class="form-input" 
+          placeholder="请输入详细地址"
+          maxlength="200"
+          @input="onAddressExtInput"
+        />
+      </view>
+        
+      <view class="form-item">
+        <text class="form-label">地址代号 <text class="required">*</text></text>
+        <input 
+          v-model="formData.addressId" 
+          class="form-input" 
+          placeholder="请输入地址代号"
+          maxlength="20"
+          @input="onAddressIdInput"
+        />
+      </view>
+        
+      <view class="form-item">
+        <text class="form-label">全云景地址 <text class="required">*</text></text>
+        <input 
+          v-model="formData.allSenceLink" 
+          class="form-input" 
+          placeholder="请输入全云景链接"
+          maxlength="500"
+          @input="onAllSenceLinkInput"
+        />
+      </view>
+
+      
+      
+      <view class="form-item">
+        <text class="form-label">位置类型 <text class="required">*</text></text>
+        <picker 
+          :value="formData.type - 1" 
+          :range="locationTypeOptions" 
+          range-key="label"
+          @change="onLocationTypeChange"
+          class="form-picker"
+        >
+          <view class="picker-display">
+            <text class="picker-text">{{ getLocationTypeText(formData.type) }}</text>
+            <image :src="serverUrl + '/static/icons/common/down.png'" class="picker-arrow" />
+          </view>
+        </picker>
+      </view>
+      
+      <view class="form-item description-item">
+        <text class="form-label">描述</text>
+        <textarea 
+          v-model="formData.description" 
+          class="form-textarea" 
+          placeholder="请输入描述信息"
+          maxlength="500"
+          auto-height
+          show-confirm-bar="false"
+        />
+      </view>
+    </view>
+
+    <!-- 安全信息区域 -->
+    <view class="safety-section">
+      <view class="section-header">
+        <text class="section-title">安全信息</text>
+        <view class="header-actions">
+          <image 
+            v-if="!formData.fireSafetyScore" 
+            :src="serverUrl + '/static/icons/common/add-sec-white.png'" 
+            class="action-icon add-icon" 
+            @tap="addSafetyScore" 
+          />
+          <image 
+            v-else 
+            :src="serverUrl + '/static/icons/common/edit-white.png'" 
+            class="action-icon edit-icon" 
+            @tap="editSafetyScore" 
+          />
+        </view>
+      </view>
+        
+      <view v-if="formData.fireSafetyScore" class="safety-content">
+        <view class="safety-summary">
+          <view class="safety-score-display">
+            <view class="score-display-content">
+              <text class="score-label">总分:</text>
+              <text class="score-value">{{ calculateTotalScore() }}分</text>
+              <text class="level-value" :class="safetyLevelClass">
+                ({{ safetyLevelText }})
+              </text>
             </view>
-          </view>
-          <!-- 上传默认图片按钮 -->
-          <view class="upload-default-btn" v-if="!formData.defaultImg" @tap="addDefaultImage">
-            <image :src="serverUrl + '/static/icons/common/add-third-grey.png'" class="upload-icon" />
-            <text class="upload-text">上传展示图片</text>
-          </view>
-          <!-- 错误提示 -->
-          <view v-if="errors.defaultImg" class="error-message">
-            <text class="error-text">{{ errors.defaultImg }}</text>
+            <!-- 分数进度条 -->
+            <view class="score-progress-section">
+              <view class="progress-bar-container">
+                <view class="progress-bar">
+                <view 
+                    class="progress-fill" 
+                    :style="{ width: Math.min(calculateTotalScore(), 100) + '%' }"
+                    :class="progressBarClass"
+                  ></view>
+                </view>
+                <view class="progress-markers">
+                  <view class="marker">
+                    <text class="marker-text">0分</text>
+                  </view>
+                  <view class="marker">
+                    <text class="marker-text">50分</text>
+                  </view>
+                  <view class="marker">
+                    <text class="marker-text">100分</text>
+                  </view>
+                </view>
+              </view>
+            </view>
           </view>
         </view>
       </view>
-      <!-- 位置信息区域 -->
-      <view class="config-section">
-        <view class="section-header">
-          <text class="section-title">位置信息</text>
-        </view>
-        <view class="form-item">
-          <text class="form-label">地址名称 <text class="required">*</text></text>
-          <input 
-            v-model="formData.addressName" 
-            class="form-input" 
-            placeholder="请输入地址名称"
-            maxlength="50"
-            @input="onAddressNameInput"
+      <view v-else class="empty-state">
+        <text class="empty-text">暂无安全评分信息，点击上方"+"添加</text>
+      </view>
+    </view>
+      
+    <!-- 户主信息（仅：高层小区 type === 1） -->
+    <view class="config-section" v-if="formData.type === 1">
+      <view class="section-header">
+        <text class="section-title">户主信息</text>
+      </view>
+      <view class="form-item">
+        <text class="form-label">户主查询URL</text>
+        <input 
+          v-model="formData.ownerQueryUrl" 
+          class="form-input" 
+          placeholder="请输入户主信息查询URL"
+          maxlength="500"
+        />
+      </view>
+    </view>
+
+    <!-- 可出行大门配置 -->
+    <view class="config-section">
+      <view class="section-header">
+        <text class="section-title">可出行大门配置</text>
+      </view>
+      
+      <view class="gate-list">
+        <view class="gate-item" v-for="(gate, index) in gateOptions" :key="index">
+          <text class="gate-name">{{ gate.name }}</text>
+          <switch 
+            class="gate-switch"
+            :checked="isGateSelected(gate.name)" 
+            @change="toggleGate(gate.name)"
+            color="#1890ff"
           />
         </view>
+      </view>
         
-        <view class="form-item">
-          <text class="form-label">详细地址 <text class="required">*</text></text>
-          <input 
-            v-model="formData.addressExt" 
-            class="form-input" 
-            placeholder="请输入详细地址"
-            maxlength="200"
-            @input="onAddressExtInput"
-          />
+      <!-- 错误提示 -->
+      <view v-if="errors.enterGateList" class="error-message">
+        <text class="error-text">{{ errors.enterGateList }}</text>
+      </view>
+    </view>
+      
+    <!-- 联系人配置 -->
+    <view class="config-section">
+      <view class="section-header">
+        <text class="section-title">联系人配置</text>
+        <view class="header-actions">
+          <image :src="serverUrl + '/static/icons/common/add-sec-white.png'" class="action-icon add-icon" @tap="showContactModal('add')" />
         </view>
-          
-        <view class="form-item">
-          <text class="form-label">地址代号 <text class="required">*</text></text>
+      </view>
+        
+      <view class="contact-list" v-if="formData.phoneList && formData.phoneList.length > 0">
+        <view class="contact-item" v-for="(contact, index) in formData.phoneList" :key="index">
+          <view class="contact-info">
+            <view class="contact-header">
+              <text class="contact-name">{{ contact.name }}</text>
+              <text class="contact-type">{{ getContactTypeText(contact.type) }}</text>
+            </view>
+            <text class="contact-phone">{{ contact.phone }}</text>
+          </view>
+          <view class="contact-actions">
+            <image :src="serverUrl + '/static/icons/common/edit-white.png'" class="action-icon edit-icon" @tap="showContactModal('edit', index)" />
+            <image :src="serverUrl + '/static/icons/common/delete-white.png'" class="action-icon delete-icon" @tap="deletePhoneContact(index)" />
+          </view>
+        </view>
+      </view>
+      <view v-else class="empty-state">
+        <text class="empty-text">暂无联系人，点击上方"+"添加</text>
+      </view>
+      
+      <!-- 错误提示 -->
+      <view v-if="errors.phoneList" class="error-message">
+        <text class="error-text">{{ errors.phoneList }}</text>
+      </view>
+    </view>
+
+    <!-- 联系人弹窗 -->
+    <view class="contact-modal" v-if="showContactModalFlag" @tap="hideContactModal">
+      <view class="modal-content" @tap.stop>
+        <view class="modal-header">
+          <text class="modal-title">{{ contactModalMode === 'add' ? '添加联系人' : '编辑联系人' }}</text>
+          <view class="close-btn" @tap="hideContactModal">
+            <text class="close-icon">×</text>
+          </view>
+        </view>  
+        <view class="modal-body">
+          <view class="form-group">
+            <text class="form-label">联系人姓名 <text class="required">*</text></text>
           <input 
-            v-model="formData.addressId" 
-            class="form-input" 
-            placeholder="请输入地址代号"
+            v-model="contactForm.name" 
+            class="form-modal-input" 
+            placeholder="请输入联系人姓名"
             maxlength="20"
-            @input="onAddressIdInput"
           />
         </view>
-          
-        <view class="form-item">
-          <text class="form-label">全云景地址 <text class="required">*</text></text>
+        <view class="form-group">
+          <text class="form-label">联系电话 <text class="required">*</text></text>
           <input 
-            v-model="formData.allSenceLink" 
-            class="form-input" 
-            placeholder="请输入全云景链接"
-            maxlength="500"
-            @input="onAllSenceLinkInput"
+            v-model="contactForm.phone" 
+            class="form-modal-input" 
+            placeholder="请输入联系电话"
+            maxlength="15"
+            type="number" 
           />
+        </view>
+      
+        <view class="form-group">
+          <text class="form-label">联系人类型 <text class="required">*</text></text>
+          <view class="contact-type-options">
+            <view 
+              v-for="option in contactTypeOptions" 
+              :key="option.value"
+              class="type-option"
+              :class="{ 
+                'active': contactForm.type === option.value,
+                'disabled': (option.value === 1 && contactTypeLimits.unitFull && contactModalMode === 'add') || 
+                          (option.value === 2 && contactTypeLimits.fireFull && contactModalMode === 'add')
+              }"
+              @tap="selectContactType(option.value)"
+            >
+              <view class="checkbox">
+                <view class="checkbox-inner" v-if="contactForm.type === option.value"></view>
+              </view>
+              <text class="type-label">{{ option.label }}</text>
+            </view>
+          </view>
+          </view>
+        </view>
+        <view class="modal-footer">
+          <button class="footer-btn cancel-btn" @tap="hideContactModal">取消</button>
+          <button class="footer-btn confirm-btn" @tap="saveContact">确定</button>
+        </view>
+      </view>
+    </view>
+      
+    <!-- 消防地图配置 -->
+    <view class="config-section">
+      <view class="section-header">
+        <text class="section-title">消防地图</text>
+      </view>
+      
+      <view class="image-upload-area">
+        <!-- 已上传的图片 -->
+        <view class="image-list" v-if="formData.imgList && formData.imgList.length > 0">
+          <view class="image-item" v-for="(img, index) in formData.imgList" :key="index">
+            <image :src="resolveImageUrl(img)" class="map-image" mode="aspectFill" />
+            <view class="image-overlay">
+              <view class="image-actions">
+                <image :src="serverUrl + '/static/icons/common/delete-white.png'" class="action-icon delete-icon" @tap="deleteImage(index)" />
+              </view>
+            </view>
+          </view>
         </view>
         
+        <!-- 上传按钮 -->
+        <view class="upload-btn" v-if="formData.imgList && formData.imgList.length < 3" @tap="addImage">
+          <image :src="serverUrl + '/static/icons/common/add-third-grey.png'" class="upload-icon" />
+          <text class="upload-text">上传图片</text>
+        </view>
+      </view>
+    </view>
+
+    <!-- 作战实景部署（仅：重点单位 type === 2） -->
+    <view class="config-section" v-if="formData.type === 2">
+      <view class="section-header">
+        <text class="section-title">作战实景部署</text>
+      </view>
+      <view class="deployment-section">
+        <!-- 消防单位选择器 -->
         <view class="form-item">
-          <text class="form-label">位置类型 <text class="required">*</text></text>
+          <text class="form-label">消防单位</text>
           <picker 
-            :value="formData.type - 1" 
-            :range="locationTypeOptions" 
+            :value="fireUnitPickerIndex" 
+            :range="fireUnitOptions" 
             range-key="label"
-            @change="onLocationTypeChange"
+            @change="onFireUnitChange"
             class="form-picker"
           >
             <view class="picker-display">
-              <text class="picker-text">{{ getLocationTypeText(formData.type) }}</text>
+              <text class="picker-text">{{ getFireUnitText(selectedFireUnit) }}</text>
               <image :src="serverUrl + '/static/icons/common/down.png'" class="picker-arrow" />
             </view>
           </picker>
         </view>
-        
-        <view class="form-item description-item">
-          <text class="form-label">描述</text>
-          <textarea 
-            v-model="formData.description" 
-            class="form-textarea" 
-            placeholder="请输入描述信息"
-            maxlength="500"
-            auto-height
-            show-confirm-bar="false"
-          />
-        </view>
-      </view>
-  
-      <!-- 安全信息区域 -->
-      <view class="safety-section">
-        <view class="section-header">
-          <text class="section-title">安全信息</text>
-          <view class="header-actions">
-            <image 
-              v-if="!formData.fireSafetyScore" 
-              :src="serverUrl + '/static/icons/common/add-sec-white.png'" 
-              class="action-icon add-icon" 
-              @tap="addSafetyScore" 
-            />
-            <image 
-              v-else 
-              :src="serverUrl + '/static/icons/common/edit-white.png'" 
-              class="action-icon edit-icon" 
-              @tap="editSafetyScore" 
-            />
-          </view>
-        </view>
-          
-        <view v-if="formData.fireSafetyScore" class="safety-content">
-          <view class="safety-summary">
-            <view class="safety-score-display">
-              <view class="score-display-content">
-                <text class="score-label">总分:</text>
-                <text class="score-value">{{ calculateTotalScore() }}分</text>
-                <text class="level-value" :class="safetyLevelClass">
-                  ({{ safetyLevelText }})
-                </text>
-              </view>
-              <!-- 分数进度条 -->
-              <view class="score-progress-section">
-                <view class="progress-bar-container">
-                  <view class="progress-bar">
-                  <view 
-                     class="progress-fill" 
-                     :style="{ width: Math.min(calculateTotalScore(), 100) + '%' }"
-                     :class="progressBarClass"
-                   ></view>
-                  </view>
-                  <view class="progress-markers">
-                    <view class="marker">
-                      <text class="marker-text">0分</text>
-                    </view>
-                    <view class="marker">
-                      <text class="marker-text">50分</text>
-                    </view>
-                    <view class="marker">
-                      <text class="marker-text">100分</text>
-                    </view>
-                  </view>
-                </view>
-              </view>
-            </view>
-          </view>
-        </view>
-        <view v-else class="empty-state">
-          <text class="empty-text">暂无安全评分信息，点击上方"+"添加</text>
-        </view>
-      </view>
-        
-      <!-- 可出行大门配置 -->
-      <view class="config-section">
-        <view class="section-header">
-          <text class="section-title">可出行大门配置</text>
-        </view>
-        
-        <view class="gate-list">
-          <view class="gate-item" v-for="(gate, index) in gateOptions" :key="index">
-            <text class="gate-name">{{ gate.name }}</text>
-            <switch 
-              class="gate-switch"
-              :checked="isGateSelected(gate.name)" 
-              @change="toggleGate(gate.name)"
-              color="#1890ff"
-            />
-          </view>
-        </view>
-          
-        <!-- 错误提示 -->
-        <view v-if="errors.enterGateList" class="error-message">
-          <text class="error-text">{{ errors.enterGateList }}</text>
-        </view>
-      </view>
-        
-      <!-- 联系人配置 -->
-      <view class="config-section">
-        <view class="section-header">
-          <text class="section-title">联系人配置</text>
-          <view class="header-actions">
-            <image :src="serverUrl + '/static/icons/common/add-sec-white.png'" class="action-icon add-icon" @tap="showContactModal('add')" />
-          </view>
-        </view>
-          
-        <view class="contact-list" v-if="formData.phoneList && formData.phoneList.length > 0">
-          <view class="contact-item" v-for="(contact, index) in formData.phoneList" :key="index">
-            <view class="contact-info">
-              <view class="contact-header">
-                <text class="contact-name">{{ contact.name }}</text>
-                <text class="contact-type">{{ getContactTypeText(contact.type) }}</text>
-              </view>
-              <text class="contact-phone">{{ contact.phone }}</text>
-            </view>
-            <view class="contact-actions">
-              <image :src="serverUrl + '/static/icons/common/edit-white.png'" class="action-icon edit-icon" @tap="showContactModal('edit', index)" />
-              <image :src="serverUrl + '/static/icons/common/delete-white.png'" class="action-icon delete-icon" @tap="deletePhoneContact(index)" />
-            </view>
-          </view>
-        </view>
-        <view v-else class="empty-state">
-          <text class="empty-text">暂无联系人，点击上方"+"添加</text>
-        </view>
-        
-        <!-- 错误提示 -->
-        <view v-if="errors.phoneList" class="error-message">
-          <text class="error-text">{{ errors.phoneList }}</text>
-        </view>
-      </view>
-  
-      <!-- 联系人弹窗 -->
-      <view class="contact-modal" v-if="showContactModalFlag" @tap="hideContactModal">
-        <view class="modal-content" @tap.stop>
-          <view class="modal-header">
-            <text class="modal-title">{{ contactModalMode === 'add' ? '添加联系人' : '编辑联系人' }}</text>
-            <view class="close-btn" @tap="hideContactModal">
-              <text class="close-icon">×</text>
-            </view>
-          </view>  
-          <view class="modal-body">
-            <view class="form-group">
-              <text class="form-label">联系人姓名 <text class="required">*</text></text>
-            <input 
-              v-model="contactForm.name" 
-              class="form-modal-input" 
-              placeholder="请输入联系人姓名"
-              maxlength="20"
-            />
-          </view>
-          <view class="form-group">
-            <text class="form-label">联系电话 <text class="required">*</text></text>
-            <input 
-              v-model="contactForm.phone" 
-              class="form-modal-input" 
-              placeholder="请输入联系电话"
-              maxlength="15"
-              type="number" 
-            />
-          </view>
-        
-          <view class="form-group">
-            <text class="form-label">联系人类型 <text class="required">*</text></text>
-            <view class="contact-type-options">
-              <view 
-                v-for="option in contactTypeOptions" 
-                :key="option.value"
-                class="type-option"
-                :class="{ 
-                  'active': contactForm.type === option.value,
-                  'disabled': (option.value === 1 && contactTypeLimits.unitFull && contactModalMode === 'add') || 
-                            (option.value === 2 && contactTypeLimits.fireFull && contactModalMode === 'add')
-                }"
-                @tap="selectContactType(option.value)"
-              >
-                <view class="checkbox">
-                  <view class="checkbox-inner" v-if="contactForm.type === option.value"></view>
-                </view>
-                <text class="type-label">{{ option.label }}</text>
-              </view>
-            </view>
-            </view>
-          </view>
-          <view class="modal-footer">
-            <button class="footer-btn cancel-btn" @tap="hideContactModal">取消</button>
-            <button class="footer-btn confirm-btn" @tap="saveContact">确定</button>
-          </view>
-        </view>
-      </view>
-        
-      <!-- 消防地图配置 -->
-      <view class="config-section">
-        <view class="section-header">
-          <text class="section-title">消防地图</text>
-        </view>
-        
-        <view class="image-upload-area">
-          <!-- 已上传的图片 -->
-          <view class="image-list" v-if="formData.imgList && formData.imgList.length > 0">
-            <view class="image-item" v-for="(img, index) in formData.imgList" :key="index">
-              <image :src="resolveImageUrl(img)" class="map-image" mode="aspectFill" />
-              <view class="image-overlay">
-                <view class="image-actions">
-                  <image :src="serverUrl + '/static/icons/common/delete-white.png'" class="action-icon delete-icon" @tap="deleteImage(index)" />
-                </view>
-              </view>
-            </view>
-          </view>
-          
-          <!-- 上传按钮 -->
-          <view class="upload-btn" v-if="formData.imgList && formData.imgList.length < 3" @tap="addImage">
-            <image :src="serverUrl + '/static/icons/common/add-third-grey.png'" class="upload-icon" />
-            <text class="upload-text">上传图片</text>
-          </view>
-        </view>
-      </view>
 
-      <!-- 作战实景部署（仅：重点单位 type === 2） -->
-      <view class="config-section" v-if="formData.type === 2">
-        <view class="section-header">
-          <text class="section-title">作战实景部署</text>
-        </view>
-        <view class="deployment-section">
-          <!-- 已上传：视频或动画（图片），仅 1 个 -->
-          <view v-if="formData.battleDeploymentMaterials && formData.battleDeploymentMaterials.length > 0" class="video-wrapper">
-            <video 
-              v-if="isVideoPath(formData.battleDeploymentMaterials[0])" 
-              :src="resolveImageUrl(formData.battleDeploymentMaterials[0])" 
-              class="deploy-video" 
-              controls
-              preload="metadata"
-              webkit-playsinline
-              playsinline
-              x5-video-player-type="h5"
-              x5-video-player-fullscreen="true"
-              show-fullscreen-btn="true"
-              enable-progress-gesture="true"
-              vslide-gesture-in-fullscreen="true"
-            ></video>
-            <image v-else :src="resolveImageUrl(formData.battleDeploymentMaterials[0])" class="deploy-image" mode="aspectFill" />
-            <!-- 删除按钮放在右上角 -->
-            <view class="delete-btn-overlay">
-              <button class="delete-btn-small" @tap="deleteDeploymentMedia">
-                <image :src="serverUrl + '/static/icons/common/delete-white.png'" class="delete-icon-small" />
-              </button>
-            </view>
-          </view>
-          <!-- 未上传：统一上传入口（视频/动画 二选一） -->
-          <view class="upload-btn" v-else @tap="chooseDeploymentMedia">
-            <image :src="serverUrl + '/static/icons/common/add-third-grey.png'" class="upload-icon" />
-            <text class="upload-text">上传视频或动画</text>
-          </view>
-          
-          <!-- 上传loading状态 -->
-          <view v-if="uploadingDeployment" class="upload-loading">
-            <view class="loading-spinner"></view>
-            <text class="loading-text">上传中...</text>
+        <!-- 已上传：视频或动画（图片），仅 1 个 -->
+        <view v-if="currentDeploymentPath" class="video-wrapper">
+          <video 
+            v-if="isVideoPath(currentDeploymentPath)" 
+            :src="resolveImageUrl(currentDeploymentPath)" 
+            class="deploy-video" 
+            controls
+            preload="metadata"
+            webkit-playsinline
+            playsinline
+            x5-video-player-type="h5"
+            x5-video-player-fullscreen="true"
+            show-fullscreen-btn="true"
+            enable-progress-gesture="true"
+            vslide-gesture-in-fullscreen="true"
+          ></video>
+          <image v-else :src="resolveImageUrl(currentDeploymentPath)" class="deploy-image" mode="aspectFill" />
+          <!-- 删除按钮放在右上角 -->
+          <view class="delete-btn-overlay">
+            <button class="delete-btn-small" @tap="deleteDeploymentMedia">
+              <image :src="serverUrl + '/static/icons/common/delete-white.png'" class="delete-icon-small" />
+            </button>
           </view>
         </view>
-      </view>
-
-      <!-- 自定义底部选择器（替代系统 actionSheet，保证纯白底无阴影） -->
-      <view class="sheet-mask" v-if="showMediaSheet" @tap="closeSheet">
-        <view class="sheet-panel" @tap.stop>
-          <view class="sheet-item" @tap="onSelectSheet('video')">上传视频</view>
-          <view class="sheet-item" @tap="onSelectSheet('image')">上传动画</view>
-          <view class="sheet-cancel" @tap="closeSheet">取消</view>
+        <!-- 未获取：根据消防单位加载部署素材或手动上传 -->
+        <view class="upload-card" v-else @tap="chooseDeploymentMedia">
+          <image :src="serverUrl + '/static/icons/common/add-third-grey.png'" class="upload-card-icon" />
+          <view class="upload-card-texts">
+            <text class="upload-card-title">选择消防单位或上传</text>
+            <text class="upload-card-sub">为所选消防单位上传或替换部署素材（视频/动画）</text>
+          </view>
         </view>
-      </view>
-
-      <!-- 户主信息与反馈（仅：高层小区 type === 1） -->
-      <view class="config-section" v-if="formData.type === 1">
-        <view class="section-header">
-          <text class="section-title">户主信息</text>
-        </view>
-        <view class="form-item">
-          <text class="form-label">户主姓名</text>
-          <input v-model="formData.householdOwnerName" class="form-input" placeholder="请输入户主姓名" maxlength="20" />
-        </view>
-        <view class="form-item">
-          <text class="form-label">联系电话</text>
-          <input v-model="formData.householdOwnerPhone" class="form-input" placeholder="请输入联系电话" maxlength="20" />
-        </view>
-        <view class="form-item description-item">
-          <text class="form-label">户主反馈</text>
-          <textarea v-model="formData.householdFeedback" class="form-textarea" placeholder="请输入反馈信息" maxlength="500" auto-height show-confirm-bar="false" />
-        </view>
-      </view>
-
-      <view class="config-section" v-if="formData.type === 1">
-        <view class="section-header">
-          <text class="section-title">搜救情况</text>
-        </view>
-        <view class="form-item description-item">
-          <text class="form-label">描述</text>
-          <textarea v-model="formData.rescueRemark" class="form-textarea" placeholder="请输入搜救情况描述" maxlength="500" auto-height show-confirm-bar="false" />
+        
+        <!-- 上传loading状态 -->
+        <view v-if="uploadingDeployment" class="upload-loading">
+          <view class="loading-spinner"></view>
+          <text class="loading-text">上传中...</text>
         </view>
       </view>
     </view>
-  </template>
+
+    <!-- 自定义底部选择器（替代系统 actionSheet，保证纯白底无阴影） -->
+    <view class="sheet-mask" v-if="showMediaSheet" @tap="closeSheet">
+      <view class="sheet-panel" @tap.stop>
+        <view class="sheet-item" @tap="onSelectSheet('video')">上传视频</view>
+        <view class="sheet-item" @tap="onSelectSheet('image')">上传动画</view>
+        <view class="sheet-cancel" @tap="closeSheet">取消</view>
+      </view>
+    </view>
+
+  </view>
+</template>
   
-  <script>
+<script>
   import { locationTabList } from '@/commons/mock/index.js'
   import { 
     getSafetyLevelByScore, 
@@ -401,6 +411,7 @@
     getSafetyLevelClass, 
     getProgressBarClass 
   } from './safetyScoreData.js';
+  import { withDatedPath } from '@/commons/js/utils.js'
 
   export default {
     name: 'LocationForm',
@@ -426,15 +437,12 @@
           addressExt: '',
           addressId: '',
           allSenceLink: '',
+          ownerQueryUrl: '',
           type: 1,
           safeLevelId: 1,
           description: '',
           safeId: '',
-          battleDeploymentMaterials: [],
-          householdOwnerName: '',
-          householdOwnerPhone: '',
-          householdFeedback: '',
-          rescueRemark: '',
+          fireUnitDeploymentMap: [],
           fireSafetyScore: null,
           enterGateList: [],
           phoneList: [],
@@ -443,6 +451,10 @@
         },
         errors: {},
         locationTypeOptions: [], // 位置类型选项
+        // 消防单位相关
+        fireUnitOptions: [],
+        selectedFireUnit: null,
+        fireUnitPickerIndex: 0,
         gateOptions: [
           { name: '东门', type: 1 },
           { name: '南门', type: 2 },
@@ -472,6 +484,8 @@
         label: item.name
       }));
       this.setFormData(this.initialData)
+      // 重点单位下拉：预加载消防单位
+      this.fetchFireUnits()
     },
     computed: {
       contactTypeLimits() {
@@ -500,9 +514,17 @@
         const totalScore = this.calculateTotalScore();
         const level = getSafetyLevelByScore(totalScore);
         return getProgressBarClass(level);
+      },
+      // 当前选中消防单位对应的素材路径
+      currentDeploymentPath() {
+        if (!this.selectedFireUnit) return ''
+        const list = this._ensureDeploymentArray(this.formData.fireUnitDeploymentMap)
+        const found = list.find(it => String(it.key) === String(this.selectedFireUnit))
+        return found ? found.data || '' : ''
       }
     },
     methods: {      
+      
       // 暴露给父组件
       getFormData() { return { ...this.formData } },
       setFormData(data = {}) {
@@ -542,44 +564,68 @@
         const oldType = this.formData.type;
         // 如果类型发生变化，处理相关字段
         if (newType !== oldType) {
-          // 保存原有信息，用于后续反填
-          const originalHouseholdInfo = {
-            householdOwnerName: this.formData.householdOwnerName || '',
-            householdOwnerPhone: this.formData.householdOwnerPhone || '',
-            householdFeedback: this.formData.householdFeedback || '',
-            rescueRemark: this.formData.rescueRemark || ''
-          };
-          
-          const originalBattleDeployment = this.formData.battleDeploymentMaterials || [];
-          
+          const originalList = this._ensureDeploymentArray(this.formData.fireUnitDeploymentMap)
           // 清空相关字段
-          if (oldType === 1) {
-            this.formData.householdOwnerName = '';
-            this.formData.householdOwnerPhone = '';
-            this.formData.householdFeedback = '';
-            this.formData.rescueRemark = '';
-          }
-          
           if (oldType === 2) {
-            this.formData.battleDeploymentMaterials = [];
+            this.formData.fireUnitDeploymentMap = []
           }
-          
-          // 如果切换到高层小区（type=1），反填户主信息
-          if (newType === 1 && (originalHouseholdInfo.householdOwnerName || originalHouseholdInfo.householdOwnerPhone || originalHouseholdInfo.householdFeedback || originalHouseholdInfo.rescueRemark)) {
-            this.formData.householdOwnerName = originalHouseholdInfo.householdOwnerName;
-            this.formData.householdOwnerPhone = originalHouseholdInfo.householdOwnerPhone;
-            this.formData.householdFeedback = originalHouseholdInfo.householdFeedback;
-            this.formData.rescueRemark = originalHouseholdInfo.rescueRemark;
-          }
-          
           // 如果切换到重点单位（type=2），反填作战实景部署
-          if (newType === 2 && originalBattleDeployment.length > 0) {
-            this.formData.battleDeploymentMaterials = [...originalBattleDeployment];
+          if (newType === 2 && originalList.length > 0) {
+            this.formData.fireUnitDeploymentMap = [...originalList]
           }
         }
         
         this.formData.type = newType;
+        // 切换到重点单位时，如果尚未加载消防单位则加载
+        if (newType === 2 && (!this.fireUnitOptions || this.fireUnitOptions.length === 0)) {
+          this.fetchFireUnits()
+        }
       },
+      // 消防单位
+      async fetchFireUnits() {
+        try {
+          const res = await new Promise((resolve, reject) => {
+            uni.request({
+              url: this.serverUrl + '/static/data',
+              method: 'GET',
+              data: { type: 'fireUnits', key: 'unitList' },
+              success: resolve,
+              fail: reject
+            })
+          })
+          const list = res?.data?.data || []
+          // 后端静态数据：data1 为展示名称(value)，data2 为唯一key
+          this.fireUnitOptions = list.map((it, idx) => ({ label: it.data1, value: String(it.data2), index: idx }))
+          // 如果已有部署映射但暂无文字 value，尝试补齐 value 显示名
+          if (Array.isArray(this.formData.fireUnitDeploymentMap)) {
+            this.formData.fireUnitDeploymentMap = this.formData.fireUnitDeploymentMap.map(item => ({
+              key: String(item.key),
+              value: item.value || (this.fireUnitOptions.find(o => String(o.value) === String(item.key))?.label || ''),
+              data: item.data || ''
+            }))
+          }
+          // 默认选中第一个
+          if (this.fireUnitOptions.length > 0) {
+            this.fireUnitPickerIndex = 0
+            this.selectedFireUnit = this.fireUnitOptions[0].value
+            // 不自动拉取部署素材，改为用户手动上传
+          }
+        } catch (e) {
+          this.fireUnitOptions = []
+        }
+      },
+      getFireUnitText(val) {
+        const opt = this.fireUnitOptions.find(it => it.value === val)
+        return opt ? opt.label : '请选择消防单位'
+      },
+      onFireUnitChange(e) {
+        const idx = e.detail.value
+        this.fireUnitPickerIndex = idx
+        const opt = this.fireUnitOptions[idx]
+        this.selectedFireUnit = opt ? opt.value : null
+        // 不自动拉取素材，改为仅根据选择显示本地映射并支持手动上传
+      },
+      // 移除自动接口拉取逻辑，仅保留本地上传映射
       
       getLocationTypeText(type) {
         const option = this.locationTypeOptions.find(item => item.value === type);
@@ -760,7 +806,7 @@
               fileType: 'image',
               formData: {
                 addressId: this.formData.addressId || this.editId || '',
-                url: '/uploadImg/locationEdit',
+                url: withDatedPath('/uploadImg/locationEdit'),
                 name: 'locationImg_' + this.editId + Math.ceil(Math.random()*10),
               },
               success: (uploadRes) => {
@@ -860,7 +906,7 @@
               fileType: isVideo ? 'video' : 'image',
               formData: {
                 addressId: this.formData.addressId || this.editId || '',
-                url: isVideo ? '/uploadVideo/locationEdit' : '/uploadImg/locationEdit',
+                url: isVideo ? withDatedPath('/uploadVideo/locationEdit') : withDatedPath('/uploadImg/locationEdit'),
                 name: `battle${isVideo ? 'Video' : 'Anim'}_${this.editId || 'temp'}_${Date.now()}`
               },
               success: (uploadRes) => {
@@ -868,8 +914,11 @@
                   const parsed = typeof uploadRes.data === 'string' ? JSON.parse(uploadRes.data) : uploadRes.data;
                   const backPath = parsed?.data || '';
                   if (!backPath) throw new Error('上传返回为空');
-                  
-                  this.formData.battleDeploymentMaterials = [backPath];
+                  // 将素材与选中的消防单位建立映射（数组：{ key, value, data }）
+                  if (this.selectedFireUnit) {
+                    const label = this.getFireUnitText(this.selectedFireUnit)
+                    this._upsertDeploymentEntry({ key: String(this.selectedFireUnit), value: label, data: backPath })
+                  }
                   
                   uni.showToast({ 
                     title: `${isVideo ? '视频' : '动画'}上传成功`, 
@@ -911,11 +960,38 @@
           content: '确定删除该作战素材吗？',
           success: (res) => {
             if (res.confirm) {
-                this.formData.battleDeploymentMaterials = []
-                uni.showToast({ title: '删除成功', icon: 'success' })
+              const list = this._ensureDeploymentArray(this.formData.fireUnitDeploymentMap)
+              const idx = list.findIndex(it => String(it.key) === String(this.selectedFireUnit))
+              if (idx > -1) {
+                list.splice(idx, 1)
+                this.formData.fireUnitDeploymentMap = list
+              }
+              uni.showToast({ title: '删除成功', icon: 'success' })
             }
           }
         })
+      },
+      // 工具方法：保证为数组结构
+      _ensureDeploymentArray(raw) {
+        if (Array.isArray(raw)) return raw
+        if (raw && typeof raw === 'object') {
+          return Object.keys(raw).map(k => ({ key: String(k), value: this.getFireUnitText(k), data: raw[k] }))
+        }
+        return []
+      },
+      // 工具方法：插入或更新条目
+      _upsertDeploymentEntry(entry) {
+        const list = this._ensureDeploymentArray(this.formData.fireUnitDeploymentMap)
+        const idx = list.findIndex(it => String(it.key) === String(entry.key))
+        if (idx > -1) {
+          const updated = list.slice()
+          updated[idx] = { ...updated[idx], ...entry }
+          this.$set(this.formData, 'fireUnitDeploymentMap', updated)
+        } else {
+          const updated = list.concat([{ key: String(entry.key), value: entry.value || '', data: entry.data || '' }])
+          this.$set(this.formData, 'fireUnitDeploymentMap', updated)
+        }
+        this.$nextTick(() => {})
       },
       // 默认图片管理方法
       addDefaultImage() {
@@ -937,7 +1013,7 @@
               fileType: 'image',
               formData: {
                 addressId: this.formData.addressId || this.editId || '',
-                url: '/uploadImg/locationEdit',
+                url: withDatedPath('/uploadImg/locationEdit'),
                 name: 'locationDefaultImg_' + this.editId + Math.ceil(Math.random()*10),
               },
               success: (uploadRes) => {
@@ -1043,6 +1119,7 @@
     font-size: 30rpx;
     font-weight: 600;
     color: #333333;
+    .required { color: #ff4d4f; }
   }
 }
 
@@ -1594,7 +1671,6 @@
   min-height: 120rpx; /* 区块整体最小高度 */
   
   .form-label {
-    margin-top: 14rpx;
     display: flex;
     align-items: center;
   }
@@ -1698,6 +1774,54 @@
   flex-wrap: wrap;
   gap: 16rpx;
   align-items: flex-start;
+}
+
+/* 未上传卡片（作战实景部署） */
+.upload-card {
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 140rpx;
+  border: 2rpx dashed #d9d9d9;
+  border-radius: 16rpx;
+  display: flex;
+  align-items: center;
+  padding: 20rpx;
+  background: #fafbfc;
+  gap: 16rpx;
+  transition: all 0.3s ease;
+  
+  &:hover {
+    border-color: #1890ff;
+    background: #f0f8ff;
+    transform: translateY(-2rpx);
+  }
+  
+  &:active {
+    transform: scale(0.98);
+  }
+}
+
+.upload-card-icon {
+  width: 60rpx;
+  height: 60rpx;
+  opacity: 0.7;
+}
+
+.upload-card-texts {
+  display: flex;
+  flex-direction: column;
+  gap: 6rpx;
+}
+
+.upload-card-title {
+  font-size: 28rpx;
+  color: #333;
+  font-weight: 600;
+}
+
+.upload-card-sub {
+  font-size: 22rpx;
+  color: #888;
 }
 
 /* 默认图片上传区域样式 */
