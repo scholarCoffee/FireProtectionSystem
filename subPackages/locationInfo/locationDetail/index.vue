@@ -123,26 +123,60 @@
           </view>
 
           <!-- 户主信息与反馈（仅高层小区） -->
-          <view class="owner-feedback-card" v-if="locationObj.type === 1 && (locationObj.householdOwnerName || locationObj.householdOwnerPhone || locationObj.householdFeedback)">
-            <view class="info-row" v-if="locationObj.householdOwnerName">
-              <text class="label">户主姓名：</text>
-              <text class="value">{{ locationObj.householdOwnerName }}</text>
-            </view>
-            <view class="info-row" v-if="locationObj.householdOwnerPhone">
-              <text class="label">联系电话：</text>
-              <text class="value">{{ locationObj.householdOwnerPhone }}</text>
-            </view>
-            <view class="info-row top-align" v-if="locationObj.householdFeedback">
-              <text class="label">户主反馈：</text>
-              <text class="value value-multiline">{{ locationObj.householdFeedback }}</text>
+          <view class="owner-feedback-card" v-if="locationObj.ownerQueryUrl">
+            <!-- 户主查询URL按钮（仅高层小区且有配置时显示） -->
+            <view class="info-row" v-if="locationObj.ownerQueryUrl">
+              <view class="owner-query-section">
+                <text class="label">户主查询：</text>
+                <button class="owner-query-btn" @tap="goToOwnerQuery">
+                  <image :src="serverUrl + '/static/icons/common/white-link.png'" class="query-icon" />
+                  <text class="query-text">查询户主信息</text>
+                </button>
+              </view>
             </view>
           </view>
-
-          <!-- 搜救情况（仅高层小区） -->
-          <view class="rescue-card" v-if="locationObj.type === 1 && locationObj.rescueRemark">
-            <view class="info-row top-align">
-              <text class="label">搜救情况：</text>
-              <text class="value value-multiline">{{ locationObj.rescueRemark }}</text>
+          
+          <!-- 作战实景部署（仅重点单位且有配置时显示） -->
+          <view class="deployment-card" v-if="locationObj.type === 2 && locationObj.fireUnitDeploymentMap && locationObj.fireUnitDeploymentMap.length > 0">
+            <view class="card-header">
+              <text class="card-title">作战实景部署</text>
+              <view class="deployment-selector">
+                <picker 
+                  :value="selectedFireUnitIndex" 
+                  :range="fireUnitOptions" 
+                  range-key="label"
+                  @change="onFireUnitChange"
+                  class="fire-unit-picker"
+                >
+                  <view class="picker-display">
+                    <text class="picker-text">{{ getCurrentFireUnitText() }}</text>
+                    <image :src="serverUrl + '/static/icons/common/down.png'" class="picker-arrow" />
+                  </view>
+                </picker>
+              </view>
+            </view>
+            <view class="deployment-section">
+              <view class="material-list">
+                <view class="material-item" v-for="(m, mi) in currentDeploymentMaterials" :key="mi" v-if="m">
+                  <template v-if="isVideoPath(m)">
+                    <video
+                      :src="resolveMediaUrl(m)"
+                      class="deploy-video"
+                      controls
+                      preload="metadata"
+                      webkit-playsinline
+                      playsinline
+                      x5-video-player-type="h5"
+                      x5-video-player-fullscreen="true"
+                      @fullscreenchange="onVideoFullscreenChange"
+                      @error="handleVideoError(m)"
+                    ></video>
+                  </template>
+                  <template v-else>
+                    <image :src="resolveMediaUrl(m)" class="anim-thumb" mode="aspectFill" />
+                  </template>
+                </view>
+              </view>
             </view>
           </view>
           <!-- 分割线 -->
@@ -217,10 +251,13 @@ export default {
       currentImageIndex: 0, // 当前图片索引
       showCustomModal: false, // 控制自定义弹窗显示
       modalContent: '', // 弹窗内容
-      serverUrl: 'https://www.xiaobei.space',
+      serverUrl: 'http://192.168.2.244:3000',
       isShowHeaderImage: true,
       scrollTop: 0, // 滚动位置
       isAnyVideoFullscreen: false,
+      // 消防单位相关
+      fireUnitOptions: [],
+      selectedFireUnitIndex: 0,
     };
   },
   onLoad(data) {
@@ -228,6 +265,8 @@ export default {
     this.addressId = addressId; // 保存 addressId
     // 根据 addressId 获取位置详情（接口调用）
     this.fetchLocationDetail();
+    // 预加载消防单位数据
+    this.fetchFireUnits();
   },
   computed: {
     safeLevelClass() {
@@ -238,6 +277,15 @@ export default {
       return (type) => {
         return type === 1 ? this.serverUrl + '/static/icons/location/community-white.png' : type === 2 ? this.serverUrl + '/static/icons/location/factory-white.png' : this.serverUrl + '/static/icons/location/shop-white.png';
       }
+    },
+    // 当前选中消防单位对应的部署素材
+    currentDeploymentMaterials() {
+      if (!this.locationObj.fireUnitDeploymentMap || this.fireUnitOptions.length === 0) return []
+      const selectedUnit = this.fireUnitOptions[this.selectedFireUnitIndex]
+      if (!selectedUnit) return []
+      
+      const deployment = this.locationObj.fireUnitDeploymentMap.find(item => String(item.key) === String(selectedUnit.value))
+      return deployment && deployment.data ? [deployment.data] : []
     }
   },
   methods: {
@@ -288,6 +336,46 @@ export default {
       // 直接用locationObj.type判断
       const typeMap = { 1: '高层小区', 2: '重点单位', 3: '沿街商铺' };
       return typeMap[this.locationObj.type] || '未知类型';
+    },
+    // 户主查询跳转
+    goToOwnerQuery() {
+      if (this.locationObj.ownerQueryUrl) {
+        uni.navigateTo({ 
+          url: '/subPackages/common/webview/index?url=' + encodeURIComponent(this.locationObj.ownerQueryUrl) + '&title=' + encodeURIComponent('户主信息查询')
+        });
+      }
+    },
+    // 消防单位相关方法
+    async fetchFireUnits() {
+      try {
+        const res = await new Promise((resolve, reject) => {
+          uni.request({
+            url: this.serverUrl + '/static/data',
+            method: 'GET',
+            data: { type: 'fireUnits', key: 'unitList' },
+            success: resolve,
+            fail: reject
+          })
+        })
+        const list = res?.data?.data || []
+        // 后端静态数据：data1 为展示名称(value)，data2 为唯一key
+        this.fireUnitOptions = list.map((it, idx) => ({ label: it.data1, value: String(it.data2), index: idx }))
+        // 默认选中第一个
+        if (this.fireUnitOptions.length > 0) {
+          this.selectedFireUnitIndex = 0
+        }
+      } catch (e) {
+        this.fireUnitOptions = []
+      }
+    },
+    onFireUnitChange(e) {
+      const idx = e.detail.value
+      this.selectedFireUnitIndex = idx
+    },
+    getCurrentFireUnitText() {
+      if (this.fireUnitOptions.length === 0) return '请选择消防单位'
+      const opt = this.fireUnitOptions[this.selectedFireUnitIndex]
+      return opt ? opt.label : '请选择消防单位'
     },
     callPhone(phone) {
       uni.makePhoneCall({
@@ -388,13 +476,11 @@ export default {
 </script>
 
 <style scoped>
-/* 容器样式 - 添加滚动功能 */
+/* 容器样式 */
 .detail-container {
   height: 100vh;
   background-color: #f5f5f5;
   -webkit-overflow-scrolling: touch;
-  will-change: scroll-position;
-  transform: translateZ(0);
 }
 
 /* 头部图片区域 */
@@ -405,45 +491,17 @@ export default {
   border-radius: 8px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
   overflow: hidden;
-  transform: translateZ(0);
-  will-change: transform;
   padding: 2px;
   background-color: #f8fafc;
 }
+
 .detail-img {
   width: 100%;
   height: 100%;
   object-fit: contain;
-  transform: translateZ(0);
-  will-change: transform;
   border-radius: 6px;
   background-color: #ffffff;
-  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.12), 0 2px 8px rgba(0, 0, 0, 0.08);
-}
-.safety-tag {
-  position: absolute;
-  bottom: 10px;
-  left: 10px;
-  padding: 2px 8px;
-  border-radius: 4px;
-  font-size: 12px;
-  color: #FFF;
-}
-.safety-excellent { 
-  background: linear-gradient(135deg, #00B42A, #52C41A);
-  box-shadow: 0 2px 8px rgba(0, 180, 42, 0.3);
-}
-.safety-good { 
-  background: linear-gradient(135deg, #1890FF, #40A9FF);
-  box-shadow: 0 2px 8px rgba(24, 144, 255, 0.3);
-}
-.safety-normal { 
-  background: linear-gradient(135deg, #FF7D00, #FFA940);
-  box-shadow: 0 2px 8px rgba(255, 125, 0, 0.3);
-}
-.safety-danger { 
-  background: linear-gradient(135deg, #F53F3F, #FF4D4F);
-  box-shadow: 0 2px 8px rgba(245, 63, 63, 0.3);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 /* 信息卡片 */
@@ -454,9 +512,8 @@ export default {
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
   overflow: hidden;
   margin-bottom: 50px;
-  transform: translateZ(0);
-  will-change: transform;
 }
+
 .address-name {
   padding: 15px 15px 10px;
   font-size: 18px;
@@ -473,13 +530,13 @@ export default {
   overflow-x: auto;
   overflow-y: hidden;
   margin-right: 10px;
-  scrollbar-width: none; /* Firefox */
-  -ms-overflow-style: none; /* IE and Edge */
+  scrollbar-width: none;
 }
 
 .address-name-text::-webkit-scrollbar {
-  display: none; /* Chrome, Safari and Opera */
+  display: none;
 }
+
 .address-detail {
   display: flex;
   align-items: center;
@@ -487,13 +544,13 @@ export default {
   font-size: 12px;
   color: #666;
 }
+
 .location-icon {
   width: 16px;
   height: 16px;
   margin-right: 5px;
 }
 
-/* 复制图标特殊样式 */
 .address-name .location-icon {
   margin-right: 0;
   padding: 8px;
@@ -505,64 +562,63 @@ export default {
   background-color: rgba(0, 0, 0, 0.1);
 }
 
-.arrow-icon {
-  width: 16px;
-  height: 16px;
-  margin-left: auto;
-}
 .divider {
   height: 1px;
   background-color: #F5F5F5;
   margin: 0 15px;
 }
+
 .info-row {
   display: flex;
   align-items: center;
   padding: 12px 15px;
   font-size: 14px;
 }
+
 .label {
   color: #999;
   min-width: 70px;
 }
-.phone-text {
-  font-size: 12px;
-}
+
 .value {
   color: #333;
 }
+
 .top-align {
   align-items: flex-start;
 }
+
 .value-multiline {
   white-space: pre-wrap;
   line-height: 1.6;
 }
+
 .phone-content {
   display: flex;
   align-items: center;
   flex: 1;
   justify-content: space-between;
 }
+
 .phone-number {
   display: flex;
   align-items: center;
   color: #2196F3;
 }
+
 .user-phone-icon {
-  top: 2px;
   width: 16px;
   height: 16px;
   margin-right: 5px;
 }
+
 .phone-icon {
-  top: 1px;
   width: 16px;
   height: 16px;
   margin-left: 5px;
-} 
+}
 
-/* 单位类型和720全云景样式 - 美团风格 */
+/* 单位类型和图纸样式 */
 .type-panorama-row {
   display: flex;
   gap: 12px;
@@ -579,20 +635,9 @@ export default {
   position: relative;
   overflow: hidden;
   border: 1px solid rgba(0, 0, 0, 0.08);
-  transform: translateZ(0);
-  will-change: transform;
 }
 
-.type-card::before {
-  content: '';
-  position: absolute;
-  top: -10px;
-  right: -10px;
-  width: 40px;
-  height: 40px;
-  background: rgba(0, 0, 0, 0.03);
-  border-radius: 50%;
-}
+
 
 .type-header {
   display: flex;
@@ -615,7 +660,6 @@ export default {
   display: -webkit-box;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 5;
-  line-clamp: 5;
   overflow: hidden;
   cursor: pointer;
   transition: color 0.2s ease;
@@ -632,17 +676,6 @@ export default {
   opacity: 0.7;
 }
 
-.type-title {
-  font-size: 14px;
-  color: #666;
-  font-weight: 500;
-}
-
-.type-content {
-  display: flex;
-  align-items: center;
-}
-
 .type-value {
   display: flex;
   align-items: center;
@@ -650,60 +683,27 @@ export default {
   padding: 6px 12px;
   border-radius: 16px;
   background: #40a9ff;
-  -webkit-backdrop-filter: blur(10px);
-  backdrop-filter: blur(20px);
   color: #ffffff;
   font-size: 12px;
 }
 
-/* 单位图纸卡片 */
+/* 图纸卡片 */
 .drawing-card {
   flex: 1;
   background: linear-gradient(135deg, #ffffff, #e6f7ff);
   border-radius: 12px;
   padding: 10px;
-  box-shadow: 0 4px 12px rgba(24, 144, 255, 0.2);
+  box-shadow: 0 2px 8px rgba(24, 144, 255, 0.15);
   position: relative;
   overflow: hidden;
   cursor: pointer;
-  transition: all 0.3s ease;
-  transform: translateZ(0);
-  will-change: transform;
 }
 
-.drawing-card::before {
-  content: '';
-  position: absolute;
-  top: -10px;
-  right: -10px;
-  width: 40px;
-  height: 40px;
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 50%;
-}
+
 
 .drawing-card:active {
   transform: scale(0.98);
   box-shadow: 0 2px 8px rgba(24, 144, 255, 0.3);
-}
-
-.drawing-header {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 12px;
-}
-
-.drawing-icon {
-  width: 20px;
-  height: 20px;
-  filter: brightness(0) invert(1);
-}
-
-.drawing-title {
-  font-size: 14px;
-  color: rgba(255, 255, 255, 0.9);
-  font-weight: 500;
 }
 
 .drawing-content {
@@ -724,7 +724,6 @@ export default {
   position: relative;
 }
 
-/* 自定义指示点样式 */
 .drawing-swiper .uni-swiper-dots {
   bottom: 8px !important;
 }
@@ -746,14 +745,6 @@ export default {
   height: 100%;
   border-radius: 8px;
   object-fit: contain;
-  transform: translateZ(0);
-  will-change: transform;
-}
-
-.drawing-count {
-  font-size: 11px;
-  color: rgba(255, 255, 255, 0.8);
-  font-weight: 500;
 }
 
 .drawing-empty {
@@ -767,31 +758,19 @@ export default {
   font-weight: 500;
 }
 
-/* 安全等级卡片 - 全宽 */
+/* 安全等级卡片 */
 .safety-card-full {
   background: linear-gradient(135deg, #FF8A65, #FFAB91);
   border-radius: 12px;
   padding: 16px;
   margin: 0 15px 15px 15px;
-  box-shadow: 0 6px 20px rgba(255, 138, 101, 0.25);
+  box-shadow: 0 4px 12px rgba(255, 138, 101, 0.2);
   position: relative;
   overflow: hidden;
   cursor: pointer;
-  transition: all 0.3s ease;
-  transform: translateZ(0);
-  will-change: transform;
 }
 
-.safety-card-full::before {
-  content: '';
-  position: absolute;
-  top: -10px;
-  right: -10px;
-  width: 40px;
-  height: 40px;
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 50%;
-}
+
 
 .safety-card-full:active {
   transform: scale(0.98);
@@ -814,8 +793,6 @@ export default {
   padding: 6px 18px;
   border-radius: 16px;
   background: rgba(255, 255, 255, 0.25);
-  backdrop-filter: blur(10px);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   margin-right: 8px;
 }
 
@@ -823,13 +800,6 @@ export default {
   font-size: 14px;
   color: #fff;
   font-weight: bold;
-}
-
-.arrow-icon {
-  width: 16px;
-  height: 16px;
-  filter: brightness(0) invert(1);
-  opacity: 0.8;
 }
 
 .score-display {
@@ -843,7 +813,6 @@ export default {
   color: #FFFFFF;
   font-weight: bold;
   line-height: 1;
-  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .score-unit {
@@ -863,7 +832,6 @@ export default {
   background: rgba(255, 255, 255, 0.25);
   border-radius: 5px;
   overflow: hidden;
-  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);
   position: relative;
 }
 
@@ -871,27 +839,11 @@ export default {
   height: 100%;
   background: linear-gradient(90deg, #FFFFFF, rgba(255, 255, 255, 0.9));
   border-radius: 5px;
-  transition: width 0.5s ease;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  transition: width 0.3s ease;
   position: relative;
 }
 
-.progress-fill::after {
-  content: '';
-  position: absolute;
-  top: 0;
-  right: 0;
-  width: 4px;
-  height: 100%;
-  background: rgba(255, 255, 255, 0.8);
-  border-radius: 2px;
-}
 
-.progress-text {
-  font-size: 12px;
-  color: #fff;
-  font-weight: 500;
-}
 
 /* 出行大门样式 */
 .gate-list {
@@ -913,7 +865,6 @@ export default {
 }
 
 .check-icon {
-  top: 1px;
   width: 16px;
   height: 16px;
   object-fit: contain;
@@ -924,6 +875,70 @@ export default {
   color: #333;
   font-size: 14px;
 }
+
+/* 户主信息卡片样式 */
+.owner-feedback-card {
+  background: #FFF;
+  border: none;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+/* 户主查询按钮样式 */
+.owner-query-section {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+}
+
+.owner-query-section .label {
+  min-width: 80px;
+  color: #666;
+  font-weight: 500;
+  flex-shrink: 0;
+}
+
+.owner-query-section .owner-query-btn {
+  margin-left: auto;
+}
+
+.owner-query-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 6px 12px;
+  margin: 0;
+  background: linear-gradient(135deg, #1890ff 0%, #40a9ff 100%);
+  color: #ffffff;
+  border: none;
+  border-radius: 16px;
+  font-size: 13px;
+  font-weight: 500;
+  box-shadow: 0 2px 6px rgba(24, 144, 255, 0.2);
+  cursor: pointer;
+  min-width: 100px;
+}
+
+.owner-query-btn:active {
+  transform: scale(0.98);
+}
+
+.query-icon {
+  width: 14px;
+  height: 14px;
+  filter: brightness(0) invert(1);
+}
+
+.query-text {
+  font-size: 13px;
+  color: #ffffff;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+/* 作战部署卡片样式 */
 .deployment-card {
   background-color: #FFF;
   margin: 10px;
@@ -932,121 +947,84 @@ export default {
   overflow: hidden;
 }
 
-.owner-feedback-card, .rescue-card {
-  background-color: #FFF;
-  border-radius: 12px;
-  overflow: hidden;
-}
-
-/* 卡片头部（被误删后补回） */
 .card-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
   padding: 12px 15px;
   border-bottom: 1px solid #f0f0f0;
-  background: linear-gradient(180deg, #ffffff, #f8f9fa);
+  background: #f8f9fa;
 }
+
 .card-title {
   font-size: 15px;
   font-weight: 600;
   color: #333;
 }
+
+.deployment-selector {
+  flex-shrink: 0;
+}
+
+.fire-unit-picker {
+  min-width: 120px;
+}
+
+.picker-display {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 12px;
+  background: #f8f9fa;
+  border: 1px solid #e1e8ed;
+  border-radius: 8px;
+  min-height: 32px;
+}
+
+.picker-text {
+  font-size: 13px;
+  color: #333;
+  font-weight: 500;
+}
+
+.picker-arrow {
+  width: 16px;
+  height: 16px;
+  opacity: 0.6;
+}
+
 .deployment-section {
   padding: 10px 15px;
 }
-.section-subtitle {
-  font-size: 13px;
-  color: #666;
-}
-.video-list, .anim-list, .material-list {
+
+.material-list {
   display: flex;
-  gap: 10px;
-  padding: 8px 0 4px 0;
-  flex-wrap: wrap;
+  flex-direction: column;
+  gap: 12px;
 }
-.video-item, .material-item {
-  width: 100%; /* 单列大预览，更美观 */
-  position: relative; /* 让内部绝对定位元素可用 */
+
+.material-item {
+  width: 100%;
+  position: relative;
 }
+
 .deploy-video {
   width: 100%;
   height: 200px;
-  border-radius: 12px;
+  border-radius: 8px;
   background: #000;
-  position: relative;
-  z-index: 1001; /* 避免被覆盖 */
 }
-.fullscreen-btn {
-  position: absolute;
-  right: 10px;
-  bottom: 10px;
-  background: rgba(0,0,0,0.5);
-  padding: 4px 10px;
-  border-radius: 12px;
-}
-.fullscreen-text {
-  color: #fff;
-  font-size: 12px;
-}
-.anim-item {
-  width: calc(33.33% - 7px);
-}
+
 .anim-thumb {
   width: 100%;
   height: 200px;
-  border-radius: 12px;
+  border-radius: 8px;
   object-fit: cover;
 }
-.owner-row {
-  display: flex;
-  align-items: center;
-  padding: 10px 15px;
-}
-/* 户主信息与反馈合并卡片样式 */
-.owner-feedback-card {
-  background: #FFF;
-  border: none;
-}
 
-.owner-info-section, .feedback-section {
-  padding: 16px 15px;
-  border-bottom: 1px solid #f0f0f0;
-}
-
-.owner-info-section:last-child, .feedback-section:last-child {
-  border-bottom: none;
-}
-
-.section-subtitle {
-  font-size: 13px;
-  color: #666;
-  font-weight: 600;
-  margin-bottom: 12px;
-  padding: 4px 8px;
-  background: #e8f4ff;
-  border-radius: 12px;
-  display: inline-block;
-}
-
-.feedback-content {
-  padding: 0;
-}
-.feedback-text {
-  font-size: 14px;
-  color: #333;
-  line-height: 1.6;
-  white-space: pre-wrap;
-  background: #f8f9fa;
-  padding: 12px;
-  border-radius: 8px;
-  border-left: 3px solid #1890ff;
-}
 .page-content {
   padding-top: 0;
-  padding-bottom: 20px; /* 添加底部间距，确保内容可以完全滚动 */
-  transform: translateZ(0);
-  will-change: scroll-position;
+  padding-bottom: 20px;
 }
 
 /* 图纸画廊弹窗 */
@@ -1067,7 +1045,7 @@ export default {
   width: 90%;
   height: 80%;
   background: #fff;
-  border-radius: 16px;
+  border-radius: 12px;
   overflow: hidden;
   display: flex;
   flex-direction: column;
@@ -1178,7 +1156,7 @@ export default {
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
 }
 
 .modal-header {
@@ -1218,44 +1196,5 @@ export default {
   text-align: left;
   word-wrap: break-word;
   white-space: pre-wrap;
-}
-
-.modal-footer {
-  padding: 16px 20px;
-  border-top: 1px solid #f0f0f0;
-  background: #f8f9fa;
-  display: flex;
-  justify-content: center;
-}
-
-.modal-btn {
-  padding: 10px 24px;
-  background: #1890FF;
-  color: #fff;
-  border-radius: 6px;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: background-color 0.2s ease;
-}
-
-.modal-btn:active {
-  background: #096DD9;
-}
-
-/* 搜救情况样式 */
-.rescue-content {
-  padding: 16px 15px;
-}
-
-.rescue-text {
-  font-size: 14px;
-  color: #333;
-  line-height: 1.6;
-  white-space: pre-wrap;
-  background: #f8f9fa;
-  padding: 12px;
-  border-radius: 8px;
-  border-left: 3px solid #1890ff;
 }
 </style>

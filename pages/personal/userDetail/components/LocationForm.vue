@@ -74,8 +74,6 @@
           @input="onAllSenceLinkInput"
         />
       </view>
-
-      
       
       <view class="form-item">
         <text class="form-label">位置类型 <text class="required">*</text></text>

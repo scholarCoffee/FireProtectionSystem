@@ -144,7 +144,6 @@
 <script>
 import LocationManagement from './components/LocationManagement.vue'
 import ChatManagement from './components/ChatManagement.vue'
-import { commandConfig as defaultCommandConfig } from '@/commons/js/commandConfig.js'
 
 export default {
   name: 'DataManagement',
@@ -157,15 +156,14 @@ export default {
       currentTab: 'location', // 当前标签页
       searchKeyword: '', // 搜索关键词
       searchTimer: null, // 搜索防抖定时器
-      serverUrl: 'https://www.xiaobei.space',
-      // 数据指挥配置（从本地存储加载，缺省使用默认配置）
+      serverUrl: 'http://192.168.2.244:3000',
+      // 数据指挥配置（从接口获取）
       commandConfig: {},
       // 本地编辑弹窗
       showCommandModal: false,
       commandModalMode: 'edit', // add | edit
       currentEditKey: '',
       editForm: { title: '', desc: '', url: '' },
-      commandStorageKey: 'COMMAND_CONFIG_V1',
       // 映射表：避免模板 :class 调用方法
       avatarClassMap: {
         analysis: 'avatar-grad-1',
@@ -183,29 +181,97 @@ export default {
     if (this.currentTab === 'location' && this.$refs.locationManagement) {
       this.$refs.locationManagement.loadData();
     }
-    // 刷新本地指挥功能配置
+    // 刷新数据指挥功能配置
     this.loadCommandConfig();
   },
 
   methods: {
-    // 统一本地存储读写
-    loadCommandConfig() {
+    // 从接口获取数据指挥配置
+    async loadCommandConfig() {
       try {
-        const local = uni.getStorageSync(this.commandStorageKey)
-        if (local && typeof local === 'object') {
-          this.commandConfig = local
+        const res = await uni.request({
+          url: this.serverUrl + '/command/config',
+          method: 'GET',
+          header: {
+            'Content-Type': 'application/json'
+          }
+        });
+        
+        if (res.data && res.data.code === 200) {
+          this.commandConfig = res.data.data || {};
         } else {
-          // 初始落库默认配置
-          this.commandConfig = { ...defaultCommandConfig }
-          uni.setStorageSync(this.commandStorageKey, this.commandConfig)
+          this.commandConfig = {};
+          console.error('获取数据指挥配置失败:', res.data?.msg || '未知错误');
         }
-      } catch (e) {
-        this.commandConfig = { ...defaultCommandConfig }
+      } catch (error) {
+        console.error('获取数据指挥配置异常:', error);
+        this.commandConfig = {};
+        uni.showToast({ 
+          title: '获取配置失败', 
+          icon: 'none',
+          duration: 2000
+        });
       }
     },
-    persistCommandConfig() {
-      uni.setStorageSync(this.commandStorageKey, this.commandConfig)
+
+    // 保存数据指挥配置到接口
+    async saveCommandConfig(configData) {
+      try {
+        const res = await uni.request({
+          url: this.serverUrl + '/command/config',
+          method: 'POST',
+          header: {
+            'Content-Type': 'application/json'
+          },
+          data: configData
+        });
+        
+        if (res.data && res.data.code === 200) {
+          return { success: true, data: res.data.data };
+        } else {
+          return { 
+            success: false, 
+            message: res.data?.msg || '保存失败' 
+          };
+        }
+      } catch (error) {
+        console.error('保存数据指挥配置异常:', error);
+        return { 
+          success: false, 
+          message: '网络异常，保存失败' 
+        };
+      }
     },
+
+    // 删除数据指挥配置
+    async deleteCommandConfig(key) {
+      try {
+        const res = await uni.request({
+          url: this.serverUrl + '/command/config',
+          method: 'DELETE',
+          header: {
+            'Content-Type': 'application/json'
+          },
+          data: { key }
+        });
+        
+        if (res.data && res.data.code === 200) {
+          return { success: true };
+        } else {
+          return { 
+            success: false, 
+            message: res.data?.msg || '删除失败' 
+          };
+        }
+      } catch (error) {
+        console.error('删除数据指挥配置异常:', error);
+        return { 
+          success: false, 
+          message: '网络异常，删除失败' 
+        };
+      }
+    },
+
     switchTab(tab) {
       this.currentTab = tab;
       this.searchKeyword = ''; // 切换标签时清空搜索
@@ -269,7 +335,7 @@ export default {
       if (url) uni.navigateTo({ url })
     },
 
-    // 本地指挥配置：新增/编辑/保存/删除
+    // 数据指挥配置：新增/编辑/保存/删除
     openAddCommand() {
       this.commandModalMode = 'add'
       this.currentEditKey = ''
@@ -277,49 +343,101 @@ export default {
       this.showCommandModal = true
     },
     
-    // 编辑数据指挥配置（改为本地弹窗编辑）
+    // 编辑数据指挥配置
     editCommand(key, config) {
       this.commandModalMode = 'edit'
       this.currentEditKey = key
       this.editForm = { title: config.title || '', desc: config.desc || '', url: config.url || '' }
       this.showCommandModal = true
     },
-    deleteCommand(key) {
+
+    // 删除数据指挥配置
+    async deleteCommand(key) {
       uni.showModal({
         title: '确认删除',
         content: '确定删除该功能吗？',
-        success: (res) => {
+        success: async (res) => {
           if (res.confirm) {
-            const next = { ...this.commandConfig }
-            delete next[key]
-            this.commandConfig = next
-            this.persistCommandConfig()
-            uni.showToast({ title: '已删除', icon: 'success', duration: 1000 })
+            uni.showLoading({ title: '删除中...' });
+            
+            const result = await this.deleteCommandConfig(key);
+            
+            uni.hideLoading();
+            
+            if (result.success) {
+              // 删除成功后重新加载数据
+              await this.loadCommandConfig();
+              uni.showToast({ title: '已删除', icon: 'success', duration: 1000 });
+            } else {
+              uni.showToast({ 
+                title: result.message || '删除失败', 
+                icon: 'none', 
+                duration: 2000 
+              });
+            }
           }
         }
       })
     },
+
     closeCommandModal() {
       this.showCommandModal = false
     },
-    saveCommand() {
+
+    // 保存数据指挥配置
+    async saveCommand() {
       // 简单校验
       if (!this.editForm.title || !this.editForm.url) {
         uni.showToast({ title: '请填写名称与地址', icon: 'none' })
         return
       }
-      const next = { ...this.commandConfig }
-      if (this.commandModalMode === 'add') {
-        // 生成唯一key：title-时间戳
-        const key = `${Date.now()}`
-        next[key] = { ...this.editForm }
-      } else if (this.currentEditKey) {
-        next[this.currentEditKey] = { ...this.editForm }
+
+      uni.showLoading({ title: '保存中...' });
+
+      try {
+        let configData;
+        
+        if (this.commandModalMode === 'add') {
+          // 新增：生成唯一key
+          const key = `cmd_${Date.now()}`;
+          configData = {
+            action: 'add',
+            key: key,
+            data: { ...this.editForm }
+          };
+        } else {
+          // 编辑
+          configData = {
+            action: 'update',
+            key: this.currentEditKey,
+            data: { ...this.editForm }
+          };
+        }
+
+        const result = await this.saveCommandConfig(configData);
+        
+        uni.hideLoading();
+        
+        if (result.success) {
+          // 保存成功后重新加载数据
+          await this.loadCommandConfig();
+          this.showCommandModal = false;
+          uni.showToast({ title: '已保存', icon: 'success', duration: 1000 });
+        } else {
+          uni.showToast({ 
+            title: result.message || '保存失败', 
+            icon: 'none', 
+            duration: 2000 
+          });
+        }
+      } catch (error) {
+        uni.hideLoading();
+        uni.showToast({ 
+          title: '保存异常', 
+          icon: 'none', 
+          duration: 2000 
+        });
       }
-      this.commandConfig = next
-      this.persistCommandConfig()
-      this.showCommandModal = false
-      uni.showToast({ title: '已保存', icon: 'success', duration: 1000 })
     }
   }
 }

@@ -114,7 +114,7 @@
                     phone: ''
                 },
                 isLoggedIn: false, // 用户是否已登录
-                serverUrl: 'https://www.xiaobei.space',
+                serverUrl: 'http://192.168.2.244:3000',
                 showModifyModal: false, // 是否显示修改弹窗
                 modifyValue: '', // 修改的值
                 modifyType: '', // 修改类型
@@ -126,7 +126,7 @@
             // #ifndef MP-WEIXIN
             // 非微信小程序：生成假数据
             if (!uni.getStorageSync('userInfo')) {
-                const mockUserInfo = {
+                let mockUserInfo = {
                     id: 'o782m7VVE2mElMJV18aNxzYQaxts',
                 };
                 // 根据id
@@ -140,6 +140,7 @@
                         if (res.data && res.data.code === 200) {
                             mockUserInfo = res.data.data;
                             uni.setStorageSync('userInfo', mockUserInfo);
+                            this.isLoggedIn = true; // 用户已登录
                         }
                     }
                 });
