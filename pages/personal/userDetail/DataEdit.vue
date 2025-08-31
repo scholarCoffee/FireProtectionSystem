@@ -102,7 +102,7 @@ export default {
       try {
         const url = this.type === 'location' 
           ? this.serverUrl + '/location/detail'
-          : this.serverUrl + '/chat/detail';
+          : this.serverUrl + '/group/detail';
         let data = {
           id: this.editId
         }
@@ -175,18 +175,7 @@ export default {
         const childOk = await (this.$refs.commandFormRef?.validate?.() ?? true)
         if (!childOk) { uni.hideLoading(); return }
         const cmd = this.$refs.commandFormRef?.getFormData?.() || {}
-        const { updateCommandConfig } = await import('@/commons/js/commandConfig.js');
-        const success = updateCommandConfig(this.commandKey, {
-          title: cmd.commandTitle,
-          desc: cmd.commandDesc,
-          url: cmd.commandUrl
-        });
-        if (success) {
-          uni.showToast({ title: '配置已更新', icon: 'success', duration: 1500 });
-          setTimeout(() => { uni.navigateBack(); }, 1500);
-        } else {
-          throw new Error('配置更新失败');
-        }
+        submissionData = { ...cmd }
         return;
       }
       

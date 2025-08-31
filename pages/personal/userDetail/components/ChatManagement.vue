@@ -26,22 +26,18 @@
               <button class="action-icon-btn" @tap="editGroup(item)">
                 <image :src="serverUrl + '/static/icons/common/edit-white.png'" class="action-icon" mode="aspectFit" />
               </button>
-              <button class="action-icon-btn member-btn" @tap="manageMembers(item)">
+              <!-- <button class="action-icon-btn member-btn" @tap="manageMembers(item)">
                 <image :src="serverUrl + '/static/icons/common/add-white.png'" class="action-icon" mode="aspectFit" />
               </button>
               <button class="action-icon-btn delete-btn" @tap="deleteGroup(item)">
                 <image :src="serverUrl + '/static/icons/common/delete-white.png'" class="action-icon" mode="aspectFit" />
-              </button>
+              </button> -->
             </view>
           </view>
           <view class="item-content">
             <view class="content-row">
               <text class="label">群组ID：</text>
               <text class="value">{{ item.groupId }}</text>
-            </view>
-            <view class="content-row">
-              <text class="label">群主：</text>
-              <text class="value">{{ item.ownerName || '未知' }}</text>
             </view>
             <view class="content-row">
               <text class="label">创建时间：</text>
@@ -206,8 +202,7 @@ export default {
             ownerName: g.ownerName || '',
             createTime: g.createTime || '',
             groupAvatar: g.groupAvatar || '/static/group/group.png',
-            members: [],
-            memberCount: 0
+            memberCount: g.memberCount || 0
           }))
           // 为每个群组加载成员信息
           // await this.loadMembersForGroups();
@@ -279,7 +274,7 @@ export default {
     
     editGroup(item) {
       uni.navigateTo({
-        url: `/pages/personal/userDetail/DataEdit?type=chat&mode=edit&groupId=${item.groupId}`
+        url: `/pages/personal/userDetail/DataEdit?type=chat&mode=edit&id=${item.groupId}`
       });
     },
     

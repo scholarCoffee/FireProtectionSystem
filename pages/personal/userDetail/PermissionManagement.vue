@@ -2,16 +2,23 @@
     <view class="permission-page">
         <!-- 可滚动内容区域：用户列表 + 权限说明 -->
         <scroll-view class="content-scroll" scroll-y="true">
-            <!-- 用户列表 -->
+            <!-- 搜索和用户列表标题 -->
             <view class="user-list-section">
                 <view class="section-header">
-                    <text class="section-title">用户列表</text>
-                    <text class="user-count">共 {{ userList.length }} 人</text>
+                    <view class="search-container">
+                        <input 
+                            class="search-input" 
+                            placeholder="搜索手机号或昵称" 
+                            v-model="searchKeyword"
+                            @input="onSearchInput"
+                        />
+                    </view>
+                    <text class="user-count">用户：共计 {{ filteredUserList.length }} 人</text>
                 </view>
                 <view class="user-list">
                     <view 
                         class="user-item" 
-                        v-for="(user, index) in userList" 
+                        v-for="(user, index) in filteredUserList" 
                         :key="user.id"
                         :class="{ 'current-user': user.id === currentUserId }"
                     >
@@ -27,13 +34,31 @@
                                 </view>
                             </view>
                             <view class="user-details">
-                                <text class="user-name">{{ user.name }}</text>
-                                <text class="user-role">{{ getUserRoleText(user.permissionStatus) }}</text>
-                                <text class="user-phone">{{ user.phone || '未设置手机号' }}</text>
-                            </view>
+                                 <text class="user-name">{{ user.nickName }}</text>
+                                 <view class="user-role-phone">
+                                     <text class="user-role">{{ getUserRoleText(user.permissionStatus) }}</text>
+                                     <text class="user-phone">{{ user.phone || '未设置手机号' }}</text>
+                                 </view>
+                             </view>
                         </view>
                         
                         <view class="user-permissions">
+                            <!-- 用户身份选择器 -->
+                            <view class="permission-item">
+                                <text class="permission-label">用户身份</text>
+                                <picker 
+                                    :value="getUserRoleIndex(user.permissionStatus)" 
+                                    :range="roleOptions" 
+                                    @change="(e) => updateUserRole(user.id, e.detail.value)"
+                                    :disabled="!canManageUser(user)"
+                                >
+                                    <view class="role-picker">
+                                        <text class="role-picker-text">{{ getUserRoleText(user.permissionStatus) }}</text>
+                                        <image :src="serverUrl + '/static/icons/common/right.png'" mode="aspectFit" class="picker-arrow"></image>
+                                    </view>
+                                </picker>
+                            </view>
+                            
                             <view class="permission-item">
                                 <text class="permission-label">群聊</text>
                                 <switch 
@@ -75,22 +100,16 @@
                     <text class="notice-title">权限说明</text>
                 </view>
                 <view class="notice-content">
+                    <text class="notice-text">• 用户身份：超级管理员可以调整其他用户的身份（用户、管理员、超级管理员）</text>
                     <text class="notice-text">• 群聊：允许用户参与群聊和创建群组</text>
                     <text class="notice-text">• 设置：允许用户修改个人设置和系统配置</text>
                     <text class="notice-text">• 权限管理：允许用户管理其他用户的权限（超级管理员）</text>
-                    <text class="notice-text">• 权限修改需要管理员审核，请谨慎操作</text>
+                    <text class="notice-text">• 身份和权限修改需要超级管理员权限，请谨慎操作</text>
                 </view>
             </view>
             <!-- 底部占位，避免被固定按钮遮挡 -->
             <view class="scroll-spacer"></view>
         </scroll-view>
-        
-        <!-- 保存按钮 -->
-        <view class="save-section" v-if="hasChanges">
-            <button class="save-btn" @tap="saveAllPermissions" :disabled="saving">
-                {{ saving ? '保存中...' : '保存所有权限设置' }}
-            </button>
-        </view>
     </view>
 </template>
 
@@ -98,13 +117,15 @@
 export default {
     data() {
         return {
-            serverUrl: 'https://www.xiaobei.space',
+            serverUrl: 'http://192.168.2.244:3000',
             currentUserId: '',
             userList: [],
-            originalPermissions: {},
-            hasChanges: false,
-            saving: false,
+            filteredUserList: [],
+            searchKeyword: '',
+
             currentUserRole: 0, // 默认普通用户
+            // 用户身份选项
+            roleOptions: ['普通用户', '管理员', '超级管理员'],
             // 模板映射，避免 :class 调用方法
             statusClassMap: {
                 active: 'status-active',
@@ -127,6 +148,7 @@ export default {
     
     onLoad() {
         this.loadCurrentUser();
+        this.checkPermission();
         this.loadUserList();
     },
     
@@ -138,6 +160,22 @@ export default {
                 this.currentUserId = userInfo.id;
                 this.currentUserRole = userInfo.permissionStatus || 0; // 使用 permissionStatus
             }
+        },
+        
+        // 检查权限
+        checkPermission() {
+            if (this.currentUserRole !== 2) {
+                uni.showModal({
+                    title: '权限不足',
+                    content: '您没有权限访问此页面，需要超级管理员权限',
+                    showCancel: false,
+                    success: () => {
+                        uni.navigateBack();
+                    }
+                });
+                return false;
+            }
+            return true;
         },
         
         // 加载用户列表
@@ -168,8 +206,8 @@ export default {
                     throw new Error('获取用户列表失败');
                 }
                 
-                // 保存原始权限状态
-                this.saveOriginalPermissions();
+                // 初始化过滤列表
+                this.filteredUserList = [...this.userList];
             } catch (err) {
                 console.error('加载用户列表失败:', err);
                 uni.showToast({
@@ -184,19 +222,11 @@ export default {
         
 
         
-        // 保存原始权限状态
-        saveOriginalPermissions() {
-            this.originalPermissions = {};
-            this.userList.forEach(user => {
-                this.originalPermissions[user.id] = { ...user.permissions };
-            });
-        },
+
         
-        // 检查是否可以管理用户（根据接口返回的 permissionStatus）
+        // 检查是否可以管理用户（只有超级管理员可以管理所有用户）
         canManageUser(user) {
-            if (this.currentUserRole === 2) return true; // 超级管理员可以管理所有用户
-            if (this.currentUserRole === 1 && user.permissionStatus !== 2) return true; // 管理员可以管理非超级管理员用户
-            return false;
+            return this.currentUserRole === 2; // 只有超级管理员可以管理所有用户
         },
         
         // 获取用户状态样式类（微信小程序兼容）
@@ -239,45 +269,49 @@ export default {
             return roleMap[permissionStatus] || '普通用户';
         },
         
-        // 更新用户权限
-        updateUserPermission(userId, permissionType, value) {
+        // 获取用户角色在选项中的索引
+        getUserRoleIndex(permissionStatus) {
+            return permissionStatus || 0;
+        },
+        
+        // 更新用户身份
+        async updateUserRole(userId, roleIndex) {
             const user = this.userList.find(u => u.id === userId);
-            if (user) {
-                user.permissions[permissionType] = value;
-                this.checkChanges();
+            if (!user) return;
+            
+            // 不能修改自己的身份
+            if (userId === this.currentUserId) {
+                uni.showToast({
+                    title: '不能修改自己的身份',
+                    icon: 'none',
+                    duration: 2000
+                });
+                return;
             }
-        },
-        
-        // 检查是否有变更
-        checkChanges() {
-            this.hasChanges = false;
-            for (const userId in this.originalPermissions) {
-                const original = this.originalPermissions[userId];
-                const current = this.userList.find(u => u.id === userId)?.permissions;
-                if (JSON.stringify(original) !== JSON.stringify(current)) {
-                    this.hasChanges = true;
-                    break;
-                }
+            
+            // 不能修改其他超级管理员
+            if (user.permissionStatus === 2) {
+                uni.showToast({
+                    title: '不能修改其他超级管理员',
+                    icon: 'none',
+                    duration: 2000
+                });
+                return;
             }
-        },
-        
-        // 保存所有权限设置
-        async saveAllPermissions() {
-            if (!this.hasChanges) return;
+            
+            const newRole = roleIndex;
+            const oldRole = user.permissionStatus;
             
             try {
-                this.saving = true;
-                uni.showLoading({ title: '保存中...' });
+                uni.showLoading({ title: '更新身份中...' });
                 
                 const res = await new Promise((resolve, reject) => {
                     uni.request({
-                        url: this.serverUrl + '/user/updatePermissions',
+                        url: this.serverUrl + '/user/updateRole',
                         method: 'POST',
                         data: {
-                            permissions: this.userList.map(user => ({
-                                userId: user.id,
-                                permissions: user.permissions
-                            }))
+                            userId: userId,
+                            newRole: newRole
                         },
                         success: resolve,
                         fail: reject
@@ -285,37 +319,122 @@ export default {
                 });
                 
                 if (res.data?.code === 200) {
-                    // 更新原始权限状态
-                    this.saveOriginalPermissions();
-                    this.hasChanges = false;
+                    // 更新本地数据
+                    user.permissionStatus = newRole;
+                    
+                    // 根据新身份更新权限
+                    if (newRole === 0) {
+                        // 普通用户：关闭所有权限
+                        user.permissions.groupChat = false;
+                        user.permissions.settings = false;
+                        user.permissions.admin = false;
+                    } else if (newRole === 1) {
+                        // 管理员：开启群聊和设置权限，关闭权限管理
+                        user.permissions.groupChat = true;
+                        user.permissions.settings = true;
+                        user.permissions.admin = false;
+                    } else if (newRole === 2) {
+                        // 超级管理员：开启所有权限
+                        user.permissions.groupChat = true;
+                        user.permissions.settings = true;
+                        user.permissions.admin = true;
+                    }
                     
                     uni.showToast({
-                        title: '权限设置已保存',
+                        title: '身份更新成功',
                         icon: 'success',
-                        duration: 2000
+                        duration: 1500
                     });
                 } else {
-                    throw new Error(res.data?.msg || '保存失败');
+                    throw new Error(res.data?.msg || '更新失败');
                 }
             } catch (err) {
-                console.error('保存权限失败:', err);
+                console.error('更新用户身份失败:', err);
                 uni.showToast({
-                    title: err.message || '保存失败，请重试',
+                    title: err.message || '更新失败，请重试',
                     icon: 'none',
                     duration: 2000
                 });
                 
-                // 恢复原始权限状态
-                this.userList.forEach(user => {
-                    if (this.originalPermissions[user.id]) {
-                        user.permissions = { ...this.originalPermissions[user.id] };
-                    }
-                });
+                // 恢复原始状态
+                user.permissionStatus = oldRole;
+                this.$forceUpdate();
             } finally {
-                this.saving = false;
                 uni.hideLoading();
             }
-        }
+        },
+        
+        // 更新用户权限
+        async updateUserPermission(userId, permissionType, value) {
+            const user = this.userList.find(u => u.id === userId);
+            if (!user) return;
+            
+            try {
+                uni.showLoading({ title: '更新中...' });
+                
+                const res = await new Promise((resolve, reject) => {
+                    uni.request({
+                        url: this.serverUrl + '/user/updatePermission',
+                        method: 'POST',
+                        data: {
+                            userId: userId,
+                            permissionType: permissionType,
+                            value: value
+                        },
+                        success: resolve,
+                        fail: reject
+                    });
+                });
+                
+                if (res.data?.code === 200) {
+                    // 更新本地数据
+                    user.permissions[permissionType] = value;
+                    
+                    uni.showToast({
+                        title: '权限更新成功',
+                        icon: 'success',
+                        duration: 1500
+                    });
+                } else {
+                    throw new Error(res.data?.msg || '更新失败');
+                }
+            } catch (err) {
+                console.error('更新权限失败:', err);
+                uni.showToast({
+                    title: err.message || '更新失败，请重试',
+                    icon: 'none',
+                    duration: 2000
+                });
+                
+                // 恢复原始状态
+                user.permissions[permissionType] = !value;
+                this.$forceUpdate();
+            } finally {
+                uni.hideLoading();
+            }
+        },
+        
+        // 搜索功能
+        onSearchInput() {
+            this.filterUserList();
+        },
+        
+        // 过滤用户列表
+        filterUserList() {
+            if (!this.searchKeyword.trim()) {
+                this.filteredUserList = [...this.userList];
+                return;
+            }
+            
+            const keyword = this.searchKeyword.toLowerCase().trim();
+            this.filteredUserList = this.userList.filter(user => {
+                const name = (user.nickName || '').toLowerCase();
+                const phone = (user.phone || '').toLowerCase();
+                return name.includes(keyword) || phone.includes(keyword);
+            });
+        },
+        
+
     }
 }
 </script>
@@ -379,6 +498,23 @@ export default {
     display: flex;
     justify-content: space-between;
     align-items: center;
+}
+
+.search-container {
+    flex: 1;
+    margin-right: 20rpx;
+}
+
+.search-input {
+    width: 100%;
+    height: 60rpx;
+    background: #fff;
+    border: 1rpx solid #e0e0e0;
+    border-radius: 30rpx;
+    padding: 0 20rpx;
+    font-size: 26rpx;
+    color: #333;
+    box-sizing: border-box;
 }
 
 .section-title {
@@ -483,14 +619,19 @@ export default {
     margin-bottom: 8rpx;
 }
 
+.user-role-phone {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+}
+
 .user-role {
     display: block;
     font-size: 24rpx;
     color: #1890ff;
     background: #e6f7ff;
-    padding: 4rpx 12rpx;
     border-radius: 12rpx;
-    margin-bottom: 8rpx;
     width: fit-content;
 }
 
@@ -503,20 +644,81 @@ export default {
 .user-permissions {
     display: flex;
     flex-direction: column;
-    gap: 16rpx;
+    gap: 20rpx;
+    padding: 20rpx;
+    background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+    border-radius: 16rpx;
+    border: 1rpx solid #e8f0fe;
+    margin-top: 16rpx;
 }
 
 .permission-item {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 8rpx 0;
+    padding: 16rpx 0;
+    border-bottom: 1rpx solid #f0f0f0;
+    
+    &:last-child {
+        border-bottom: none;
+        padding-bottom: 0;
+    }
+    
+    &:first-child {
+        padding-top: 0;
+    }
 }
 
 .permission-label {
-    font-size: 24rpx;
+    font-size: 26rpx;
     color: #333;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    
+    &::before {
+        content: '';
+        width: 8rpx;
+        height: 8rpx;
+        background: #1890ff;
+        border-radius: 50%;
+        margin-right: 12rpx;
+        display: inline-block;
+    }
+}
+
+.role-picker {
+    display: flex;
+    align-items: center;
+    background: linear-gradient(135deg, #e6f7ff 0%, #f0f8ff 100%);
+    border: 2rpx solid #91d5ff;
+    border-radius: 20rpx;
+    padding: 12rpx 20rpx;
+    box-shadow: 0 2rpx 8rpx rgba(24, 144, 255, 0.15);
+    transition: all 0.3s ease;
+    
+    &:active {
+        transform: scale(0.95);
+        box-shadow: 0 1rpx 4rpx rgba(24, 144, 255, 0.2);
+    }
+}
+
+.role-picker-text {
+    font-size: 24rpx;
+    color: #1890ff;
     font-weight: 500;
+    margin-right: 12rpx;
+}
+
+.picker-arrow {
+    width: 24rpx;
+    height: 24rpx;
+    opacity: 0.7;
+    transition: transform 0.3s ease;
+}
+
+.role-picker:active .picker-arrow {
+    transform: rotate(90deg);
 }
 
 .permission-notice {
@@ -557,40 +759,7 @@ export default {
     line-height: 1.5;
 }
 
-.save-section {
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    background: #fff;
-    padding: 20rpx 30rpx;
-    border-top: 1rpx solid #f0f0f0;
-    box-shadow: 0 -2rpx 8rpx rgba(0, 0, 0, 0.05);
-    z-index: 10;
-}
 
-.save-btn {
-    width: 100%;
-    height: 88rpx;
-    background: #07c160;
-    color: #fff;
-    border: none;
-    border-radius: 44rpx;
-    font-size: 32rpx;
-    font-weight: 500;
-    box-shadow: 0 4rpx 16rpx rgba(7, 193, 96, 0.3);
-    transition: all 0.3s ease;
-    
-    &:active {
-        transform: translateY(2rpx);
-        box-shadow: 0 2rpx 8rpx rgba(7, 193, 96, 0.3);
-    }
-    
-    &:disabled {
-        background: #ccc;
-        box-shadow: none;
-    }
-}
 
 /* 底部占位，避免被固定按钮遮挡 */
 .scroll-spacer {

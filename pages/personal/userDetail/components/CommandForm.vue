@@ -105,52 +105,6 @@ export default {
     
     onCommandUrlInput(e) {
       this.localForm.commandUrl = e.detail.value
-    },
-
-    // ===== 本地存储工具（与管理页/入口页统一） =====
-    getCommandStorageKey() {
-      return 'COMMAND_CONFIG_V1'
-    },
-    loadLocalCommands() {
-      try {
-        const key = this.getCommandStorageKey()
-        const local = uni.getStorageSync(key)
-        if (local && typeof local === 'object') return local
-      } catch (e) {}
-      return {}
-    },
-    saveLocalCommands(configObj) {
-      const key = this.getCommandStorageKey()
-      uni.setStorageSync(key, configObj || {})
-    },
-    // 保存当前表单到本地（新增/编辑皆可）
-    saveCurrentToLocal(editKey) {
-      const commands = this.loadLocalCommands()
-      const payload = {
-        title: this.localForm.commandTitle || '',
-        desc: this.localForm.commandDesc || '',
-        url: this.localForm.commandUrl || '',
-        icon: this.localForm.icon || 'manage'
-      }
-      const next = { ...commands }
-      if (editKey) {
-        next[editKey] = payload
-      } else {
-        const key = `${Date.now()}`
-        next[key] = payload
-      }
-      this.saveLocalCommands(next)
-      return true
-    },
-    // 从本地删除某条配置
-    removeLocalCommand(removeKey) {
-      if (!removeKey) return false
-      const commands = this.loadLocalCommands()
-      if (!commands[removeKey]) return false
-      const next = { ...commands }
-      delete next[removeKey]
-      this.saveLocalCommands(next)
-      return true
     }
   }
 }

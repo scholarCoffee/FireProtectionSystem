@@ -45,7 +45,7 @@
             </view>
             
             <!-- 管理后台入口 -->
-            <view class="column settings-column">
+            <view class="column settings-column" v-if="canAccessDataManagement">
                 <view class="row settings-row" @tap="goToDataManagement">
                     <view class="settings-content">
                         <view class="settings-icon-wrapper">
@@ -60,7 +60,7 @@
             </view>
             
             <!-- 权限管理入口 -->
-            <view class="column settings-column">
+            <view class="column settings-column" v-if="canAccessPermissionManagement">
                 <view class="row settings-row" @tap="goToPermissionManagement">
                     <view class="settings-content">
                         <view class="settings-icon-wrapper permission-icon">
@@ -120,6 +120,18 @@
                 modifyType: '', // 修改类型
                 modifyTitle: '', // 修改标题
                 tempFilePaths: '',
+            }
+        },
+        
+        computed: {
+            // 是否可以访问数据管理（管理员及以上权限）
+            canAccessDataManagement() {
+                return this.userInfo.permissionStatus >= 1;
+            },
+            
+            // 是否可以访问权限管理（超级管理员权限）
+            canAccessPermissionManagement() {
+                return this.userInfo.permissionStatus === 2;
             }
         },
         onShow() {

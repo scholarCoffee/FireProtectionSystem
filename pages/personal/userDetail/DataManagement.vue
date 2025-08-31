@@ -33,7 +33,7 @@
     </view>
 
     <!-- 搜索和操作栏 -->
-    <view class="action-bar" v-if="currentTab !== 'command'">
+    <view class="action-bar" v-if="currentTab == 'location'">
       <view class="search-container">
         <image :src="serverUrl + '/static/icons/location/search.png'" class="search-icon" />
         <input 
@@ -83,8 +83,8 @@
         >
           <view class="item-header">
             <view class="item-title">
-              <view class="command-avatar" :class="avatarClassMap[config.icon] || 'avatar-grad-1'">
-                <image :src="serverUrl + '/static/icons/data/' + (config.icon || 'manage') + '.png'" class="avatar-img" />
+              <view class="command-avatar" :data-icon="config.icon || 'analysis'">
+                <image :src="serverUrl + '/static/icons/data/' + (config.icon || 'analysis') + '.png'" class="avatar-img" />
               </view>
               <view class="title-info">
                 <text class="title-text">{{ config.title }}</text>
@@ -94,6 +94,9 @@
             <view class="item-actions">
               <button class="action-icon-btn" @tap.stop="editCommand(key, config)">
                 <image :src="serverUrl + '/static/icons/common/edit-white.png'" class="action-icon" />
+              </button>
+              <button class="action-icon-btn danger" @tap.stop="deleteCommand(config)">
+                <image :src="serverUrl + '/static/icons/common/delete-white.png'" class="action-icon" />
               </button>
             </view>
           </view>
@@ -110,34 +113,35 @@
         </view>
       </view>
 
-      <!-- 本地编辑弹窗 -->
-      <view class="command-modal" v-if="showCommandModal" @tap="closeCommandModal">
-        <view class="modal-content" @tap.stop>
-          <view class="modal-header">
-            <text class="modal-title">{{ commandModalMode === 'add' ? '新增功能' : '编辑功能' }}</text>
-            <text class="modal-close" @tap="closeCommandModal">×</text>
-          </view>
-          <view class="modal-body">
-            <view class="modal-form-item">
-              <text class="modal-label">功能名称</text>
-              <input v-model="editForm.title" class="modal-input" placeholder="请输入功能名称" maxlength="50" />
-            </view>
-            <view class="modal-form-item">
-              <text class="modal-label">功能描述</text>
-              <textarea v-model="editForm.desc" class="modal-textarea" placeholder="请输入功能描述" maxlength="200" auto-height show-confirm-bar="false" />
-            </view>
-            <view class="modal-form-item">
-              <text class="modal-label">访问地址</text>
-              <input v-model="editForm.url" class="modal-input" placeholder="请输入访问地址" maxlength="500" />
-            </view>    
-          </view>
-          <view class="modal-footer">
-            <button class="footer-btn cancel" @tap="closeCommandModal">取消</button>
-            <button class="footer-btn confirm" @tap="saveCommand">保存</button>
-          </view>
-        </view>
-      </view>
-    </view>
+       <!-- 本地编辑弹窗 -->
+       <view class="command-modal" v-if="showCommandModal" @tap="closeCommandModal">
+         <view class="modal-content" @tap.stop>
+           <view class="modal-header">
+             <text class="modal-title">{{ commandModalMode === 'add' ? '新增功能' : '编辑功能' }}</text>
+             <text class="modal-close" @tap="closeCommandModal">×</text>
+           </view>
+           <view class="modal-body">
+             <view class="modal-form-item">
+               <text class="modal-label">功能名称</text>
+               <input v-model="editForm.title" class="modal-input" placeholder="请输入功能名称" maxlength="50" />
+             </view>
+             <view class="modal-form-item">
+               <text class="modal-label">功能描述</text>
+               <textarea v-model="editForm.desc" class="modal-textarea" placeholder="请输入功能描述" maxlength="200" auto-height show-confirm-bar="false" />
+             </view>
+             <view class="modal-form-item">
+               <text class="modal-label">访问地址</text>
+               <input v-model="editForm.url" class="modal-input" placeholder="请输入访问地址" maxlength="500" />
+             </view>
+             
+           </view>
+           <view class="modal-footer">
+             <button class="footer-btn cancel" @tap="closeCommandModal">取消</button>
+             <button class="footer-btn confirm" @tap="saveCommand">保存</button>
+           </view>
+         </view>
+       </view>
+     </view>
   </view>
 </template>
 
@@ -163,15 +167,7 @@ export default {
       showCommandModal: false,
       commandModalMode: 'edit', // add | edit
       currentEditKey: '',
-      editForm: { title: '', desc: '', url: '' },
-      // 映射表：避免模板 :class 调用方法
-      avatarClassMap: {
-        analysis: 'avatar-grad-1',
-        alarm: 'avatar-grad-2',
-        device: 'avatar-grad-3',
-        report: 'avatar-grad-4',
-        manage: 'avatar-grad-1'
-      }
+      editForm: { configId: '', title: '', desc: '', url: '' }
     }
   },
 
@@ -187,94 +183,103 @@ export default {
 
   methods: {
     // 从接口获取数据指挥配置
-    async loadCommandConfig() {
-      try {
-        const res = await uni.request({
-          url: this.serverUrl + '/command/config',
-          method: 'GET',
-          header: {
-            'Content-Type': 'application/json'
+    loadCommandConfig() {
+      uni.request({
+        url: this.serverUrl + '/command/config',
+        method: 'GET',
+        header: {
+          'Content-Type': 'application/json'
+        },
+        success: (res) => {
+          if (res.data && res.data.code === 200) {
+            // 根据新的数据结构，直接使用 res.data.data
+            this.commandConfig = res.data.data || {};
+            console.log('获取数据指挥配置成功:', this.commandConfig);
+          } else {
+            this.commandConfig = {};
+            console.error('获取数据指挥配置失败:', res.data?.msg || '未知错误');
           }
-        });
-        
-        if (res.data && res.data.code === 200) {
-          this.commandConfig = res.data.data || {};
-        } else {
+        },
+        fail: (err) => {
+          console.error('获取数据指挥配置异常:', err);
           this.commandConfig = {};
-          console.error('获取数据指挥配置失败:', res.data?.msg || '未知错误');
+          uni.showToast({ 
+            title: '获取配置失败', 
+            icon: 'none',
+            duration: 2000
+          });
         }
-      } catch (error) {
-        console.error('获取数据指挥配置异常:', error);
-        this.commandConfig = {};
-        uni.showToast({ 
-          title: '获取配置失败', 
-          icon: 'none',
-          duration: 2000
-        });
-      }
+      });
     },
 
     // 保存数据指挥配置到接口
-    async saveCommandConfig(configData) {
-      try {
-        const res = await uni.request({
+    saveCommandConfig(configData) {
+      return new Promise((resolve, reject) => {
+        uni.request({
           url: this.serverUrl + '/command/config',
           method: 'POST',
           header: {
             'Content-Type': 'application/json'
           },
-          data: configData
+          data: configData,
+          success: (res) => {
+            if (res.data && res.data.code === 200) {
+              resolve({ success: true, data: res.data.data });
+            } else {
+              resolve({ 
+                success: false, 
+                message: res.data?.msg || '保存失败' 
+              });
+            }
+          },
+          fail: (err) => {
+            console.error('保存数据指挥配置异常:', err);
+            resolve({ 
+              success: false, 
+              message: '网络异常，保存失败' 
+            });
+          }
         });
-        
-        if (res.data && res.data.code === 200) {
-          return { success: true, data: res.data.data };
-        } else {
-          return { 
-            success: false, 
-            message: res.data?.msg || '保存失败' 
-          };
-        }
-      } catch (error) {
-        console.error('保存数据指挥配置异常:', error);
-        return { 
-          success: false, 
-          message: '网络异常，保存失败' 
-        };
-      }
+      });
     },
 
     // 删除数据指挥配置
-    async deleteCommandConfig(key) {
-      try {
-        const res = await uni.request({
-          url: this.serverUrl + '/command/config',
-          method: 'DELETE',
+    deleteCommandConfig(config) {
+      return new Promise((resolve, reject) => {
+        uni.request({
+          url: this.serverUrl + '/command/delConfig',
+          method: 'POST',
           header: {
             'Content-Type': 'application/json'
           },
-          data: { key }
+          data: config,
+          success: (res) => {
+            if (res.data && res.data.code === 200) {
+              resolve({ success: true });
+            } else {
+              resolve({ 
+                success: false, 
+                message: res.data?.msg || '删除失败' 
+              });
+            }
+          },
+          fail: (err) => {
+            console.error('删除数据指挥配置异常:', err);
+            resolve({ 
+              success: false, 
+              message: '网络异常，删除失败' 
+            });
+          }
         });
-        
-        if (res.data && res.data.code === 200) {
-          return { success: true };
-        } else {
-          return { 
-            success: false, 
-            message: res.data?.msg || '删除失败' 
-          };
-        }
-      } catch (error) {
-        console.error('删除数据指挥配置异常:', error);
-        return { 
-          success: false, 
-          message: '网络异常，删除失败' 
-        };
-      }
+      });
     },
 
     switchTab(tab) {
       this.currentTab = tab;
       this.searchKeyword = ''; // 切换标签时清空搜索
+      if (tab === 'command') {
+        this.refreshData();
+      }
     },
     
     getSearchPlaceholder() {
@@ -315,9 +320,6 @@ export default {
         this.$refs.locationManagement.loadData();
       } else if (this.currentTab === 'chat' && this.$refs.chatManagement) {
         this.$refs.chatManagement.loadData();
-      } else if (this.currentTab === 'command') {
-        this.loadCommandConfig();
-        uni.showToast({ title: '已刷新', icon: 'success', duration: 1000 })
       }
     },
     
@@ -339,7 +341,7 @@ export default {
     openAddCommand() {
       this.commandModalMode = 'add'
       this.currentEditKey = ''
-      this.editForm = { title: '', desc: '', url: '' }
+      this.editForm = { configId: '', title: '', desc: '', url: '' }
       this.showCommandModal = true
     },
     
@@ -347,34 +349,39 @@ export default {
     editCommand(key, config) {
       this.commandModalMode = 'edit'
       this.currentEditKey = key
-      this.editForm = { title: config.title || '', desc: config.desc || '', url: config.url || '' }
+      this.editForm = { 
+        configId: config.configId || '',
+        title: config.title || '', 
+        desc: config.desc || '', 
+        url: config.url || ''
+      }
       this.showCommandModal = true
     },
 
     // 删除数据指挥配置
-    async deleteCommand(key) {
+    deleteCommand(config) {
       uni.showModal({
         title: '确认删除',
         content: '确定删除该功能吗？',
-        success: async (res) => {
+        success: (res) => {
           if (res.confirm) {
             uni.showLoading({ title: '删除中...' });
             
-            const result = await this.deleteCommandConfig(key);
-            
-            uni.hideLoading();
-            
-            if (result.success) {
-              // 删除成功后重新加载数据
-              await this.loadCommandConfig();
-              uni.showToast({ title: '已删除', icon: 'success', duration: 1000 });
-            } else {
-              uni.showToast({ 
-                title: result.message || '删除失败', 
-                icon: 'none', 
-                duration: 2000 
-              });
-            }
+            this.deleteCommandConfig(config).then((result) => {
+              uni.hideLoading();
+              
+              if (result.success) {
+                // 删除成功后重新加载数据
+                this.loadCommandConfig();
+                uni.showToast({ title: '已删除', icon: 'success', duration: 1000 });
+              } else {
+                uni.showToast({ 
+                  title: result.message || '删除失败', 
+                  icon: 'none', 
+                  duration: 2000 
+                });
+              }
+            });
           }
         }
       })
@@ -384,8 +391,10 @@ export default {
       this.showCommandModal = false
     },
 
+
+
     // 保存数据指挥配置
-    async saveCommand() {
+    saveCommand() {
       // 简单校验
       if (!this.editForm.title || !this.editForm.url) {
         uni.showToast({ title: '请填写名称与地址', icon: 'none' })
@@ -394,33 +403,23 @@ export default {
 
       uni.showLoading({ title: '保存中...' });
 
-      try {
-        let configData;
-        
-        if (this.commandModalMode === 'add') {
-          // 新增：生成唯一key
-          const key = `cmd_${Date.now()}`;
-          configData = {
-            action: 'add',
-            key: key,
-            data: { ...this.editForm }
-          };
-        } else {
-          // 编辑
-          configData = {
-            action: 'update',
-            key: this.currentEditKey,
-            data: { ...this.editForm }
-          };
+      let configData = {
+        action: 'update',
+        key: this.currentEditKey,
+        data: {
+          configId: this.editForm.configId,
+          title: this.editForm.title,
+          desc: this.editForm.desc,
+          url: this.editForm.url
         }
+      };
 
-        const result = await this.saveCommandConfig(configData);
-        
+      this.saveCommandConfig(configData).then((result) => {
         uni.hideLoading();
         
         if (result.success) {
           // 保存成功后重新加载数据
-          await this.loadCommandConfig();
+          this.loadCommandConfig();
           this.showCommandModal = false;
           uni.showToast({ title: '已保存', icon: 'success', duration: 1000 });
         } else {
@@ -430,14 +429,14 @@ export default {
             duration: 2000 
           });
         }
-      } catch (error) {
+      }).catch((error) => {
         uni.hideLoading();
         uni.showToast({ 
           title: '保存异常', 
           icon: 'none', 
           duration: 2000 
         });
-      }
+      });
     }
   }
 }
@@ -651,17 +650,28 @@ export default {
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 6rpx 20rpx rgba(24, 144, 255, 0.12);
+  box-shadow: 0 6rpx 20rpx rgba(102, 126, 234, 0.3);
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
 }
+
 .avatar-img {
   width: 36rpx;
   height: 36rpx;
   filter: brightness(0) invert(1);
 }
-.avatar-grad-1 { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
-.avatar-grad-2 { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); }
-.avatar-grad-3 { background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); }
-.avatar-grad-4 { background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%); }
+
+/* 为不同图标类型设置不同的渐变色，参考 command/index.vue */
+.command-avatar[data-icon="analysis"] {
+  background: linear-gradient(135deg, #667eea 0%, #a24b74 100%);
+}
+
+.command-avatar[data-icon="device"] {
+  background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+}
+
+.command-avatar[data-icon="report"] {
+  background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+}
 
 .command-type {
   font-size: 22rpx;
@@ -676,16 +686,17 @@ export default {
 }
 
 .command-item {
-	background: #fff;
-	border-radius: 16rpx;
+	background: rgba(255, 255, 255, 0.95);
+	border-radius: 20rpx;
 	padding: 24rpx;
-	border: 1rpx solid rgba(24, 144, 255, 0.08);
-	box-shadow: 0 4rpx 16rpx rgba(24, 144, 255, 0.08);
-	transition: transform 0.2s ease, box-shadow 0.2s ease;
+	border: 1rpx solid rgba(255, 255, 255, 0.2);
+	box-shadow: 0 8rpx 24rpx rgba(0, 0, 0, 0.1);
+	transition: all 0.3s ease;
+	backdrop-filter: blur(10rpx);
 
 	&:active {
-		transform: translateY(2rpx);
-		box-shadow: 0 2rpx 12rpx rgba(24, 144, 255, 0.12);
+		transform: translateY(4rpx);
+		box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.15);
 	}
 }
 
@@ -707,8 +718,8 @@ export default {
 	width: 72rpx;
 	height: 72rpx;
 	border-radius: 50%;
-	box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.08);
-	border: 2rpx solid #f0f5ff;
+	box-shadow: 0 6rpx 20rpx rgba(102, 126, 234, 0.3);
+	border: 2rpx solid rgba(255, 255, 255, 0.2);
 }
 
 .title-info {
@@ -883,6 +894,8 @@ export default {
 	font-size: 26rpx;
 }
 
+
+
 .modal-footer {
 	display: flex;
 	gap: 16rpx;
@@ -908,4 +921,5 @@ export default {
 	background: linear-gradient(135deg, #1890ff 0%, #40a9ff 100%);
 	color: #ffffff;
 }
+
 </style> 

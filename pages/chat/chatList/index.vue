@@ -9,16 +9,8 @@
                 <button class="login-btn" open-type="getUserInfo" @getuserinfo="onGetUserInfo">一键登录</button>
             </view>
         </view>
-        <!-- 已登录但未绑定手机号 -->
-        <view v-else-if="userInfo.permissionStatus === 0" class="no-permission">
-            <view class="permission-container">
-                <image :src="serverUrl + '/static/icons/common/no-data.png'" class="permission-img"></image>
-                <text class="permission-title">当前用户未绑定手机号</text>
-                <text class="permission-desc">请先在个人页绑定手机号</text>
-            </view>
-        </view>
         <!-- 已登录但无权限提示 -->
-        <view v-else-if="userInfo.permissionStatus === 1" class="no-permission">
+        <view v-else-if="userInfo.permissionStatus < 2" class="no-permission">
             <view class="permission-container">
                 <image :src="serverUrl + '/static/icons/common/no-data.png'" class="permission-img"></image>
                 <text class="permission-title">当前用户无群聊权限</text>
@@ -170,7 +162,7 @@
                     }
                     this.isLoggedIn = true;
                     // 页面显示时更新未读数
-                    if (this.userInfo.permissionStatus === 2) {
+                    if (this.userInfo.permissionStatus >= 2) {
                         this.loadGroups(); // 加载群聊列表
                     }
                 } else {
@@ -213,7 +205,7 @@
                         } else {
                             this.groupsList = [];
                             uni.showToast({
-                                title: '未获取到群聊列表',
+                                title: '当前用户无群聊信息，请联系管理员',
                                 icon: 'none',
                                 duration: 2000
                             });
