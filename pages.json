@@ -56,6 +56,13 @@
                 "navigationStyle": "default",
                 "navigationBarTitleText": "权限管理"
             }
+        },
+        {
+            "path": "pages/personal/userDetail/components/GroupMemberManagement",
+            "style": {
+                "navigationStyle": "default",
+                "navigationBarTitleText": "群成员管理"
+            }
         }
     ],
     "subPackages": [

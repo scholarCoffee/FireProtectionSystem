@@ -114,7 +114,7 @@
                     phone: ''
                 },
                 isLoggedIn: false, // 用户是否已登录
-                serverUrl: 'http://192.168.2.244:3000',
+                serverUrl: 'http://192.168.1.4:3000',
                 showModifyModal: false, // 是否显示修改弹窗
                 modifyValue: '', // 修改的值
                 modifyType: '', // 修改类型

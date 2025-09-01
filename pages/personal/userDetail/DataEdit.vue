@@ -58,7 +58,7 @@ export default {
       mode: 'add', // add 或 edit
       editId: '', // 编辑时的ID
       commandKey: '', // 数据指挥的key
-      serverUrl: 'http://192.168.2.244:3000',
+      serverUrl: 'http://192.168.1.4:3000',
       // 子组件初始化数据（避免父传子双向修改）
       chatInitialData: {},
       commandInitialData: {},
@@ -109,6 +109,9 @@ export default {
         if (this.type === 'location') {
           delete data.id;
           data.addressId = this.editId;
+        } else if (this.type === 'chat') {
+          delete data.id;
+          data.groupId = this.editId;
         }
         const result = await new Promise((resolve, reject) => {
           uni.request({

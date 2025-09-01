@@ -26,7 +26,7 @@ export default {
     data() {
         return {
             // 可以添加数据
-            serverUrl: 'http://192.168.2.244:3000',
+            serverUrl: 'http://192.168.1.4:3000',
             commandStorageKey: 'COMMAND_CONFIG_V1',
             commndList: []
         }

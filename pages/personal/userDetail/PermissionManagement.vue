@@ -117,7 +117,7 @@
 export default {
     data() {
         return {
-            serverUrl: 'http://192.168.2.244:3000',
+            serverUrl: 'http://192.168.1.4:3000',
             currentUserId: '',
             userList: [],
             filteredUserList: [],

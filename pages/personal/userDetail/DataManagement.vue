@@ -160,7 +160,7 @@ export default {
       currentTab: 'location', // 当前标签页
       searchKeyword: '', // 搜索关键词
       searchTimer: null, // 搜索防抖定时器
-      serverUrl: 'http://192.168.2.244:3000',
+      serverUrl: 'http://192.168.1.4:3000',
       // 数据指挥配置（从接口获取）
       commandConfig: {},
       // 本地编辑弹窗
@@ -169,16 +169,6 @@ export default {
       currentEditKey: '',
       editForm: { configId: '', title: '', desc: '', url: '' }
     }
-  },
-
-  // 添加 onShow 生命周期钩子，用于在从子页面返回时刷新数据
-  onShow() {
-    // 如果当前是位置信息标签页，刷新位置管理组件的数据
-    if (this.currentTab === 'location' && this.$refs.locationManagement) {
-      this.$refs.locationManagement.loadData();
-    }
-    // 刷新数据指挥功能配置
-    this.loadCommandConfig();
   },
 
   methods: {
@@ -278,7 +268,7 @@ export default {
       this.currentTab = tab;
       this.searchKeyword = ''; // 切换标签时清空搜索
       if (tab === 'command') {
-        this.refreshData();
+        this.loadCommandConfig();
       }
     },
     
