@@ -134,7 +134,7 @@
                 // 非微信小程序：生成假数据
                 if (!uni.getStorageSync('userInfo')) {
                     const mockUserInfo = {
-                        id: 'o782m7VVE2mElMJV18aNxzYQaxts',
+                        id: '68a349e95e50a7aae984815d',
                         nickName: '测试用户-小创',
                         avatarUrl: this.serverUrl + '/static/icons/chat/person-avatar.png',
                         permissionStatus: 2 // 默认无权限
@@ -237,7 +237,8 @@
                             const { code, data } = res.data || {};
                             if (code === 200) {
                                 resolve({
-                                    ...data.groupMessageInfo
+                                    ...data.groupMessageInfo,
+                                    ...groupInfo
                                 });
                             }
                         },

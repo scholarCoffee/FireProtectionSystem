@@ -193,7 +193,7 @@ export default {
       try {        
         const url = this.type === 'location' 
           ? this.serverUrl + '/location/save'
-          : this.serverUrl + '/chat/save';
+          : this.serverUrl + '/group/save';
         
         const result = await new Promise((resolve, reject) => {
           uni.request({

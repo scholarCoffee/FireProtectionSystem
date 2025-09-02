@@ -295,11 +295,13 @@ export default {
         
         const res = await new Promise((resolve, reject) => {
           uni.request({
-            url: this.serverUrl + '/group/addMembers',
+            url: this.serverUrl + '/group/addMember',
             method: 'POST',
             data: {
               groupId: this.groupId,
-              userIds: [user.id]
+              userInfo: [{
+                ...user
+              }]
             },
             success: resolve,
             fail: reject
@@ -342,7 +344,9 @@ export default {
             method: 'POST',
             data: {
               groupId: this.groupId,
-              userId: user.id
+              userInfo: [{
+                ...user
+              }]
             },
             success: resolve,
             fail: reject

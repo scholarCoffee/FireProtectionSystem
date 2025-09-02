@@ -139,7 +139,7 @@
             // 非微信小程序：生成假数据
             if (!uni.getStorageSync('userInfo')) {
                 let mockUserInfo = {
-                    id: 'o782m7VVE2mElMJV18aNxzYQaxts',
+                    id: '68a349e95e50a7aae984815d',
                 };
                 // 根据id
                 uni.request({

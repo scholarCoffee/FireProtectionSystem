@@ -106,8 +106,8 @@
     </view>
   </view>
 </template>
-
 <script>
+import { withDatedPath } from '@/commons/js/utils.js'
 export default {
   name: 'ChatForm',
   props: {
@@ -263,8 +263,8 @@ export default {
             name: 'file',
             formData: {
               id: this.localForm.groupId || 'temp',
-              url: '/uploadImg/groupImg',
-              name: groupImg_
+              url: withDatedPath('/uploadImg/groupImg'),
+              name: 'groupImg_' + this.localForm.groupId + Math.ceil(Math.random()*10),
             },
             success: resolve,
             fail: reject
