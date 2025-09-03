@@ -58,7 +58,7 @@
                 <text class="user-name">{{ user.nickName }}</text>
                 <text class="user-phone">{{ user.phone || '未设置手机号' }}</text>
                 <text class="user-status" :class="{ 'in-group': isGroupMember(user.userId) }">
-                  {{ isGroupMember(user.userId) ? '群成员' : '非群成员' }}
+                  {{ isGroupMember(user.userId) ?  isCurrentUser(user.userId) ? '本人' : '群成员' : '非群成员' }}
                 </text>
               </view>
             </view>
@@ -72,9 +72,6 @@
               >
                 {{ isGroupMember(user.userId) ? '移出群组' : '加入群组' }}
               </button>
-              <view v-else class="current-user-tag">
-                <text class="current-user-text">本人</text>
-              </view>
             </view>
           </view>
         </view>
@@ -94,7 +91,7 @@ export default {
   name: 'GroupMemberManagement',
   data() {
     return {
-      serverUrl: 'http://192.168.1.4:3000',
+      serverUrl: 'http://172.17.121.229:3000',
       groupId: '',
       groupName: '',
       groupAvatar: '',
@@ -127,8 +124,8 @@ export default {
       try {
         // 从本地存储获取用户信息
         const userInfo = uni.getStorageSync('userInfo');
-        if (userInfo && userInfo.id) {
-          this.currentUserId = userInfo.id;
+        if (userInfo && userInfo.userId) {
+          this.currentUserId = userInfo.userId;
         }
       } catch (err) {
         console.error('获取当前用户信息失败:', err);
@@ -362,6 +359,7 @@ export default {
             icon: 'success',
             duration: 1500
           });
+          this.loadGroupInfo();
         } else {
           throw new Error(response.data?.msg || '移除失败');
         }
@@ -663,19 +661,6 @@ export default {
     transform: translateY(-2rpx);
     box-shadow: 0 6rpx 20rpx rgba(24, 144, 255, 0.25);
   }
-}
-
-.current-user-tag {
-  padding: 16rpx 32rpx;
-  border-radius: 24rpx;
-  background: linear-gradient(135deg, #f5f5f5 0%, #e8e8e8 100%);
-  border: 2rpx solid #d9d9d9;
-}
-
-.current-user-text {
-  font-size: 24rpx;
-  font-weight: 600;
-  color: #999999;
 }
 
 /* 空状态 */

@@ -145,7 +145,7 @@ export default {
       filteredList: [],
       // 用户信息（用于拉取群列表）
       userInfo: {
-        id: '',
+        userId: '',
         permissionStatus: 2
       },
       // 添加成员相关
@@ -176,8 +176,7 @@ export default {
     // 读取本地用户，用于接口参数
     getStorages() {
       const userInfo = uni.getStorageSync('userInfo') || {}
-      this.userInfo.id = userInfo.id || ''
-      this.userInfo.permissionStatus = typeof userInfo.permissionStatus === 'number' ? userInfo.permissionStatus : 2
+      this.userInfo = userInfo;
     },
 
     async loadData() {
@@ -187,7 +186,7 @@ export default {
           uni.request({
             url: this.serverUrl + '/group/getGroupList',
             method: 'POST',
-            data: { isAll: true, userId: this.userInfo.id },
+            data: { isAll: true, userId: this.userInfo.userId },
             success: resolve,
             fail: reject
           });

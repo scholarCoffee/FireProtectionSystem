@@ -102,7 +102,7 @@
                     if (this.groupsList[i].groupId === groupId) {
                         let e = this.groupsList[i]
                         e.lastTime = new Date()
-                        if (userId == this.userInfo.id) {
+                        if (userId == this.userInfo.userId) {
                             e.message = nmsg
                         } else {
                             e.message = userName + ': ' + nmsg
@@ -134,10 +134,11 @@
                 // 非微信小程序：生成假数据
                 if (!uni.getStorageSync('userInfo')) {
                     const mockUserInfo = {
-                        id: '68a349e95e50a7aae984815d',
-                        nickName: '测试用户-小创',
+                        id: 'o782m7VVE2mElMJV18aNxzYQaxts',
+                        userId: '68a349e95e50a7aae984815d',
+                        nickName: '小左同志',
                         avatarUrl: this.serverUrl + '/static/icons/chat/person-avatar.png',
-                        permissionStatus: 2 // 默认无权限
+                        permissionStatus: 2 // 超级管理员
                     };
                     uni.setStorageSync('userInfo', mockUserInfo);
                 }
@@ -153,13 +154,7 @@
             getStorages() {
                 const userInfo = uni.getStorageSync('userInfo');
                 if (userInfo) {
-                    const { id, nickName, avatarUrl, permissionStatus } = userInfo;
-                    this.userInfo = {
-                        id,
-                        nickName,
-                        avatarUrl,
-                        permissionStatus
-                    }
+                    this.userInfo = userInfo;
                     this.isLoggedIn = true;
                     // 页面显示时更新未读数
                     if (this.userInfo.permissionStatus >= 2) {
@@ -183,7 +178,7 @@
                 uni.request({
                     url: this.serverUrl + '/group/getGroupList',
                     method: 'POST',
-                    data: { permissionStatus: this.userInfo.permissionStatus, userId: this.userInfo.id },
+                    data: { permissionStatus: this.userInfo.permissionStatus, userId: this.userInfo.userId },
                     success: async (res) => {
                         const { code, data } = res.data || {};
                         if (code === 200 && Array.isArray(data) && data.length > 0) {
@@ -232,7 +227,7 @@
                     uni.request({
                         url: this.serverUrl + '/group/getLastGroupMsg',
                         method: 'POST',
-                        data: { groupInfo: groupInfo, userId: this.userInfo.id },
+                        data: { groupInfo: groupInfo, userId: this.userInfo.userId },
                         success: (res) => {
                             const { code, data } = res.data || {};
                             if (code === 200) {

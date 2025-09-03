@@ -34,11 +34,14 @@
                                 </view>
                             </view>
                             <view class="user-details">
-                                 <text class="user-name">{{ user.nickName }}</text>
-                                 <view class="user-role-phone">
+                                <view class="user-actions" v-if="canDeleteUser(user)">
+                                    <text class="user-name">{{ user.nickName }}</text>
+                                    <image :src="serverUrl + '/static/icons/common/delete-white.png'" class="delete-icon" @tap="() => deleteUser(user.id)" />
+                                </view>
+                                <view class="user-role-phone">
                                      <text class="user-role">{{ getUserRoleText(user.permissionStatus) }}</text>
                                      <text class="user-phone">{{ user.phone || '未设置手机号' }}</text>
-                                 </view>
+                                </view>
                              </view>
                         </view>
                         
@@ -117,7 +120,7 @@
 export default {
     data() {
         return {
-            serverUrl: 'http://192.168.1.4:3000',
+            serverUrl: 'http://172.17.121.229:3000',
             currentUserId: '',
             userList: [],
             filteredUserList: [],
@@ -157,7 +160,7 @@ export default {
         loadCurrentUser() {
             const userInfo = uni.getStorageSync('userInfo');
             if (userInfo) {
-                this.currentUserId = userInfo.id;
+                this.currentUserId = userInfo.userId;
                 this.currentUserRole = userInfo.permissionStatus || 0; // 使用 permissionStatus
             }
         },
@@ -220,13 +223,59 @@ export default {
             }
         },
         
-
-        
-
-        
         // 检查是否可以管理用户（只有超级管理员可以管理所有用户）
         canManageUser(user) {
             return this.currentUserRole === 2; // 只有超级管理员可以管理所有用户
+        },
+        
+        // 是否可删除该用户
+        canDeleteUser(user) {
+            if (!this.canManageUser(user)) return false;
+            if (user.id === this.currentUserId) return false; // 不能删除本人
+            if (user.permissionStatus === 2) return false; // 不能删除超级管理员
+            return true;
+        },
+
+        // 删除用户
+        async deleteUser(userId) {
+            const user = this.userList.find(u => u.id === userId);
+            if (!user) return;
+            if (!this.canDeleteUser(user)) {
+                uni.showToast({ title: '无权删除该用户', icon: 'none' });
+                return;
+            }
+            uni.showModal({
+                title: '确认删除',
+                content: '确定删除该成员吗？',
+                success: async (res) => {
+                    if (!res.confirm) return;
+                    try {
+                        uni.showLoading({ title: '删除中...' });
+                        const resp = await new Promise((resolve, reject) => {
+                            uni.request({
+                                url: this.serverUrl + '/user/delete',
+                                method: 'POST',
+                                data: { userId },
+                                success: resolve,
+                                fail: reject
+                            });
+                        });
+                        if (resp.data?.code === 200) {
+                            // 从本地列表移除
+                            this.userList = this.userList.filter(u => u.id !== userId);
+                            this.filteredUserList = this.filteredUserList.filter(u => u.id !== userId);
+                            uni.showToast({ title: '删除成功', icon: 'success' });
+                        } else {
+                            throw new Error(resp.data?.msg || '删除失败');
+                        }
+                    } catch (err) {
+                        console.error('删除用户失败:', err);
+                        uni.showToast({ title: err.message || '删除失败，请重试', icon: 'none' });
+                    } finally {
+                        uni.hideLoading();
+                    }
+                }
+            });
         },
         
         // 获取用户状态样式类（微信小程序兼容）
@@ -454,6 +503,7 @@ export default {
     // #ifdef H5
     padding-top: 80rpx; /* 贴边衔接，降低顶部内边距 */
     // #endif
+    height: 100vh;
     box-sizing: border-box;
 }
 
@@ -641,6 +691,21 @@ export default {
     color: #666;
 }
 
+.user-actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-left: 12rpx;
+}
+
+.delete-icon {
+    width: 30rpx;
+    height: 30rpx;
+    padding: 6rpx;
+    border-radius: 12rpx;
+    background: linear-gradient(135deg, #ff4d4f 0%, #ff7875 100%);
+}
+
 .user-permissions {
     display: flex;
     flex-direction: column;
@@ -763,6 +828,6 @@ export default {
 
 /* 底部占位，避免被固定按钮遮挡 */
 .scroll-spacer {
-    height: 140rpx;
+  height: calc(80rpx + env(safe-area-inset-bottom));
 }
 </style> 

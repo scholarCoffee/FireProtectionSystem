@@ -114,7 +114,7 @@
                     phone: ''
                 },
                 isLoggedIn: false, // 用户是否已登录
-                serverUrl: 'http://192.168.1.4:3000',
+                serverUrl: 'http://172.17.121.229:3000',
                 showModifyModal: false, // 是否显示修改弹窗
                 modifyValue: '', // 修改的值
                 modifyType: '', // 修改类型
@@ -139,19 +139,20 @@
             // 非微信小程序：生成假数据
             if (!uni.getStorageSync('userInfo')) {
                 let mockUserInfo = {
-                    id: '68a349e95e50a7aae984815d',
+                    userId: '68a349e95e50a7aae984815d',
                 };
                 // 根据id
                 uni.request({
                     url: this.serverUrl + '/user/getById',
                     method: 'POST',
                     data: {
-                        id: mockUserInfo.id
+                        userId: mockUserInfo.userId
                     },
                     success: (res) => {
                         if (res.data && res.data.code === 200) {
                             mockUserInfo = res.data.data;
                             uni.setStorageSync('userInfo', mockUserInfo);
+                            this.userInfo = mockUserInfo;
                             this.isLoggedIn = true; // 用户已登录
                         }
                     }
@@ -165,14 +166,7 @@
                 // 获取本地存储的用户信息
                 const userInfo = uni.getStorageSync('userInfo');
                 if (userInfo) {
-                    const { id, nickName, avatarUrl, phone, permissionStatus } = userInfo;
-                    this.userInfo = {
-                        id,
-                        avatarUrl,
-                        nickName,
-                        phone,
-                        permissionStatus: permissionStatus || 0
-                    }
+                    this.userInfo = userInfo;
                     this.isLoggedIn = true; // 用户已登录
                 } else {
                     this.isLoggedIn = false; // 用户未登录
@@ -229,9 +223,9 @@
                             name: 'file',
                             fileType: 'image',
                             formData: {
-                                id: this.userInfo.id,
+                                id: this.userInfo.userId,
                                 url: withDatedPath('/uploadImg/userImg'),
-                                name: 'userImg_' + this.userInfo.id + Math.ceil(Math.random()*10),
+                                name: 'userImg_' + this.userInfo.userId + Math.ceil(Math.random()*10),
                             },
                             success: (res) => {
                                 const backImg = JSON.parse(res.data).data;
@@ -241,7 +235,7 @@
                                 this.tempFilePaths = '';
                                 // 同步更新后端头像
                                 this.updateUserInfoToServer(
-                                    { id: this.userInfo.id, avatarUrl: backImg, type: 'avatarUrl' },
+                                    { id: this.userInfo.userId, avatarUrl: backImg, type: 'avatarUrl' },
                                     '头像已同步'
                                 );
                             },
@@ -302,7 +296,7 @@
                     }
                     // 同步昵称到后端
                     this.updateUserInfoToServer(
-                        { id: this.userInfo.id, nickName: value, type: 'nickName' },
+                        { id: this.userInfo.userId, nickName: value, type: 'nickName' },
                         '昵称已同步'
                     );
                 }
@@ -359,6 +353,7 @@
                         const serverUser = res.data.data;
                         // 3. 存储后端返回的用户信息（包含唯一id）
                         const userInfo = {
+                            userId: serverUser._id,
                             id: serverUser.id, // 后端返回的唯一标识
                             nickName: serverUser.nickName || nickName,
                             avatarUrl: this.serverUrl + serverUser.avatarUrl || avatarUrl,
@@ -424,7 +419,7 @@
                                     code: loginRes.code,
                                     encryptedData,
                                     iv,
-                                    userId: this.userInfo.id
+                                    userId: this.userInfo.userId
                                 },
                                 success: (res) => {
                                     uni.hideLoading();

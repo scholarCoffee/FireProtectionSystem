@@ -6,7 +6,7 @@
                     <view class="chat-ls" v-for="(item, index) in chatMessageList" :key="index" :id="'chatMessageList' + item.id">     
                         <view class="chat-time" v-if="item.time != ''">{{ dateTime(item.time) }}</view>
                         <!-- 消息左边 -->
-                        <view class="msg-m msg-left" v-if="item.fromId !== userInfo.id">
+                        <view class="msg-m msg-left" v-if="item.fromId !== userInfo.userId">
                             <image :src="item.avatarUrl" class="user-img"></image>
                             <view class="message" v-if="item.types === 0">
                                 <view class="name-text">{{ item.nickName }}</view>
@@ -34,6 +34,23 @@
                 <Submit ref="submit" @currentHeight="currentHeight" @sendMsg="sendMessage"></Submit>
             </view>
         </view>
+        <!-- 悬浮球遮罩（用于点击空白关闭菜单） -->
+        <view v-if="ball.showMenu" class="ball-mask" @tap="closeBallMenu"></view>
+        <!-- 悬浮球 -->
+        <view 
+            class="float-ball" 
+            :style="{ left: ball.x + 'px', top: ball.y + 'px' }"
+            @touchstart="onBallTouchStart"
+            @touchmove="onBallTouchMove"
+            @touchend="onBallTouchEnd"
+        >
+            <image :src="serverUrl + '/static/icons/common/chat-floating.png'" class="ball-icon" />
+            <!-- 菜单 -->
+            <view v-if="ball.showMenu" class="ball-menu">
+                <view class="ball-menu-item" @tap.stop="onBallMenuSelect('history')">群聊天记录</view>
+                <view class="ball-menu-item" @tap.stop="onBallMenuSelect('detail')">群详情</view>
+            </view>
+        </view>
     </view>
 </template>
 <script>
@@ -43,11 +60,7 @@ export default {
     data() {
         return {
             // 当前登录用户
-            userInfo: {
-                id: '', // 用户id
-                nickName: '', // 用户昵称
-                avatarUrl: '' // 用户头像
-            },
+            userInfo: {},
             // 聊天室信息[一对一好友或者群]
             currentUserInfo: {
                 id: '', // 聊天室id
@@ -66,13 +79,28 @@ export default {
             pageSize: 20,
             loadingTimers: '',
             isLoading: false,
-            scrollAnimation: true
+            scrollAnimation: true,
+            // 悬浮球
+            ball: {
+                x: 0,
+                y: 0,
+                startX: 0,
+                startY: 0,
+                touchStartX: 0,
+                touchStartY: 0,
+                dragging: false,
+                moved: false,
+                showMenu: false,
+                vw: 375,
+                vh: 667,
+                radius: 28
+            }
         }
     },
     components: { Submit },
     onLoad(e) {
         const { id, nickName, avatarUrl, chatType } = e || {}
-        this.currentUserInfo.id = id 
+        this.currentUserInfo.userId = id 
         this.currentUserInfo.nickName = nickName
         this.currentUserInfo.avatarUrl = avatarUrl
         this.chatType = Number(chatType) || 1
@@ -81,6 +109,13 @@ export default {
         } else {
             this.receivceGroupSocketMsg()
         }
+        // 初始化悬浮球位置
+        const sys = uni.getSystemInfoSync();
+        this.ball.vw = sys.windowWidth;
+        this.ball.vh = sys.windowHeight;
+        const margin = 16; // px
+        this.ball.x = sys.windowWidth - (this.ball.radius * 2) - margin;
+        this.ball.y = sys.windowHeight - (this.ball.radius * 2) - margin - 100; // 预留输入区
     },
     computed: { isGroup() { return this.chatType == 1 } },
     onShow() {
@@ -107,9 +142,52 @@ export default {
     },
     methods: {
         withDatedPath,
+        // 悬浮球交互
+        closeBallMenu() { this.ball.showMenu = false },
+        onBallTouchStart(e) {
+            const t = e.touches && e.touches[0];
+            if (!t) return;
+            this.ball.dragging = true;
+            this.ball.moved = false;
+            this.ball.touchStartX = t.clientX;
+            this.ball.touchStartY = t.clientY;
+            this.ball.startX = this.ball.x;
+            this.ball.startY = this.ball.y;
+        },
+        onBallTouchMove(e) {
+            if (!this.ball.dragging) return;
+            const t = e.touches && e.touches[0];
+            if (!t) return;
+            const dx = t.clientX - this.ball.touchStartX;
+            const dy = t.clientY - this.ball.touchStartY;
+            if (Math.abs(dx) + Math.abs(dy) > 3) this.ball.moved = true;
+            let nx = this.ball.startX + dx;
+            let ny = this.ball.startY + dy;
+            const minX = 0, minY = 0;
+            const maxX = this.ball.vw - this.ball.radius * 2;
+            const maxY = this.ball.vh - this.ball.radius * 2;
+            nx = Math.max(minX, Math.min(maxX, nx));
+            ny = Math.max(minY, Math.min(maxY, ny));
+            this.ball.x = nx;
+            this.ball.y = ny;
+        },
+        onBallTouchEnd() {
+            if (!this.ball.dragging) return;
+            this.ball.dragging = false;
+            if (!this.ball.moved) this.ball.showMenu = !this.ball.showMenu;
+        },
+        onBallMenuSelect(type) {
+            this.ball.showMenu = false;
+            if (type === 'history') {
+                // 返回到列表页
+                uni.navigateBack();
+            } else if (type === 'detail') {
+                uni.showToast({ title: '群详情开发中', icon: 'none' });
+            }
+        },
         // 自定义后退方法
         customBackMethod() {
-            this.socket.emit('leaveChatRoomServer', this.userInfo.id, this.currentUserInfo.id, this.chatType);
+            this.socket.emit('leaveChatRoomServer', this.userInfo.userId, this.currentUserInfo.userId, this.chatType);
         },
         onClickChatContent() {
             // 点击聊天内容，隐藏键盘
@@ -139,10 +217,7 @@ export default {
             // 获取本地存储的用户信息
             const userInfo = uni.getStorageSync('userInfo');
             if (userInfo) {
-                const { id, nickName, avatarUrl } = userInfo;
-                this.userInfo.id = id
-                this.userInfo.nickName = nickName
-                this.userInfo.avatarUrl = avatarUrl
+                this.userInfo = userInfo;
             }
         },
         nextPage() {
@@ -161,11 +236,11 @@ export default {
             this.chatMessageList = [];
             const url = this.isGroup ? this.serverUrl + '/chat/getGroupMsg' : this.serverUrl + '/chat/getSelfMsg';
             const data = {
-                userId: this.userInfo.id,
+                userId: this.userInfo.userId,
                 nowPage: this.nowPage,
                 pageSize: this.pageSize,
                 state: 1,
-                ...(this.isGroup ? { groupId: this.currentUserInfo.id } : { friendId: this.currentUserInfo.id })
+                ...(this.isGroup ? { groupId: this.currentUserInfo.userId } : { friendId: this.currentUserInfo.userId })
             };
             uni.request({
                 url,
@@ -195,10 +270,6 @@ export default {
                                         data[i].message =  this.serverUrl + data[i].message;
                                         msgArr.push(data[i].message)
                                     }
-                                    // if(data[i].types === 3) {
-                                    //     data[i].message =  JSON.parse(data[i].message)
-                                    //     msgArr.push(data[i].message)
-                                    // }
                                 } else {
                                     data[i].time = '';
                                 }
@@ -242,7 +313,7 @@ export default {
         },
         // 发送消息
         sendMessage(message) {
-           this.receiveMessage(message, this.userInfo.id, this.userInfo.avatarUrl)
+           this.receiveMessage(message, this.userInfo.userId, this.userInfo.avatarUrl)
         },
         /**
          * 
@@ -264,9 +335,9 @@ export default {
                     fileType: 'image',
                     name: 'file',
                     formData: {
-                        id: this.userInfo.id,
+                        id: this.userInfo.userId,
                         url: this.withDatedPath('/uploadImg/chatImg'),
-                        name: 'chatImg_' + this.userInfo.id + Math.ceil(Math.random()*10),
+                        name: 'chatImg_' + this.userInfo.userId + Math.ceil(Math.random()*10),
                     },
                     success: (res) => {
                         // 处理返回的数据
@@ -321,7 +392,7 @@ export default {
         },
         friendIndexServerListener(data) {
             const { messageInfo, userId } = data
-            if (userId == this.currentUserInfo.id && userId !== this.userInfo.id) {
+            if (userId == this.currentUserInfo.userId && userId !== this.userInfo.userId) {
                 this.scrollAnimation = true
                 let nowTime = new Date();
                 let t = spaceTime(this.oldTime, nowTime);
@@ -355,7 +426,7 @@ export default {
         },
         groupIndexServerListener(data) {
             const { messageInfo, userId, groupId, userName, userAvatar } = data
-            if (groupId == this.currentUserInfo.id && userId !== this.userInfo.id) {
+            if (groupId == this.currentUserInfo.userId && userId !== this.userInfo.userId) {
                 this.scrollAnimation = true
                 let nowTime = new Date();
                 let t = spaceTime(this.oldTime, nowTime);
@@ -391,10 +462,10 @@ export default {
             if(!this.isGroup) {
                 this.socket.emit('msgServer', {
                     messageInfo: data,
-                    userId: this.userInfo.id, // 信息来源：当前用户
+                    userId: this.userInfo.userId, // 信息来源：当前用户
                     userName: this.userInfo.nickName, // 当前用户名称
                     userAvatar: this.userInfo.avatarUrl, // 当前用户头像
-                    friendId: this.currentUserInfo.id, // 当前好友id
+                    friendId: this.currentUserInfo.userId, // 当前好友id
                     friendName: this.currentUserInfo.nickName, // 当前好友名称
                     friendAvatar: this.currentUserInfo.avatarUrl, // 当前好友头像
                     time: new Date() // 消息时间
@@ -402,10 +473,10 @@ export default {
             } else {
                 this.socket.emit('groupMsgServer', {
                     messageInfo: data,
-                    userId: this.userInfo.id, // 信息来源：当前用户
+                    userId: this.userInfo.userId, // 信息来源：当前用户
                     userName: this.userInfo.nickName, // 当前用户名称
                     userAvatar: this.userInfo.avatarUrl, // 当前用户头像
-                    groupId: this.currentUserInfo.id, // 当前群id
+                    groupId: this.currentUserInfo.userId, // 当前群id
                     nickName: this.currentUserInfo.nickName, // 当前用户名称
                     avatarUrl: this.currentUserInfo.avatarUrl, // 当前用户头像
                     time: new Date() // 消息时间
@@ -633,5 +704,49 @@ page {
     border-top: 1px solid #eaeaea;
     z-index: 10;
     padding-bottom: env(safe-area-inset-bottom); // 适配全面屏
+}
+
+/* 悬浮球 */
+.float-ball {
+    position: fixed;
+    z-index: 999;
+    width: 56px;
+    height: 56px;
+    border-radius: 28px;
+    background: #1890ff;
+    box-shadow: 0 6px 16px rgba(24,144,255,0.3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.ball-icon {
+    width: 36px;
+    height: 36px;
+    filter: brightness(0) invert(1);
+}
+.ball-mask {
+    position: fixed;
+    left: 0; right: 0; top: 0; bottom: 0;
+    z-index: 998;
+    background: rgba(0,0,0,0.1);
+}
+.ball-menu {
+    position: absolute;
+    right: 64px;
+    top: 0;
+    min-width: 140px;
+    background: #ffffff;
+    border-radius: 12px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+    overflow: hidden;
+}
+.ball-menu-item {
+    padding: 12px 16px;
+    font-size: 14px;
+    color: #333;
+    border-bottom: 1px solid #f0f0f0;
+}
+.ball-menu-item:last-child {
+    border-bottom: none;
 }
 </style>    

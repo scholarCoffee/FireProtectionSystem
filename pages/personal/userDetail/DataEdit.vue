@@ -58,7 +58,7 @@ export default {
       mode: 'add', // add 或 edit
       editId: '', // 编辑时的ID
       commandKey: '', // 数据指挥的key
-      serverUrl: 'http://192.168.1.4:3000',
+      serverUrl: 'http://172.17.121.229:3000',
       // 子组件初始化数据（避免父传子双向修改）
       chatInitialData: {},
       commandInitialData: {},
@@ -402,7 +402,7 @@ export default {
 
 /* 占位，确保最后一块内容不会被底部按钮遮挡（scroll-view 对 padding 支持有限时的兜底） */
 .scroll-spacer {
-  height: calc(140rpx + env(safe-area-inset-bottom));
+  height: calc(80rpx + env(safe-area-inset-bottom));
 }
 
 /* 底部按钮 */
