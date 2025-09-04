@@ -93,15 +93,6 @@ export const sortByTip = (arr, key, tip) => {
     return arr
 }
 
-// 文件夹使用的时间
-export const fileNameTime = (date) => {
-    const d = new Date(date);
-    const year = d.getFullYear();
-    const month = String(d.getMonth() + 1).padStart(2, '0'); // 月份从0开始，所以要加1
-    const day = String(d.getDate()).padStart(2, '0');
-    return `${year}${month}${day}`;
-}
-
 // 生成时间戳（YYYYMMDD_HHmmss）
 export const nowStamp = (date = new Date()) => {
     const d = new Date(date);

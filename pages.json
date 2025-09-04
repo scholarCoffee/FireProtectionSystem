@@ -106,6 +106,20 @@
                         "navigationStyle": "default",
                         "navigationBarTitleText": "聊天窗口"
                     }
+                },
+                {
+                    "path": "chatHistory/index",
+                    "style": {
+                        "navigationStyle": "default",
+                        "navigationBarTitleText": "聊天记录"
+                    }
+                },
+                {
+                    "path": "chatDetail/index",
+                    "style": {
+                        "navigationStyle": "default",
+                        "navigationBarTitleText": "群详情"
+                    }
                 }
             ]
         }

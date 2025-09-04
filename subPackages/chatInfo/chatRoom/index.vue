@@ -34,9 +34,7 @@
                 <Submit ref="submit" @currentHeight="currentHeight" @sendMsg="sendMessage"></Submit>
             </view>
         </view>
-        <!-- 悬浮球遮罩（用于点击空白关闭菜单） -->
-        <view v-if="ball.showMenu" class="ball-mask" @tap="closeBallMenu"></view>
-        <!-- 悬浮球 -->
+        <!-- 悬浮球（无蒙层） -->
         <view 
             class="float-ball" 
             :style="{ left: ball.x + 'px', top: ball.y + 'px' }"
@@ -46,15 +44,25 @@
         >
             <image :src="serverUrl + '/static/icons/common/chat-floating.png'" class="ball-icon" />
             <!-- 菜单 -->
-            <view v-if="ball.showMenu" class="ball-menu">
-                <view class="ball-menu-item" @tap.stop="onBallMenuSelect('history')">群聊天记录</view>
-                <view class="ball-menu-item" @tap.stop="onBallMenuSelect('detail')">群详情</view>
+            <view v-if="ball.showMenu" class="ball-menu" @touchstart.stop @touchmove.stop @touchend.stop>
+                <view 
+                    class="ball-menu-item" 
+                    @tap.stop="onBallMenuSelect('history')" 
+                    @click.stop="onBallMenuSelect('history')" 
+                    @touchend.stop="onBallMenuSelect('history')"
+                >聊天记录</view>
+                <view 
+                    class="ball-menu-item" 
+                    @tap.stop="onBallMenuSelect('detail')" 
+                    @click.stop="onBallMenuSelect('detail')" 
+                    @touchend.stop="onBallMenuSelect('detail')"
+                >查看详情</view>
             </view>
         </view>
     </view>
 </template>
 <script>
-import { dateTime, spaceTime, fileNameTime, withDatedPath } from '@/commons/js/utils.js'; // 导入工具
+import { dateTime, spaceTime, withDatedPath } from '@/commons/js/utils.js'; // 导入工具
 import Submit from '@/componets/submit'
 export default {
     data() {
@@ -69,7 +77,7 @@ export default {
             },
             chatType: 1, // 0-好友，1-群
             chatMessageList: [],
-            serverUrl: 'https://www.xiaobei.space',
+            serverUrl: 'http://172.17.121.229:3000',
             imgMsg: [],
             scrollToView: '',
             oldTime: 0,
@@ -93,7 +101,7 @@ export default {
                 showMenu: false,
                 vw: 375,
                 vh: 667,
-                radius: 28
+                radius: 23
             }
         }
     },
@@ -143,7 +151,6 @@ export default {
     methods: {
         withDatedPath,
         // 悬浮球交互
-        closeBallMenu() { this.ball.showMenu = false },
         onBallTouchStart(e) {
             const t = e.touches && e.touches[0];
             if (!t) return;
@@ -179,10 +186,15 @@ export default {
         onBallMenuSelect(type) {
             this.ball.showMenu = false;
             if (type === 'history') {
-                // 返回到列表页
-                uni.navigateBack();
+                const { userId, nickName, avatarUrl } = this.currentUserInfo
+                uni.navigateTo({
+                    url: `/subPackages/chatInfo/chatHistory/index?groupId=${userId}&groupName=${encodeURIComponent(nickName)}&groupAvatar=${encodeURIComponent(avatarUrl)}`
+                })
             } else if (type === 'detail') {
-                uni.showToast({ title: '群详情开发中', icon: 'none' });
+                const { userId, nickName, avatarUrl } = this.currentUserInfo
+                uni.navigateTo({
+                    url: `/subPackages/chatInfo/chatDetail/index?groupId=${userId}&groupName=${encodeURIComponent(nickName)}&groupAvatar=${encodeURIComponent(avatarUrl)}`
+                })
             }
         },
         // 自定义后退方法
@@ -710,8 +722,8 @@ page {
 .float-ball {
     position: fixed;
     z-index: 999;
-    width: 56px;
-    height: 56px;
+    width: 46px;
+    height: 46px;
     border-radius: 28px;
     background: #1890ff;
     box-shadow: 0 6px 16px rgba(24,144,255,0.3);
@@ -720,15 +732,9 @@ page {
     justify-content: center;
 }
 .ball-icon {
-    width: 36px;
-    height: 36px;
+    width: 30px;
+    height: 30px;
     filter: brightness(0) invert(1);
-}
-.ball-mask {
-    position: fixed;
-    left: 0; right: 0; top: 0; bottom: 0;
-    z-index: 998;
-    background: rgba(0,0,0,0.1);
 }
 .ball-menu {
     position: absolute;
