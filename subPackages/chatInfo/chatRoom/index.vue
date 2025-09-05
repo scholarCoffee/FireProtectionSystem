@@ -77,7 +77,7 @@ export default {
             },
             chatType: 1, // 0-好友，1-群
             chatMessageList: [],
-            serverUrl: 'http://172.17.121.229:3000',
+            serverUrl: 'https://www.xiaobei.space',
             imgMsg: [],
             scrollToView: '',
             oldTime: 0,

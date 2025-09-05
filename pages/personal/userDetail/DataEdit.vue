@@ -58,7 +58,7 @@ export default {
       mode: 'add', // add 或 edit
       editId: '', // 编辑时的ID
       commandKey: '', // 数据指挥的key
-      serverUrl: 'http://172.17.121.229:3000',
+      serverUrl: 'https://www.xiaobei.space',
       // 子组件初始化数据（避免父传子双向修改）
       chatInitialData: {},
       commandInitialData: {},

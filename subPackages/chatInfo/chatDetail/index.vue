@@ -29,7 +29,7 @@
 export default {
     data() {
         return {
-            serverUrl: 'http://172.17.121.229:3000',
+            serverUrl: 'https://www.xiaobei.space',
             groupId: '',
             detail: {}
         }

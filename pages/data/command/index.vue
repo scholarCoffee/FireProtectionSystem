@@ -26,7 +26,7 @@ export default {
     data() {
         return {
             // 可以添加数据
-            serverUrl: 'http://172.17.121.229:3000',
+            serverUrl: 'https://www.xiaobei.space',
             commandStorageKey: 'COMMAND_CONFIG_V1',
             commndList: []
         }

@@ -160,7 +160,7 @@ export default {
       currentTab: 'location', // 当前标签页
       searchKeyword: '', // 搜索关键词
       searchTimer: null, // 搜索防抖定时器
-      serverUrl: 'http://172.17.121.229:3000',
+      serverUrl: 'https://www.xiaobei.space',
       // 数据指挥配置（从接口获取）
       commandConfig: {},
       // 本地编辑弹窗
