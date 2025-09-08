@@ -1,7 +1,7 @@
 <template>
     <view class="content">
         <view class="header">
-            <image class="avatar" :src="detail.groupAvatar" />
+            <image class="avatar" :src="serverUrl + detail.groupAvatar" />
             <view class="meta">
                 <text class="title">{{ detail.groupName || '群详情' }}</text>
             </view>
@@ -49,6 +49,12 @@ export default {
                     const { code, data } = res.data || {}
                     if (code === 200 && data) {
                         this.detail = data
+                        this.detail.members = data.members.map(m => {
+                            if (m.avatarUrl) {
+                                m.avatarUrl = m.avatarUrl.includes('https') ? '/user/person-avatar.png' : m.avatarUrl
+                            }
+                            return m
+                        })
                     } else {
                         this.detail = {}
                     }

@@ -59,7 +59,7 @@
               </view>
               <view class="members-list">
                 <view class="member-item" v-for="member in item.members.slice(0, 5)" :key="member.userId">
-                  <image :src="member.avatarUrl || '/static/icons/chat/person-avatar.png'" class="member-avatar" />
+                  <image :src="serverUrl + (member.avatarUrl || '/user/person-avatar.png')" class="member-avatar" />
                   <view class="member-info">
                     <text class="member-name">{{ member.nickName }}</text>
                     <text class="member-role">{{ member.role === 1 ? '群主' : member.role === 2 ? '管理员' : '成员' }}</text>

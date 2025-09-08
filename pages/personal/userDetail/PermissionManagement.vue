@@ -25,7 +25,7 @@
                         <view class="user-info">
                             <view class="user-avatar">
                                 <image 
-                                    :src="serverUrl + (user.avatar || '/static/icons/person/default-avatar.png')" 
+                                    :src="serverUrl + (user.avatarUrl || '/user/person-avatar.png')" 
                                     mode="aspectFill" 
                                     class="avatar-img"
                                 />
@@ -34,9 +34,9 @@
                                 </view>
                             </view>
                             <view class="user-details">
-                                <view class="user-actions" v-if="canDeleteUser(user)">
+                                <view class="user-actions">
                                     <text class="user-name">{{ user.nickName }}</text>
-                                    <image :src="serverUrl + '/static/icons/common/delete-white.png'" class="delete-icon" @tap="() => deleteUser(user.id)" />
+                                    <image v-if="canDeleteUser(user)" :src="serverUrl + '/static/icons/common/delete-white.png'" class="delete-icon" @tap="() => deleteUser(user.id)" />
                                 </view>
                                 <view class="user-role-phone">
                                      <text class="user-role">{{ getUserRoleText(user.permissionStatus) }}</text>
@@ -125,7 +125,6 @@ export default {
             userList: [],
             filteredUserList: [],
             searchKeyword: '',
-
             currentUserRole: 0, // 默认普通用户
             // 用户身份选项
             roleOptions: ['普通用户', '管理员', '超级管理员'],
@@ -197,14 +196,19 @@ export default {
                 });
                 
                 if (res.data?.code === 200 && res.data.data) {
-                    this.userList = res.data.data.map(user => ({
-                        ...user,
-                        permissions: {
-                            groupChat: user.permissions?.groupChat || false,
-                            settings: user.permissions?.settings || false,
-                            admin: user.permissions?.admin || false
+                    this.userList = res.data.data.map(user => {
+                        if (user.avatarUrl) {
+                            user.avatarUrl = user.avatarUrl.includes('https') ? '/user/person-avatar.png' : user.avatarUrl
                         }
-                    }));
+                        return { 
+                            ...user,
+                            permissions: {
+                                groupChat: user.permissions?.groupChat || false,
+                                settings: user.permissions?.settings || false,
+                                admin: user.permissions?.admin || false
+                            }
+                        }
+                    });
                 } else {
                     throw new Error('获取用户列表失败');
                 }
@@ -823,8 +827,6 @@ export default {
     color: #666;
     line-height: 1.5;
 }
-
-
 
 /* 底部占位，避免被固定按钮遮挡 */
 .scroll-spacer {

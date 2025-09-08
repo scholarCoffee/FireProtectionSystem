@@ -71,9 +71,9 @@ export default {
             userInfo: {},
             // 聊天室信息[一对一好友或者群]
             currentUserInfo: {
-                id: '', // 聊天室id
-                nickName: '', // 聊天室名称
-                avatarUrl: '' // 聊天室头像
+                id: '', // 一对一好友id 或 群id
+                nickName: '', // 一对一好友名称 或 群名称
+                avatarUrl: '' // 一对一好友头像 或 群头像
             },
             chatType: 1, // 0-好友，1-群
             chatMessageList: [],
@@ -112,11 +112,7 @@ export default {
         this.currentUserInfo.nickName = nickName
         this.currentUserInfo.avatarUrl = avatarUrl
         this.chatType = Number(chatType) || 1
-        if (!this.isGroup) {
-            this.receiveSelfSocketMsg()
-        } else {
-            this.receivceGroupSocketMsg()
-        }
+        this.receivceGroupSocketMsg()
         // 初始化悬浮球位置
         const sys = uni.getSystemInfoSync();
         this.ball.vw = sys.windowWidth;
@@ -125,7 +121,6 @@ export default {
         this.ball.x = sys.windowWidth - (this.ball.radius * 2) - margin;
         this.ball.y = sys.windowHeight - (this.ball.radius * 2) - margin - 100; // 预留输入区
     },
-    computed: { isGroup() { return this.chatType == 1 } },
     onShow() {
         this.getStorages()
         this.getChatMessageList()
@@ -135,18 +130,8 @@ export default {
         });
     },
     onUnload() {
-        this.socket.off('msgFront', this.friendIndexServerListener)
         this.socket.off('groupMsgFront', this.groupIndexServerListener)
         clearInterval(this.loadingTimers)
-    },
-    // 拦截导航栏后退事件
-    onBackPress(options) {
-        // 判断是否是从导航栏后退按钮触发的
-        if (['backbutton', 'navigateBack'].includes(options.from)) {
-            // 执行自定义方法
-            this.customBackMethod()
-        }
-        return false
     },
     methods: {
         withDatedPath,
@@ -186,14 +171,14 @@ export default {
         onBallMenuSelect(type) {
             this.ball.showMenu = false;
             if (type === 'history') {
-                const { userId, nickName, avatarUrl } = this.currentUserInfo
+                const { userId } = this.currentUserInfo
                 uni.navigateTo({
-                    url: `/subPackages/chatInfo/chatHistory/index?groupId=${userId}&groupName=${encodeURIComponent(nickName)}&groupAvatar=${encodeURIComponent(avatarUrl)}`
+                    url: `/subPackages/chatInfo/chatHistory/index?groupId=${userId}`
                 })
             } else if (type === 'detail') {
-                const { userId, nickName, avatarUrl } = this.currentUserInfo
-                uni.navigateTo({
-                    url: `/subPackages/chatInfo/chatDetail/index?groupId=${userId}&groupName=${encodeURIComponent(nickName)}&groupAvatar=${encodeURIComponent(avatarUrl)}`
+                const { userId } = this.currentUserInfo
+                    uni.navigateTo({
+                        url: `/subPackages/chatInfo/chatDetail/index?groupId=${userId}`
                 })
             }
         },
@@ -246,16 +231,15 @@ export default {
             // 获取消息列表
             uni.showToast({ title: '加载中...', icon: 'loading', duration: 5000 });
             this.chatMessageList = [];
-            const url = this.isGroup ? this.serverUrl + '/chat/getGroupMsg' : this.serverUrl + '/chat/getSelfMsg';
             const data = {
                 userId: this.userInfo.userId,
                 nowPage: this.nowPage,
                 pageSize: this.pageSize,
                 state: 1,
-                ...(this.isGroup ? { groupId: this.currentUserInfo.userId } : { friendId: this.currentUserInfo.userId })
+                groupId: this.currentUserInfo.userId
             };
             uni.request({
-                url,
+                url: this.serverUrl + '/chat/getGroupMsg',
                 method: 'POST',
                 data,
                 success: (res) => {
@@ -398,10 +382,6 @@ export default {
                 this.scrollToBottom(); // 滚动到底部
             }); 
         },
-        // socekt聊天接受数据
-        receiveSelfSocketMsg() {
-            this.socket.on('msgFront', this.friendIndexServerListener)
-        },
         friendIndexServerListener(data) {
             const { messageInfo, userId } = data
             if (userId == this.currentUserInfo.userId && userId !== this.userInfo.userId) {
@@ -471,29 +451,14 @@ export default {
         },
         // 聊天数据发送给后端
         sendSocket(data) {
-            if(!this.isGroup) {
-                this.socket.emit('msgServer', {
-                    messageInfo: data,
-                    userId: this.userInfo.userId, // 信息来源：当前用户
-                    userName: this.userInfo.nickName, // 当前用户名称
-                    userAvatar: this.userInfo.avatarUrl, // 当前用户头像
-                    friendId: this.currentUserInfo.userId, // 当前好友id
-                    friendName: this.currentUserInfo.nickName, // 当前好友名称
-                    friendAvatar: this.currentUserInfo.avatarUrl, // 当前好友头像
-                    time: new Date() // 消息时间
-                })
-            } else {
-                this.socket.emit('groupMsgServer', {
-                    messageInfo: data,
-                    userId: this.userInfo.userId, // 信息来源：当前用户
-                    userName: this.userInfo.nickName, // 当前用户名称
-                    userAvatar: this.userInfo.avatarUrl, // 当前用户头像
-                    groupId: this.currentUserInfo.userId, // 当前群id
-                    nickName: this.currentUserInfo.nickName, // 当前用户名称
-                    avatarUrl: this.currentUserInfo.avatarUrl, // 当前用户头像
-                    time: new Date() // 消息时间
-                })
-            }
+            this.socket.emit('groupMsgServer', {
+                messageInfo: data,
+                userId: this.userInfo.userId, // 信息来源：当前用户
+                userName: this.userInfo.nickName, // 当前用户名称
+                userAvatar: this.userInfo.avatarUrl, // 当前用户头像
+                groupId: this.currentUserInfo.userId, // 当前群id
+                time: new Date() // 消息时间
+            })
         },
         // 初始化聊天框高度
         initChatHeight() {
@@ -598,7 +563,8 @@ page {
                max-width: 480rpx;
             }
             .name-text {
-                padding: 0 20rpx;
+                font-size: $uni-font-size-sm;
+                padding: 0rpx 20rpx 4rpx 20rpx;
             }
             .msg-text {
                 padding: 20rpx;

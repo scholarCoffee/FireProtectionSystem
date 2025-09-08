@@ -51,6 +51,7 @@
         },
         data() {
             return {
+                serverUrl: 'https://www.xiaobei.space',
                 moreList: chatSubmitList,
                 isRecord: false,
                 isEmoji: true,
@@ -262,7 +263,6 @@
     border-top: 1px solid #eaeaea;
     width: 100%;
     z-index: 10002;
-    padding-bottom: env(safe-area-inset-bottom);
 }
 .submit-chat {
     display: flex;

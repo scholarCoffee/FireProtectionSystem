@@ -10,7 +10,7 @@
       <view class="avatar-section">
         <view class="current-avatar">
           <image 
-            :src="serverUrl + localForm.groupAvatar || '/static/icons/group/default-group.png'" 
+            :src="serverUrl + localForm.groupAvatar || '/group/group.png'" 
             mode="aspectFill" 
             class="avatar-img"
           />
@@ -189,7 +189,7 @@ export default {
 .chat-form {
   background: linear-gradient(135deg, #f8faff 0%, #e6f7ff 100%);
   height: 100vh;
-  padding-bottom: 40rpx;
+  padding-bottom: 0;
 }
 
 /* 群基本信息样式补充 */

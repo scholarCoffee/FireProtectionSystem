@@ -15,7 +15,7 @@
                 <view class="row" @tap="onChosenImage" >
                     <view class="title">头像：</view>
                     <view class="cont" >
-                        <image :src="userInfo.avatarUrl" class="user-img"></image>
+                        <image :src="userInfo.avatarUrl ? userInfo.avatarUrl : serverUrl + '/user/person-avatar.png'" class="user-img"></image>
                     </view>
                     <view class="more" >
                         <image :src="serverUrl + '/static/icons/common/right.png'" mode="aspectFit"></image>
@@ -350,19 +350,9 @@
                     });
 
                     if (res.data?.code === 200 && res.data.data) {
-                        const serverUser = res.data.data;
-                        // 3. 存储后端返回的用户信息（包含唯一id）
-                        const userInfo = {
-                            userId: serverUser._id,
-                            id: serverUser.id, // 后端返回的唯一标识
-                            nickName: serverUser.nickName || nickName,
-                            avatarUrl: this.serverUrl + serverUser.avatarUrl || avatarUrl,
-                            permissionStatus: serverUser.permissionStatus || 1
-                        };
-                        uni.setStorageSync('userInfo', userInfo);
-                        
+                        uni.setStorageSync('userInfo', res.data.data);
                         // 更新页面数据
-                        this.userInfo = { ...this.userInfo, ...userInfo };
+                        this.userInfo = { ...this.userInfo, ...res.data.data };
                         this.isLoggedIn = true;
                         
                         uni.showToast({ title: '登录成功', icon: 'success' });

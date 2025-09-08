@@ -15,9 +15,12 @@
                 <text class="time">{{ dateTime(msg.time) }}</text>
                 <view class="row" :class="{ right: msg.fromId === userInfo.userId }">
                     <image class="u-avatar" :src="msg.avatarUrl" />
-                    <view class="bubble" v-if="msg.types === 0">{{ msg.message }}</view>
-                    <image v-else-if="msg.types === 1" class="img" :src="serverUrl + msg.message" mode="widthFix" @tap="previewImg(serverUrl + msg.message)" />
-                    <view v-else class="bubble">[暂不支持的消息类型]</view>
+                    <view class="msg-col">
+                        <text class="nickname">{{ displayName(msg) }}</text>
+                        <view class="bubble" v-if="msg.types === 0">{{ msg.message }}</view>
+                        <image v-else-if="msg.types === 1" class="img" :src="serverUrl + msg.message" mode="widthFix" @tap="previewImg(serverUrl + msg.message)" />
+                        <view v-else class="bubble">[暂不支持的消息类型]</view>
+                    </view>
                 </view>
             </view>
             <view class="load-end" v-if="finished">没有更多了</view>
@@ -32,8 +35,6 @@ export default {
         return {
             serverUrl: 'https://www.xiaobei.space',
             groupId: '',
-            groupName: '',
-            groupAvatar: '',
             userInfo: {},
             list: [],
             page: 1,
@@ -46,8 +47,6 @@ export default {
     },
     onLoad(query) {
         this.groupId = query.groupId || ''
-        this.groupName = decodeURIComponent(query.groupName || '')
-        this.groupAvatar = decodeURIComponent(query.groupAvatar || '')
         const sys = uni.getSystemInfoSync()
         this.scrollHeight = sys.windowHeight - 110
         const userInfo = uni.getStorageSync('userInfo')
@@ -56,6 +55,10 @@ export default {
     },
     methods: {
         dateTime,
+        // 统一昵称显示：兼容多种后端字段
+        displayName(msg) {
+            return msg.nickName || msg.nickname || msg.userName || msg.username || msg.fromName || msg.name || '未知用户'
+        },
         fetch(reset = false) {
             if (reset) {
                 this.page = 1
@@ -83,7 +86,7 @@ export default {
                         }
                         const mapped = data.map(x => ({
                             ...x,
-                            avatarUrl: this.serverUrl + x.avatarUrl
+                            avatarUrl: (x.avatarUrl && x.avatarUrl.startsWith('http')) ? x.avatarUrl : (this.serverUrl + x.avatarUrl)
                         }))
                         this.list = this.list.concat(mapped)
                         if (data.length < this.pageSize) {
@@ -127,6 +130,9 @@ export default {
 .row { display: flex; align-items: flex-end; }
 .row.right { flex-direction: row-reverse; }
 .u-avatar { width: 28px; height: 28px; border-radius: 6px; margin: 0 8px; }
+.msg-col { display: flex; flex-direction: column; max-width: 80%; }
+.row.right .msg-col { align-items: flex-end; }
+.nickname { font-size: 12px; color: #888; margin: 0 6px 2px 6px; white-space: nowrap; }
 .bubble { max-width: 70%; background: #fff; border-radius: 10px; padding: 8px 10px; font-size: 14px; color: #333; }
 .row.right .bubble { background: #82f1007d; }
 .img { max-width: 60vw; border-radius: 8px; }

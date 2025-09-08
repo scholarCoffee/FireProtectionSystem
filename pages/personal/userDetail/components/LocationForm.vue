@@ -1089,6 +1089,14 @@
   </script>
 
 <style lang="scss" scoped>
+/* 根容器样式 */
+.location-form {
+  width: 100%;
+  min-height: 100%;
+  padding: 0;
+  background: #f5f5f5;
+}
+
 /* 通用区域样式 */
 .location-info-section,
 .safety-section,
@@ -1935,6 +1943,13 @@
   width: 100%;
   height: 300rpx;
   background: #000;
+}
+
+.deploy-image {
+  width: 100%;
+  height: 300rpx;
+  background: #f5f5f5;
+  object-fit: cover;
 }
 
 /* 与消防地图保持相同的外边距与内部留白 */

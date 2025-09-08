@@ -50,11 +50,9 @@ export default {
                 },
                 success: (res) => {
                     if (res.data && res.data.code === 200) {
-                        // 根据新的数据结构，直接使用 res.data.data
-                        this.commndList = res.data.data || []
-                        // 保存到本地存储
                         try {
-                            uni.setStorageSync(this.commandStorageKey, this.commndList)
+                            // 根据新的数据结构，直接使用 res.data.data
+                            this.commndList = res.data.data || []
                         } catch (e) {
                             console.error('保存到本地存储失败:', e)
                         }

@@ -377,8 +377,6 @@ export default {
         console.log('检查本地安全评分失败:', error);
       }
     },
-    
-
   }
 }
 </script>
@@ -386,7 +384,6 @@ export default {
 <style lang="scss" scoped>
 .data-edit {
   height: 100vh;
-  background: #f7f7f7;
   display: flex;
   flex-direction: column;
 }
@@ -395,49 +392,51 @@ export default {
 .form-container {
   flex: 1;
   padding: 0;
-  padding-bottom: calc(120rpx + env(safe-area-inset-bottom)); /* 适配H5/iOS底部安全区 */
-  height: calc(100vh - 80rpx);
+  height: calc(100vh - 100rpx - env(safe-area-inset-bottom)); /* 减去底部按钮实际高度 */
+  max-height: calc(100vh - 100rpx - env(safe-area-inset-bottom)); /* 确保不超过视口高度 */
   overflow-y: auto;
+  -webkit-overflow-scrolling: touch; /* iOS 平滑滚动 */
 }
 
-/* 占位，确保最后一块内容不会被底部按钮遮挡（scroll-view 对 padding 支持有限时的兜底） */
+/* 滚动占位符 */
 .scroll-spacer {
-  height: calc(80rpx + env(safe-area-inset-bottom));
+  height: calc(100rpx + env(safe-area-inset-bottom)); /* 为底部按钮留出实际空间 */
+  width: 100%;
 }
 
 /* 底部按钮 */
-  .footer {
-    display: flex;
+.footer {
+  display: flex;
   padding: 16rpx 20rpx calc(16rpx + env(safe-area-inset-bottom)) 20rpx;
-    gap: 24rpx;
-    background: #ffffff;
-    border-top: 1rpx solid #e8f4ff;
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    z-index: 100;
-  }
-  
-  .footer-btn {
-    flex: 1;
+  gap: 24rpx;
+  background: #ffffff;
+  border-top: 1rpx solid #e8f4ff;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+}
+
+.footer-btn {
+  flex: 1;
   height: 68rpx;
   line-height: 68rpx;
-    border-radius: 16rpx;
-    font-size: 24rpx;
-    font-weight: 600;
-    border: none;
+  border-radius: 16rpx;
+  font-size: 24rpx;
+  font-weight: 600;
+  border: none;
   transition: all 0.2s ease;
-    position: relative;
-    overflow: hidden;
+  position: relative;
+  overflow: hidden;
 
   &::before {
     display: none;
   }
 
-    &:active {
-      transform: scale(0.98);
-    }
+  &:active {
+    transform: scale(0.98);
+  }
 }
 
 .cancel-btn {

@@ -137,7 +137,7 @@
                         id: 'o782m7VVE2mElMJV18aNxzYQaxts',
                         userId: '68a349e95e50a7aae984815d',
                         nickName: '小左同志',
-                        avatarUrl: this.serverUrl + '/static/icons/chat/person-avatar.png',
+                        avatarUrl: this.serverUrl + '/user/person-avatar.png',
                         permissionStatus: 2 // 超级管理员
                     };
                     uni.setStorageSync('userInfo', mockUserInfo);
@@ -162,8 +162,6 @@
                     }
                 } else {
                     this.isLoggedIn = false;    
-                    // 清除未读数
-                    // clearUnreadCount();
                 }
             },
             // 加载群聊列表
@@ -251,13 +249,15 @@
                     addUnreadCount(group.tip || 0)
                     return {
                         groupId: group.groupId,
+                        sendMsgId: group.sendMsgId,
                         sendMsgName: group.sendMsgName || '群成员',
                         sendMsgAvatar: group.sendMsgAvatar,
                         groupName: group.groupName,
-                        groupAvatar: group.groupAvatar ? (this.serverUrl + group.groupAvatar) : this.serverUrl + '/static/icons/chat/defautl-group.png',
+                        groupAvatar: group.groupAvatar ? (this.serverUrl + group.groupAvatar) : this.serverUrl + '/group/group.png',
                         lastTime: group?.lastTime ? new Date(group?.lastTime) : new Date(),
                         message: group?.message ? `${group.sendMsgName || '群成员'}: ${group?.message}` : '暂无消息',
-                        tip: group?.tip || 0
+                        tip: group?.tip || 0,
+                        type: group?.type || 0
                     }
                 })
             },
@@ -451,8 +451,8 @@
 
         .group-tag {
             position: absolute;
-            bottom: 6rpx;
-            right: 6rpx;
+            bottom: 0rpx;
+            right: -12rpx;
             width: 24rpx;
             height: 24rpx;
             background-color: #5d7df9;

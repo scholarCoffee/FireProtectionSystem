@@ -4,7 +4,7 @@
     <view class="header-section">
       <view class="group-info">
         <image 
-          :src="serverUrl + (groupAvatar || '/static/icons/group/default-group.png')" 
+          :src="serverUrl + (groupAvatar || '/group/group.png')" 
           mode="aspectFill" 
           class="group-avatar"
         />
@@ -50,7 +50,7 @@
           >
             <view class="user-info">
               <image 
-                :src="serverUrl + (user.avatarUrl || '/static/icons/person/default-avatar.png')" 
+                :src="serverUrl + (user.avatarUrl || '/user/person-avatar.png')" 
                 mode="aspectFill" 
                 class="user-avatar"
               />
@@ -197,7 +197,12 @@ export default {
         });
         
         if (res.data?.code === 200 && res.data.data) {
-          return res.data.data;
+          return res.data.data.map(user => {
+            if (user.avatarUrl) {
+              user.avatarUrl = user.avatarUrl.includes('https') ? '/user/person-avatar.png' : user.avatarUrl
+            }
+            return user;
+          });
         } else {
           throw new Error('获取用户列表失败');
         }

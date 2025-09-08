@@ -349,16 +349,6 @@ export default {
     
     // 保存安全评分到本地（新建模式）
     saveSafetyScoreToLocal() {
-      // 将安全评分保存到本地存储
-      const safetyScoreData = {
-        scoreItems: this.scoreItems,
-        timestamp: Date.now(),
-        isLocal: true
-      };
-      
-      // 保存到本地存储
-      uni.setStorageSync('tempSafetyScore', safetyScoreData);
-      
       // 显示保存成功提示
       uni.showToast({
         title: '安全评分已保存',
