@@ -16,6 +16,14 @@
                                 <view class="name-text">{{ item.nickName }}</view>
                                 <image :src="item.message" class="msg-img" @tap="previewImg(item.message)" mode="widthFix"></image>
                             </view>
+                            <view class="message" v-if="item.types === 2">
+                                <view class="name-text">{{ item.nickName }}</view>
+                                <view class="msg-voice" @tap="playVoice(item)">
+                                    <image class="voice-icon" :class="{ playing: playingId === item.id }" :src="serverUrl + '/static/icons/chat/voice-left.png'" />
+                                    <view class="voice-duration">{{ formatSec(item.voiceTime || 0) }}</view>
+                                    <view class="unread-dot" v-if="showUnread(item)"></view>
+                                </view>
+                            </view>
                         </view>
                         <!-- 消息右边 -->
                         <view class="msg-m msg-right" v-else>
@@ -25,6 +33,13 @@
                             </view>
                             <view class="message" v-if="item.types === 1">
                                 <image :src="item.message" class="msg-img" @tap="previewImg(item.message)" mode="widthFix"></image>
+                            </view>
+                            <view class="message" v-if="item.types === 2">
+                                <view class="msg-voice right" @tap="playVoice(item)">
+                                    <view class="voice-duration">{{ formatSec(item.voiceTime || 0) }}</view>
+                                    <image class="voice-icon" :class="{ playing: playingId === item.id }" :src="serverUrl + '/static/icons/chat/voice-right.png'" />
+                                    <view class="unread-dot right" v-if="showUnread(item)"></view>
+                                </view>
                             </view>
                         </view>
                     </view>
@@ -102,7 +117,10 @@ export default {
                 vw: 375,
                 vh: 667,
                 radius: 23
-            }
+            },
+            playingId: null,
+            innerAudio: null,
+            listenedVoiceIds: {}
         }
     },
     components: { Submit },
@@ -113,13 +131,14 @@ export default {
         this.currentUserInfo.avatarUrl = avatarUrl
         this.chatType = Number(chatType) || 1
         this.receivceGroupSocketMsg()
-        // 初始化悬浮球位置
+        // 初始化悬浮球位置（右上角）
         const sys = uni.getSystemInfoSync();
         this.ball.vw = sys.windowWidth;
         this.ball.vh = sys.windowHeight;
         const margin = 16; // px
-        this.ball.x = sys.windowWidth - (this.ball.radius * 2) - margin;
-        this.ball.y = sys.windowHeight - (this.ball.radius * 2) - margin - 100; // 预留输入区
+        const statusBar = sys.statusBarHeight || 0;
+        this.ball.x = sys.windowWidth - (this.ball.radius * 2) - margin; // 靠右
+        this.ball.y = margin + statusBar; // 靠上，避开状态栏
     },
     onShow() {
         this.getStorages()
@@ -135,6 +154,38 @@ export default {
     },
     methods: {
         withDatedPath,
+        formatSec(s) {
+            s = Number(s) || 0
+            return s + 's'
+        },
+        ensureAudio() {
+            if (!this.innerAudio) {
+                this.innerAudio = uni.createInnerAudioContext()
+                this.innerAudio.obeyMuteSwitch = false
+                this.innerAudio.onEnded(() => { this.playingId = null })
+                this.innerAudio.onStop(() => { this.playingId = null })
+                this.innerAudio.onError(() => { this.playingId = null })
+            }
+        },
+        playVoice(item) {
+            if (!item || !item.message) return
+            this.ensureAudio()
+            if (this.playingId === item.id) {
+                this.innerAudio.stop()
+                this.playingId = null
+                return
+            }
+            this.playingId = item.id
+            this.innerAudio.src = item.message.startsWith('http') ? item.message : (this.serverUrl + item.message)
+            this.innerAudio.play()
+            // 标记为已听
+            this.$set(this.listenedVoiceIds, item.id, true)
+        },
+        showUnread(item) {
+            // 自己发的不显示未读；听过的也不显示
+            if (!item || item.fromId === this.userInfo.userId) return false
+            return !this.listenedVoiceIds[item.id]
+        },
         // 悬浮球交互
         onBallTouchStart(e) {
             const t = e.touches && e.touches[0];
@@ -318,6 +369,7 @@ export default {
          * @param avatarUrl 消息发送者头像
          */
         receiveMessage(messageInfo, id, avatarUrl) {
+            console.log('receiveMessage', messageInfo, id, avatarUrl)
             const { types } = messageInfo || {}
             let { message } = messageInfo || {}
             // 发送消息
@@ -356,6 +408,41 @@ export default {
                 uploadTask.onProgressUpdate((res) => {
                     console.log('上传进度', res.progress)
                 })
+            } else if (types === 2) {
+                // 语音消息上传
+                const { voice, time: voiceTime } = messageInfo || {}
+                const uploadTask = uni.uploadFile({
+                    url: this.serverUrl + '/files/upload',
+                    filePath: voice,
+                    fileType: 'audio',
+                    name: 'file',
+                    formData: {
+                        id: this.userInfo.userId,
+                        url: this.withDatedPath('/uploadVoice/chatVoice'),
+                        name: 'chatVoice_' + this.userInfo.userId + Math.ceil(Math.random()*10),
+                    },
+                    success: (res) => {
+                        try { res = JSON.parse(res.data) } catch(_) {}
+                        if (res && res.data) {
+                            const data = {
+                                message: res.data,
+                                types: 2,
+                                voiceTime: voiceTime || 0
+                            }
+                            this.sendSocket(data)
+                        } else {
+                            uni.showToast({ title: '语音上传失败', icon: 'none' })
+                        }
+                    },
+                    fail: (err) => {
+                        uni.showToast({ title: '语音上传失败' + err, icon: 'none', duration: 2000 })
+                    }
+                })
+                if (uploadTask && uploadTask.onProgressUpdate) {
+                    uploadTask.onProgressUpdate((res) => {
+                        console.log('语音上传进度', res.progress)
+                    })
+                }
             }
             this.scrollAnimation = true
             let len = this.chatMessageList.length
@@ -381,37 +468,6 @@ export default {
             this.$nextTick(() => {
                 this.scrollToBottom(); // 滚动到底部
             }); 
-        },
-        friendIndexServerListener(data) {
-            const { messageInfo, userId } = data
-            if (userId == this.currentUserInfo.userId && userId !== this.userInfo.userId) {
-                this.scrollAnimation = true
-                let nowTime = new Date();
-                let t = spaceTime(this.oldTime, nowTime);
-                if (t) {
-                    this.oldTime = t
-                }
-                if (messageInfo.types == 1 || messageInfo.types == 2) {
-                    messageInfo.message = this.serverUrl + messageInfo.message
-                }
-                nowTime = t;
-                const data = {
-                    fromId: userId, // 假设 1 表示当前用户
-                    message: messageInfo.message,
-                    types: messageInfo.types, // 假设 0 表示文本消息
-                    time: nowTime,
-                    avatarUrl: this.userInfo.avatarUrl, // 假设当前用户头像
-                    id: this.chatMessageList.length + 1
-                }
-                // 添加新消息到消息列表
-                this.chatMessageList.push(data);
-                if (messageInfo.types === 1) {
-                    this.imgMsg.push(messageInfo.message)
-                }
-                this.$nextTick(() => {
-                    this.scrollToBottom(); // 滚动到底部
-                });
-            } 
         },
         receivceGroupSocketMsg() {
             this.socket.on('groupMsgFront', this.groupIndexServerListener)
@@ -574,6 +630,40 @@ page {
                 word-break: break-all; // 防止长文本溢出
                 word-wrap: break-word;
             }
+            .msg-voice {
+                position: relative;
+                display: inline-flex;
+                align-items: center;
+                background: #fff;
+                border-radius: 20rpx;
+                padding: 16rpx 20rpx;
+                overflow: hidden;
+                .voice-icon { width: 36rpx; height: 36rpx; margin: 0 8rpx; }
+                .voice-duration { font-size: 26rpx; color: #666; }
+                &.right { background: #82f1007d; }
+            }
+            /* 波纹特效：播放时淡出扩散 */
+            .voice-icon.playing::after {
+                content: '';
+                position: absolute;
+                left: 0; top: 0; right: 0; bottom: 0;
+                pointer-events: none;
+                background: radial-gradient(rgba(18,150,219,0.25) 0%, rgba(18,150,219,0) 60%);
+                animation: ripple 1.2s infinite ease-out;
+            }
+            @keyframes ripple {
+                0% { transform: scale(0.6); opacity: .9; }
+                70% { transform: scale(1.4); opacity: .25; }
+                100% { transform: scale(1.8); opacity: 0; }
+            }
+            /* 未读红点 */
+            .unread-dot {
+                position: absolute;
+                top: -6rpx; right: -6rpx;
+                width: 12rpx; height: 12rpx;
+                background: #ff4d4f; border-radius: 50%;
+            }
+            .unread-dot.right { left: -6rpx; right: auto; }
             .msg-img {
                 max-width: 60vw; // 适配不同屏幕
                 border-radius: $uni-border-radius-base;

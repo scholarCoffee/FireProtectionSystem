@@ -5,7 +5,7 @@
                 <view class="bt-img" @tap="onClickSpeak">
                     <image :src="speakIcon" class="icon gray"></image>
                 </view>
-                <textarea v-model="msg" auto-height="true" class="chat-send btn" :class="{ displayNone: isRecord}" @input="onClickInput" @focus="focus"></textarea>
+                <textarea v-model="msg" :auto-height="false" :show-confirm-bar="false" :adjust-position="false" class="chat-send btn" :class="{ displayNone: isRecord}" @input="onClickInput" @focus="focus"></textarea>
                 <view class="record btn" :class="{ displayNone: !isRecord }" @longpress="touchstart" @touchend="touchend" @touchmove="touchmove">按住说话</view>
                 <view class="bt-img emoji-icon" @tap="onShowEmoji">
                     <image :src="serverUrl + '/static/icons/chat/smile.png'" class="icon gray"></image>
@@ -24,7 +24,7 @@
                 <emoji @emotion="onClickEmoji" :height="260"></emoji>
                 </view>
                 <view class="more" :class="{ displayNone: isMore }">
-                    <view class="more-list" v-for="(item, index) in moreList" :key="index" @tap="onClickMore(item)">
+                    <view class="more-list" v-for="(item, index) in moreList" :key="index" @tap="onClickInfo(item)">
                         <image :src="serverUrl + item.imgUrl"></image>
                         <view class="more-list-text">{{ item.text }}</view>
                     </view>
@@ -109,7 +109,7 @@
                 this.msg = this.msg + data
             },
             // 点击更多
-            onClickMore(item) {
+            onClickInfo(item) {
               const { key } = item || {}
               switch(key) {
                 case 1:
@@ -147,13 +147,26 @@
                     sizeType: ['original', 'compressed'],
                     sourceType: sourceType,
                     success: (res) => {
-                        const filePaths = res.tempFilePaths
-                        for (let i = 0; i < filePaths.length; i++) {
-                            this.send(filePaths[i], 1)
+                        // 增强：大小过滤与加载提示
+                        try {
+                            uni.showLoading({ title: '处理中...', mask: true })
+                            const files = (res.tempFiles || []).length ? res.tempFiles : (res.tempFilePaths || []).map(p => ({ path: p, size: 0 }))
+                            const MAX_SIZE = 10 * 1024 * 1024 // 10MB
+                            const valid = files.filter(f => !f.size || f.size <= MAX_SIZE)
+                            if (valid.length < files.length) {
+                                uni.showToast({ title: '已跳过超过10MB的图片', icon: 'none' })
+                            }
+                            for (let i = 0; i < valid.length; i++) {
+                                const path = valid[i].path || valid[i]
+                                this.send(path, 1)
+                            }
+                        } finally {
+                            uni.hideLoading()
                         }
                     },
                     fail: (err) => {
                         console.log(err)
+                        uni.showToast({ title: '选择图片失败', icon: 'none' })
                     }
                 })
             },
@@ -279,19 +292,23 @@
     .btn {
         flex: auto;
         margin: 0 10rpx;
-        max-height: 160rpx;
+        height: 88rpx; /* 固定输入控件高度，避免切换时跳动 */
+        max-height: 88rpx;
         padding: 10rpx;
         border: 1px solid #ccc;
         border-radius: 10rpx;
         background-color: #fff;
     }
     .chat-send {
+        min-height: 44rpx;
+        height: 44rpx; /* 强制 textarea 与录音按钮同高 */
         line-height: 44rpx;
     }
     .record {
         font-size: $uni-font-size-base;
         color: $uni-text-color-grey;
         text-align: center;
+        height: 44rpx; /* 与输入框同高 */
         line-height: 44rpx;
     }
 }

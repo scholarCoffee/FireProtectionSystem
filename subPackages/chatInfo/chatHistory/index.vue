@@ -88,7 +88,16 @@ export default {
                             ...x,
                             avatarUrl: (x.avatarUrl && x.avatarUrl.startsWith('http')) ? x.avatarUrl : (this.serverUrl + x.avatarUrl)
                         }))
-                        this.list = this.list.concat(mapped)
+                        // 前端兜底过滤：若后端未实现 keyword 搜索，这里做一次包含匹配
+                        const kw = (this.keyword || '').trim()
+                        const filtered = kw
+                            ? mapped.filter(x => {
+                                const name = (this.displayName(x) || '').toString()
+                                const msg = (x.message || '').toString()
+                                return name.indexOf(kw) !== -1 || msg.indexOf(kw) !== -1
+                              })
+                            : mapped
+                        this.list = this.list.concat(filtered)
                         if (data.length < this.pageSize) {
                             this.finished = true
                         } else {
@@ -133,7 +142,7 @@ export default {
 .msg-col { display: flex; flex-direction: column; max-width: 80%; }
 .row.right .msg-col { align-items: flex-end; }
 .nickname { font-size: 12px; color: #888; margin: 0 6px 2px 6px; white-space: nowrap; }
-.bubble { max-width: 70%; background: #fff; border-radius: 10px; padding: 8px 10px; font-size: 14px; color: #333; }
+.bubble { max-width: 70%; background: #fff; border-radius: 10px; padding: 8px 10px; font-size: 14px; color: #333; white-space: pre-wrap; word-break: break-word; overflow: visible; text-overflow: clip; }
 .row.right .bubble { background: #82f1007d; }
 .img { max-width: 60vw; border-radius: 8px; }
 .load-end { text-align: center; color: #999; padding: 10px 0; }
