@@ -352,7 +352,7 @@ export default {
                 return;
             }
             
-            const newRole = roleIndex;
+            const newRole = Number(roleIndex) || 0;
             const oldRole = user.permissionStatus;
             
             try {

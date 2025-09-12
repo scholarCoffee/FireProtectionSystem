@@ -1,6 +1,6 @@
 {
-    "name" : "fire-chat",
-    "appid" : "wxedd2e225d0fbca96",
+    "name" : "fireSystem",
+    "appid" : "wx500011532223fce4",
     "description" : "",
     "versionName" : "1.0.0",
     "versionCode" : "100",
@@ -70,7 +70,7 @@
     "quickapp" : {},
     /* 小程序特有相关 */
     "mp-weixin" : {
-        "appid" : "wxedd2e225d0fbca96",
+        "appid" : "wx500011532223fce4",
         "setting" : {
             "urlCheck" : false,
             "es6" : true,

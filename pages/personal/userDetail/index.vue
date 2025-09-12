@@ -235,7 +235,7 @@
                                 this.tempFilePaths = '';
                                 // 同步更新后端头像
                                 this.updateUserInfoToServer(
-                                    { id: this.userInfo.userId, avatarUrl: backImg, type: 'avatarUrl' },
+                                    { userId: this.userInfo.userId, avatarUrl: backImg, type: 'avatarUrl' },
                                     '头像已同步'
                                 );
                             },
@@ -296,7 +296,7 @@
                     }
                     // 同步昵称到后端
                     this.updateUserInfoToServer(
-                        { id: this.userInfo.userId, nickName: value, type: 'nickName' },
+                        { userId: this.userInfo.userId, nickName: value, type: 'nickName' },
                         '昵称已同步'
                     );
                 }

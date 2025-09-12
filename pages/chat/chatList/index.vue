@@ -5,8 +5,7 @@
             <view class="login-container">
                 <image :src="serverUrl + '/static/icons/person/person.png'" class="login-avatar"></image>
                 <text class="login-title">欢迎使用消防作战终端</text>
-                <text class="login-desc">登录后即可查看群聊消息</text>
-                <button class="login-btn" open-type="getUserInfo" @getuserinfo="onGetUserInfo">一键登录</button>
+                <text class="login-desc">请在个人页进行登录</text>
             </view>
         </view>
         <!-- 已登录但无权限提示 -->
@@ -277,80 +276,6 @@
                 const { groupId, groupName, groupAvatar } = group;
                 uni.navigateTo({
                     url: `/subPackages/chatInfo/chatRoom/index?id=${groupId}&nickName=${groupName}&avatarUrl=${groupAvatar}&chatType=1`
-                });
-            },
-            // 微信一键登录新版，强制获取头像昵称
-            async onGetUserInfo(e) {
-                if (!e.detail || !e.detail.userInfo) {
-                    uni.showToast({
-                        title: '需要授权获取头像昵称',
-                        icon: 'none',
-                        duration: 2000
-                    });
-                    return;
-                }
-                uni.showLoading({ title: '登录中...' });
-                
-                uni.login({
-                    provider: 'weixin',
-                    success: (loginRes) => {
-                        const code = loginRes.code;
-                        const { nickName, avatarUrl } = e.detail.userInfo;
-                        
-                        // 调用后端接口存储用户信息
-                        uni.request({
-                            url: this.serverUrl + '/user/update', // 替换为你的后端登录接口
-                            method: 'POST',
-                            data: {
-                                nickName: nickName,
-                                avatarUrl: avatarUrl,
-                                code: code,
-                                encryptedData: e.detail.encryptedData,
-                                permissionStatus: 1, 
-                                id: e.detail.iv,
-                                signature: e.detail.signature
-                            },  
-                            success: (res) => {
-                                if (res.data && res.data.code === 200) {
-                                    const userInfo = res.data.data;
-                                    uni.setStorageSync('userInfo', userInfo);
-                                    this.isLoggedIn = true;                                    
-                                    // 加载群聊列表
-                                    this.loadGroups();
-                                    
-                                    uni.hideLoading();
-                                    uni.showToast({
-                                        title: '登录成功',
-                                        icon: 'success',
-                                        duration: 1500
-                                    });
-                                } else {
-                                    uni.hideLoading();
-                                    uni.showToast({
-                                        title: res.data.msg || '登录失败',
-                                        icon: 'none',
-                                        duration: 2000
-                                    });
-                                }
-                            },
-                            fail: () => {
-                                uni.hideLoading();
-                                uni.showToast({
-                                    title: '网络错误',
-                                    icon: 'none',
-                                    duration: 2000
-                                });
-                            }
-                        });
-                    },
-                    fail: () => {
-                        uni.hideLoading();
-                        uni.showToast({
-                            title: '微信登录失败',
-                            icon: 'none',
-                            duration: 2000
-                        });
-                    }
                 });
             }
         }
