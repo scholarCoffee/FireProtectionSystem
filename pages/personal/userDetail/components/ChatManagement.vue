@@ -94,6 +94,7 @@ export default {
   
   mounted() {
     this.getStorages();
+    this.loadData();
   },
   
   methods: {

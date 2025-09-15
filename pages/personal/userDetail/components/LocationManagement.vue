@@ -129,6 +129,9 @@ export default {
       }
     }
   },
+  mounted() {
+    this.loadData();
+  },
   methods: {
     // 重置分页参数
     resetPagination() {
