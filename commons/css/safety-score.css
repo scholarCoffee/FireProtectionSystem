@@ -1,0 +1,32 @@
+.total-score-level {
+  font-size: 24rpx;
+  color: #666666;
+  font-weight: 400;
+}
+
+.level-excellent {
+  color: #52c41a;
+  font-weight: 600;
+}
+
+.level-good {
+  color: #F57C00;
+  font-weight: 600;
+}
+
+.level-poor {
+  color: #D32F2F;
+  font-weight: 600;
+}
+
+.progress-excellent {
+  background: #52c41a;
+}
+
+.progress-good {
+  background: #F57C00;
+}
+
+.progress-poor {
+  background:  #D32F2F;
+}
