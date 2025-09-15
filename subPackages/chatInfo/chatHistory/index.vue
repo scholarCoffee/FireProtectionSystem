@@ -19,6 +19,10 @@
                         <text class="nickname">{{ displayName(msg) }}</text>
                         <view class="bubble" v-if="msg.types === 0">{{ msg.message }}</view>
                         <image v-else-if="msg.types === 1" class="img" :src="serverUrl + msg.message" mode="widthFix" @tap="previewImg(serverUrl + msg.message)" />
+                        <view v-else-if="msg.types === 2" class="voice-bubble" @tap="playVoice(msg)">
+                            <image class="voice-icon" :src="serverUrl + '/static/icons/chat/voice-left.png'" />
+                            <text class="voice-duration">{{ formatSec(msg.voiceTime || 0) }}</text>
+                        </view>
                         <view v-else class="bubble">[暂不支持的消息类型]</view>
                     </view>
                 </view>
@@ -42,7 +46,9 @@ export default {
             finished: false,
             scrollHeight: 600,
             keyword: '',
-            debounceTimer: null
+            debounceTimer: null,
+            playingId: null,
+            innerAudio: null
         }
     },
     onLoad(query) {
@@ -116,6 +122,36 @@ export default {
         loadMore() { this.fetch() },
         previewImg(url) {
             uni.previewImage({ current: url, urls: [url] })
+        },
+        formatSec(s) {
+            s = Number(s) || 0
+            return s + 's'
+        },
+        ensureAudio() {
+            if (!this.innerAudio) {
+                this.innerAudio = uni.createInnerAudioContext()
+                this.innerAudio.obeyMuteSwitch = false
+                this.innerAudio.onEnded(() => { this.playingId = null })
+                this.innerAudio.onStop(() => { this.playingId = null })
+                this.innerAudio.onError(() => { this.playingId = null })
+            }
+        },
+        playVoice(item) {
+            if (!item || !item.message) return
+            this.ensureAudio()
+            if (this.playingId === item.id) {
+                this.innerAudio.stop()
+                this.playingId = null
+                return
+            }
+            this.playingId = item.id
+            const msg = typeof item.message === 'string' ? item.message : ''
+            if (msg.startsWith('http') || msg.startsWith('wxfile://') || msg.startsWith('file://')) {
+                this.innerAudio.src = msg
+            } else {
+                this.innerAudio.src = this.serverUrl + msg
+            }
+            this.innerAudio.play()
         }
     }
 }
@@ -145,6 +181,32 @@ export default {
 .bubble { max-width: 70%; background: #fff; border-radius: 10px; padding: 8px 10px; font-size: 14px; color: #333; white-space: pre-wrap; word-break: break-word; overflow: visible; text-overflow: clip; }
 .row.right .bubble { background: #82f1007d; }
 .img { max-width: 60vw; border-radius: 8px; }
+.voice-bubble { 
+    max-width: 70%; 
+    background: #fff; 
+    border-radius: 10px; 
+    padding: 8px 12px; 
+    display: flex; 
+    align-items: center; 
+    min-width: 80px;
+}
+.row.right .voice-bubble { 
+    background: #82f1007d; 
+    justify-content: flex-end;
+}
+.voice-icon { 
+    width: 16px; 
+    height: 16px; 
+    margin-right: 6px; 
+}
+.row.right .voice-icon { 
+    margin-right: 0; 
+    margin-left: 6px; 
+}
+.voice-duration { 
+    font-size: 12px; 
+    color: #666; 
+}
 .load-end { text-align: center; color: #999; padding: 10px 0; }
 </style>
 

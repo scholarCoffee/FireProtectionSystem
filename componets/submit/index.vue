@@ -5,7 +5,7 @@
                 <view class="bt-img" @tap="onClickSpeak">
                     <image :src="speakIcon" class="icon gray"></image>
                 </view>
-                <textarea v-model="msg" :auto-height="false" :show-confirm-bar="false" :adjust-position="false" class="chat-send btn" :class="{ displayNone: isRecord}" @input="onClickInput" @focus="focus"></textarea>
+                <textarea v-model="msg" :auto-height="false" :show-confirm-bar="false" :adjust-position="false" class="chat-send btn" :class="{ displayNone: isRecord}" @input="onClickInput" @focus="focus" @blur="onBlur"></textarea>
                 <view class="record btn" :class="{ displayNone: !isRecord }" @longpress="touchstart" @touchend="touchend" @touchmove="touchmove">按住说话</view>
                 <view class="bt-img emoji-icon" @tap="onShowEmoji">
                     <image :src="serverUrl + '/static/icons/chat/smile.png'" class="icon gray"></image>
@@ -66,6 +66,50 @@
         },
         mounted() {
             this.speakIcon = this.serverUrl + '/static/icons/chat/beforeSpeak.png'
+            // 仅在真正开始录音后，才显示录音状态与计时
+            recorderManager.onStart(() => {
+                // 避免重复计时
+                if (this.timer) {
+                    clearInterval(this.timer)
+                    this.timer = ''
+                }
+                this.isVoice = false
+                this.vlength = 0
+                let i = 1
+                this.timer = setInterval(() => {
+                    this.vlength = i
+                    i++
+                    if (i > 60) {
+                        clearInterval(this.timer)
+                        this.timer = ''
+                        recorderManager.stop()
+                    }
+                }, 1000)
+            })
+            // 统一处理停止事件
+            recorderManager.onStop((res) => {
+                const { tempFilePath } = res || {}
+                let data = {
+                    voice: tempFilePath,
+                    voiceTime: this.vlength
+                }
+                console.log('voice data', data, this.isVoice)
+                if (!this.isVoice) {
+                    this.send(data, 2)
+                }
+                this.vlength = 0
+                this.isVoice = true
+            })
+            // 权限被拒或启动失败
+            recorderManager.onError(() => {
+                if (this.timer) {
+                    clearInterval(this.timer)
+                    this.timer = ''
+                }
+                this.vlength = 0
+                this.isVoice = true
+                uni.showToast({ title: '需要麦克风权限', icon: 'none' })
+            })
         },
         methods: {
             hideSubmit() {
@@ -74,6 +118,11 @@
                 this.isMore = true
                 this.isRecord = false
                 this.speakIcon = this.serverUrl + "/static/icons/chat/beforeSpeak.png"
+                this.$nextTick(() => {
+                    this.getElementHeight(0)
+                    // 通知父组件滚动到底部
+                    this.$emit('scrollToBottom')
+                })
             },
             // 获取模块高度
             getElementHeight(value) {
@@ -100,9 +149,13 @@
                 this.isMore = true
                 this.isRecord = false
                 this.speakIcon = this.serverUrl + "/static/icons/chat/beforeSpeak.png"
-                setTimeout(() => { 
+                this.$nextTick(() => {
                     this.getElementHeight(0)
-                }, 0)
+                    // 延迟通知父组件滚动到底部，确保面板显示完成
+                    setTimeout(() => {
+                        this.$emit('scrollToBottom')
+                    }, 100)
+                })
             },
             // 点击表情
             onClickEmoji(data) {
@@ -188,34 +241,16 @@
                 })
             },
             touchstart(e) {
-                let i = 1
                 this.pageY = e.changedTouches[0].pageY
-                this.isVoice = false
-                this.timer = setInterval(() => {
-                    this.vlength = i
-                    i++
-                    if (i > 60) {
-                        clearInterval(this.timer)
-                        this.touchend()
-                    }
-                }, 1000)
+                // 不在此时展示录音状态，等待权限通过且真正开始录音（onStart）
                 recorderManager.start()
             },
             touchend(e) {
-               clearInterval(this.timer)
+               if (this.timer) {
+                   clearInterval(this.timer)
+                   this.timer = ''
+               }
                recorderManager.stop()
-               recorderManager.onStop((res) => {
-                    const { tempFilePath } = res || {}
-                    let data = { 
-                        voice: tempFilePath,
-                        time: this.vlength,
-                    }
-                    if (!this.isVoice) {
-                        this.send(data, 2)
-                    }
-                    this.vlength = 0
-                    this.isVoice = true
-                })
             },
             touchmove(e) {
                 if (this.pageY - e.changedTouches[0].pageY > 100) {
@@ -228,6 +263,22 @@
                 this.isMore = true
                 this.isRecord = false
                 this.speakIcon = this.serverUrl + "/static/icons/chat/beforeSpeak.png"
+                // iOS 表情包居中修复
+                this.$nextTick(() => {
+                    this.fixIOSEmojiAlignment()
+                })
+            },
+            onBlur() {
+                // 输入框失去焦点时的处理
+            },
+            // iOS 表情包居中修复
+            fixIOSEmojiAlignment() {
+                // 检测是否为iOS设备
+                const systemInfo = uni.getSystemInfoSync()
+                if (systemInfo.platform === 'ios') {
+                    // 强制重新渲染输入框以修复表情包对齐
+                    this.$forceUpdate()
+                }
             },
             // 点击输入框
             onClickInput(e) {
@@ -253,9 +304,13 @@
                 this.isRecord = false
                 this.speakIcon = this.serverUrl + "/static/icons/chat/beforeSpeak.png"
                 this.isEmoji = true
-                setTimeout(() => {
+                this.$nextTick(() => {
                     this.getElementHeight(0)
-                }, 0)
+                    // 延迟通知父组件滚动到底部，确保面板显示完成
+                    setTimeout(() => {
+                        this.$emit('scrollToBottom')
+                    }, 100)
+                })
             },
             send(msg, types) {
                 let data = {
@@ -292,24 +347,24 @@
     .btn {
         flex: auto;
         margin: 0 10rpx;
-        height: 88rpx; /* 固定输入控件高度，避免切换时跳动 */
-        max-height: 88rpx;
+        height: 92rpx; /* 固定输入控件高度，避免切换时跳动 */
+        max-height: 92rpx;
         padding: 10rpx;
         border: 1px solid #ccc;
         border-radius: 10rpx;
         background-color: #fff;
     }
     .chat-send {
-        min-height: 44rpx;
-        height: 44rpx; /* 强制 textarea 与录音按钮同高 */
-        line-height: 44rpx;
+        min-height: 46rpx;
+        height: 46rpx; /* 强制 textarea 与录音按钮同高 */
+        line-height: 46rpx;
     }
     .record {
         font-size: $uni-font-size-base;
         color: $uni-text-color-grey;
         text-align: center;
-        height: 44rpx; /* 与输入框同高 */
-        line-height: 44rpx;
+        height: 46rpx; /* 与输入框同高 */
+        line-height: 46rpx;
     }
 }
 .emoji {

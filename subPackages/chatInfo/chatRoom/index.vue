@@ -1,7 +1,7 @@
 <template>
     <view class="content" @keyboardheightchange="onKeyboardHeightChange">
         <view class="page-content">
-            <scroll-view class="chat" scroll-y="true" :scroll-with-animation="scrollAnimation" @tap="onClickChatContent" :scroll-into-view="scrollToView" @scrolltoupper="nextPage" :style="{ 'height': chatHeight + 'px' }">
+            <scroll-view class="chat" scroll-y="true" :scroll-with-animation="scrollAnimation" @tap="onClickChatContent" :scroll-into-view="scrollToView" @scrolltoupper="nextPage" :style="{ 'height': chatHeight + 'px' }" :scroll-top="scrollTop">
                 <view class="chat-main">
                     <view class="chat-ls" v-for="(item, index) in chatMessageList" :key="index" :id="'chatMessageList' + item.id">     
                         <view class="chat-time" v-if="item.time != ''">{{ dateTime(item.time) }}</view>
@@ -17,8 +17,7 @@
                                 <image :src="item.message" class="msg-img" @tap="previewImg(item.message)" mode="widthFix"></image>
                             </view>
                             <view class="message" v-if="item.types === 2">
-                                <view class="name-text">{{ item.nickName }}</view>
-                                <view class="msg-voice" @tap="playVoice(item)">
+                                <view class="msg-voice" @tap="playVoice(item)" :style="{ minWidth: (120 + (item.voiceTime || 0) * 5.3) + 'rpx', maxWidth: '440rpx', width: Math.min(440, Math.max(120, 120 + (item.voiceTime || 0) * 5.3)) + 'rpx' }">
                                     <image class="voice-icon" :class="{ playing: playingId === item.id }" :src="serverUrl + '/static/icons/chat/voice-left.png'" />
                                     <view class="voice-duration">{{ formatSec(item.voiceTime || 0) }}</view>
                                     <view class="unread-dot" v-if="showUnread(item)"></view>
@@ -35,7 +34,7 @@
                                 <image :src="item.message" class="msg-img" @tap="previewImg(item.message)" mode="widthFix"></image>
                             </view>
                             <view class="message" v-if="item.types === 2">
-                                <view class="msg-voice right" @tap="playVoice(item)">
+                                <view class="msg-voice right" @tap="playVoice(item)" :style="{ minWidth: (120 + (item.voiceTime || 0) * 5.3) + 'rpx', maxWidth: '440rpx', width: Math.min(440, Math.max(120, 120 + (item.voiceTime || 0) * 5.3)) + 'rpx' }">
                                     <view class="voice-duration">{{ formatSec(item.voiceTime || 0) }}</view>
                                     <image class="voice-icon" :class="{ playing: playingId === item.id }" :src="serverUrl + '/static/icons/chat/voice-right.png'" />
                                     <view class="unread-dot right" v-if="showUnread(item)"></view>
@@ -46,7 +45,7 @@
                 </view>
             </scroll-view>
             <view class="submit-container">
-                <Submit ref="submit" @currentHeight="currentHeight" @sendMsg="sendMessage"></Submit>
+                <Submit ref="submit" @currentHeight="currentHeight" @sendMsg="sendMessage" @scrollToBottom="onScrollToBottom"></Submit>
             </view>
         </view>
         <!-- 悬浮球（无蒙层） -->
@@ -77,7 +76,7 @@
     </view>
 </template>
 <script>
-import { dateTime, spaceTime, withDatedPath } from '@/commons/js/utils.js'; // 导入工具
+import { dateTime, spaceTime, withDatedPath, addUnreadCount } from '@/commons/js/utils.js'; // 导入工具
 import Submit from '@/componets/submit'
 export default {
     data() {
@@ -95,8 +94,9 @@ export default {
             serverUrl: 'https://www.xiaobei.space',
             imgMsg: [],
             scrollToView: '',
+            scrollTop: 0,
             oldTime: 0,
-            inputh: '54',
+            inputh: 54,
             chatHeight: 0, // 聊天框动态高度
             nowPage: 1,
             pageSize: 20,
@@ -176,7 +176,12 @@ export default {
                 return
             }
             this.playingId = item.id
-            this.innerAudio.src = item.message.startsWith('http') ? item.message : (this.serverUrl + item.message)
+            const msg = typeof item.message === 'string' ? item.message : ''
+            if (msg.startsWith('http') || msg.startsWith('wxfile://') || msg.startsWith('file://')) {
+                this.innerAudio.src = msg
+            } else {
+                this.innerAudio.src = this.serverUrl + msg
+            }
             this.innerAudio.play()
             // 标记为已听
             this.$set(this.listenedVoiceIds, item.id, true)
@@ -238,8 +243,16 @@ export default {
             this.socket.emit('leaveChatRoomServer', this.userInfo.userId, this.currentUserInfo.userId, this.chatType);
         },
         onClickChatContent() {
-            // 点击聊天内容，隐藏键盘
+            // 点击聊天内容，隐藏键盘和面板
             this.$refs.submit.hideSubmit()
+        },
+        // 处理滚动到底部事件
+        onScrollToBottom() {
+            this.$nextTick(() => {
+                setTimeout(() => {
+                    this.scrollToBottom();
+                }, 300); // 增加延迟确保高度变化和面板显示完成
+            });
         },
         // 监听键盘高度变化
         onKeyboardHeightChange(e) {
@@ -251,7 +264,7 @@ export default {
                 this.chatHeight = windowHeight - height - this.inputh;
             } else {
                 // 键盘隐藏，恢复聊天框高度
-                this.initChatHeight();
+                this.updateChatHeight();
             }
             // 滚动到底部
             this.$nextTick(() => {
@@ -409,8 +422,14 @@ export default {
                     console.log('上传进度', res.progress)
                 })
             } else if (types === 2) {
-                // 语音消息上传
-                const { voice, time: voiceTime } = messageInfo || {}
+                // 语音消息上传（兼容从 submit 传入的数据位于 message 字段内的结构）
+                const payload = (messageInfo && messageInfo.message) || messageInfo || {}
+                const voice = payload.voice
+                const voiceTime = payload.voiceTime
+                if (!voice) {
+                    uni.showToast({ title: '录音文件丢失', icon: 'none' })
+                    return
+                }
                 const uploadTask = uni.uploadFile({
                     url: this.serverUrl + '/files/upload',
                     filePath: voice,
@@ -435,6 +454,7 @@ export default {
                         }
                     },
                     fail: (err) => {
+                        console.log('语音上传失败', err)
                         uni.showToast({ title: '语音上传失败' + err, icon: 'none', duration: 2000 })
                     }
                 })
@@ -443,6 +463,9 @@ export default {
                         console.log('语音上传进度', res.progress)
                     })
                 }
+                // 本地预览：立即显示临时文件与时长
+                message = voice
+                messageInfo.voiceTime = voiceTime || 0
             }
             this.scrollAnimation = true
             let len = this.chatMessageList.length
@@ -455,14 +478,15 @@ export default {
             if (types == 3 ) {
                 message = JSON.parse(message)
             }
-            const data = {
-                fromId: id, // 假设 1 表示当前用户
-                message, // 消息内容
-                types, // 假设 0 表示文本消息
-                time: nowTime, // 消息时间
-                avatarUrl: avatarUrl, // 假设当前用户头像
-                id: len + 1// 消息数量
-            }
+             const data = {
+                 fromId: id, // 假设 1 表示当前用户
+                 message, // 消息内容
+                 types, // 假设 0 表示文本消息
+                 time: nowTime, // 消息时间
+                 avatarUrl: avatarUrl, // 假设当前用户头像
+                 id: len + 1,// 消息数量
+                 voiceTime: types === 2 ? (messageInfo.voiceTime || 0) : undefined
+             }
             // 添加新消息到消息列表
             this.chatMessageList.push(data);
             this.$nextTick(() => {
@@ -473,7 +497,7 @@ export default {
             this.socket.on('groupMsgFront', this.groupIndexServerListener)
         },
         groupIndexServerListener(data) {
-            const { messageInfo, userId, groupId, userName, userAvatar } = data
+            const { messageInfo, userId, groupId, userName, userAvatar, voiceTime } = data
             if (groupId == this.currentUserInfo.userId && userId !== this.userInfo.userId) {
                 this.scrollAnimation = true
                 let nowTime = new Date();
@@ -486,15 +510,16 @@ export default {
                     messageInfo.message = this.serverUrl + messageInfo.message
                 }
                 nowTime = t;
-                const data = {
-                    fromId: userId, // 假设 1 表示当前用户
-                    nickName: userName, // 当前用户名称
-                    message: messageInfo.message,
-                    types: messageInfo.types, // 假设 0 表示文本消息
-                    time: nowTime,
-                    avatarUrl: userAvatar, // 假设当前用户头像
-                    id: this.chatMessageList.length + 1
-                }
+                 const data = {
+                     fromId: userId, // 假设 1 表示当前用户
+                     nickName: userName, // 当前用户名称
+                     message: messageInfo.message,
+                     types: messageInfo.types, // 假设 0 表示文本消息
+                     time: nowTime,
+                     avatarUrl: userAvatar, // 假设当前用户头像
+                     id: this.chatMessageList.length + 1,
+                     voiceTime: voiceTime || 0
+                 }
                 // 添加新消息到消息列表
                 this.chatMessageList.push(data);
                 if (messageInfo.types === 1) {
@@ -513,28 +538,29 @@ export default {
                 userName: this.userInfo.nickName, // 当前用户名称
                 userAvatar: this.userInfo.avatarUrl, // 当前用户头像
                 groupId: this.currentUserInfo.userId, // 当前群id
+                voiceTime: data.voiceTime || 0,
                 time: new Date() // 消息时间
             })
         },
         // 初始化聊天框高度
         initChatHeight() {
-            const systemInfo = uni.getSystemInfoSync();
-            const windowHeight = systemInfo.windowHeight;
-            // 默认输入框高度96px，减去状态栏高度
-            const statusBarHeight = systemInfo.statusBarHeight || 0;
-            this.chatHeight = windowHeight - 54 - statusBarHeight;
+            this.updateChatHeight();
         },
         // 处理输入框高度变化
         currentHeight(value) {
-            this.inputh = value;
+            this.inputh = Number(value);
             // 动态调整聊天框高度
+            this.updateChatHeight();
+            this.scrollToBottom();
+        },
+        // 更新聊天框高度
+        updateChatHeight() {
             const systemInfo = uni.getSystemInfoSync();
             const windowHeight = systemInfo.windowHeight;
             const statusBarHeight = systemInfo.statusBarHeight || 0;
             
             // 计算聊天框高度：窗口高度 - 输入框高度 - 状态栏高度
-            this.chatHeight = windowHeight - value - statusBarHeight;
-            this.scrollToBottom();
+            this.chatHeight = windowHeight - this.inputh - statusBarHeight;
         },
         scrollToBottom(action) {
             this.scrollAnimation = true
@@ -549,11 +575,9 @@ export default {
                 // 发送新消息或接收消息，滚动到底部
                 this.$nextTick(() => {
                     setTimeout(() => {
-                        const lastItem = this.chatMessageList[this.chatMessageList.length - 1];
-                        if (lastItem) {
-                            this.scrollToView = 'chatMessageList' + lastItem.id;
-                        }
-                    }, 150); // 增加延迟确保DOM完全渲染
+                        // 使用 scroll-top 确保滚动到底部
+                        this.scrollTop = new Date().getTime();
+                    }, 200); // 增加延迟确保高度变化完成
                 });
             }
             clearInterval(this.loadingTimers)
@@ -626,7 +650,7 @@ page {
                 padding: 20rpx;
                 border-radius: 20rpx;
                 font-size: 28rpx;
-                line-height: 44rpx;
+                line-height: 46rpx;
                 word-break: break-all; // 防止长文本溢出
                 word-wrap: break-word;
             }
@@ -659,46 +683,18 @@ page {
             /* 未读红点 */
             .unread-dot {
                 position: absolute;
-                top: -6rpx; right: -6rpx;
-                width: 12rpx; height: 12rpx;
-                background: #ff4d4f; border-radius: 50%;
+                top: -8rpx; right: -8rpx;
+                width: 16rpx; height: 16rpx;
+                background: #ff4d4f; 
+                border-radius: 50%;
+                border: 2rpx solid #fff;
+                box-shadow: 0 2rpx 4rpx rgba(255, 77, 79, 0.3);
+                z-index: 10;
             }
-            .unread-dot.right { left: -6rpx; right: auto; }
+            .unread-dot.right { left: -8rpx; right: auto; }
             .msg-img {
                 max-width: 60vw; // 适配不同屏幕
                 border-radius: $uni-border-radius-base;
-            }
-            .msg-map {
-                background: #fff;
-                width: 464rpx;
-                height: 284rpx;
-                overflow: hidden;
-                .map-name {
-                    font-size: $uni-font-size-lg;
-                    color: $uni-text-color;
-                    line-height: 44rpx;
-                    padding: 18rpx 24rpx 0 24rpx;
-                    display: -webkit-box;
-                    -webkit-box-orient: vertical;
-                    -webkit-line-clamp: 1;
-                    line-clamp: 1;
-                    overflow: hidden;
-                }
-                .map-address {
-                    font-size: $uni-font-size-sm;
-                    color: $uni-text-color-disable;
-                    padding: 0rpx 24rpx;;
-                    display: -webkit-box;
-                    -webkit-box-orient: vertical;
-                    -webkit-line-clamp: 1;
-                    line-clamp: 1;
-                    overflow: hidden;
-                }
-                .map-img {
-                    padding-top: 8rpx;
-                    width: 480rpx;
-                    height: 190rpx;
-                }
             }
             .voice {
                 min-width: 100rpx;
@@ -716,22 +712,14 @@ page {
             .msg-img {
                 margin-left: 16rpx;
             }
-            .msg-map {
+            .msg-voice {
                 margin-left: 16rpx;
-                border-radius: 0px 20rpx 20rpx 20rpx;
             }
             .voice {
                 text-align: right;
                 display: flex;
                 justify-content: space-between;
                 align-items: center;
-            }
-            .voice-img {
-                float: left;
-                transform: rotate(180deg);
-                padding-bottom: 4rpx;
-                width: 36rpx;
-                height: 36rpx;
             }
         }
         .msg-right {
@@ -745,21 +733,15 @@ page {
             .msg-img {
                 margin-right: 16rpx;
             }
-            .msg-map {
+            .msg-voice {
                 margin-right: 16rpx;
-                border-radius: 0px 20rpx 20rpx 20rpx;
+                justify-content: flex-end;
             }
             .voice {
                 text-align: left;
                 display: flex;
                 justify-content: space-between;
                 align-items: center;
-            }
-            .voice-img {
-                float: right;
-                padding-bottom: 0rpx;
-                width: 36rpx;
-                height: 36rpx;
             }
         }
     }

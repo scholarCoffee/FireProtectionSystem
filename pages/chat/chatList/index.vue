@@ -86,14 +86,14 @@
         methods: {
             // 接受群组
             groupMsgListener(data) {
-                const { messageInfo, userId, groupId, userName } = data || {}
+                const { messageInfo, userId, groupId, userName, voiceTime } = data || {}
                 let nmsg = ''
                 if (messageInfo.types === 0) {
                     nmsg = messageInfo.message
                 } else if (messageInfo.types === 1) {
                     nmsg = '[图片]'
                 } else if (messageInfo.types === 2) {
-                    nmsg = '[音频]'
+                    nmsg = '[语音] ' + voiceTime + '"'
                 } else if (messageInfo.types === 3) {
                     nmsg = '[位置]'
                 }
@@ -103,8 +103,10 @@
                         e.lastTime = new Date()
                         if (userId == this.userInfo.userId) {
                             e.message = nmsg
+                            e.voiceTime = voiceTime || 0
                         } else {
                             e.message = userName + ': ' + nmsg
+                            e.voiceTime = voiceTime || 0
                         }
                         e.tip++
                         this.groupsList.splice(i, 1)
@@ -254,6 +256,7 @@
                         groupName: group.groupName,
                         groupAvatar: group.groupAvatar ? (this.serverUrl + group.groupAvatar) : this.serverUrl + '/group/group.png',
                         lastTime: group?.lastTime ? new Date(group?.lastTime) : new Date(),
+                        voiceTime: group?.voiceTime || 0,
                         message: group?.message ? `${group.sendMsgName || '群成员'}: ${group?.message}` : '暂无消息',
                         tip: group?.tip || 0,
                         type: group?.type || 0
