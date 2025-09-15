@@ -60,7 +60,7 @@
             </view>
             <view class="content-row">
               <text class="label">安全等级：</text>
-              <text class="value">{{ item.fireSafetyScore ? item.fireSafetyScore.safetyLevelName : '未设置' }}</text>
+              <text class="value">{{ item.fireSafetyScore ? item.fireSafetyScore.safeLevelName : '未设置' }}</text>
             </view>
             <view class="content-row">
               <text class="label">安全评分：</text>
@@ -118,7 +118,6 @@ export default {
       total: 0,
     }
   },
-  
   watch: {
     searchKeyword: {
       handler(newVal) {
@@ -130,11 +129,6 @@ export default {
       }
     }
   },
-  
-  mounted() {
-    this.loadData();
-  },
-  
   methods: {
     // 重置分页参数
     resetPagination() {
@@ -296,17 +290,13 @@ export default {
     
     // 工具方法
     getLocationTypeIcon(type) {
-      const iconMap = {
-        1: this.serverUrl + '/static/icons/location/community.png',
-        2: this.serverUrl + '/static/icons/location/factory.png',
-        3: this.serverUrl + '/static/icons/location/shop.png'
-      };
-      return iconMap[type] || iconMap[1];
+      const iconMap = this.locationTabList.find(item => item.type === type)?.icon || this.locationTabList[0].icon;
+      return this.serverUrl + (iconMap || this.locationTabList[0].icon);
     },
     
     getLocationTypeName(type) {
-      const nameMap = { 1: '高层小区', 2: '重点单位', 3: '沿街商铺' };
-      return nameMap[type] || '未知类型';
+      const nameMap = this.locationTabList.find(item => item.type === type)?.name || '未知类型';
+      return nameMap || '未知类型';
     }
   }
 }

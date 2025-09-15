@@ -43,7 +43,6 @@ import SafetyScoreDetail from './components/SafetyScoreDetail.vue'
 import LocationForm from './components/LocationForm.vue'
 import ChatForm from './components/ChatForm.vue'
 import CommandForm from './components/CommandForm.vue'
-
 export default {
   components: {
     SafetyScoreDetail,
@@ -87,8 +86,6 @@ export default {
       })
     }
     
-    // 检查是否有本地保存的安全评分
-    this.checkLocalSafetyScore();
     if (this.isEdit && this.editId && this.type !== 'command') {
       this.loadEditData();
     }
@@ -155,21 +152,11 @@ export default {
     },
     async saveData() {
       let submissionData = {}; // 提交数据
-      
       // 子组件数据准备
       if (this.type === 'location') {
         const childOk = await (this.$refs.locationFormRef?.validate?.() ?? true)
         if (!childOk) return
         const loc = this.$refs.locationFormRef?.getFormData?.() || {}
-        // 自动设置安全等级（根据评分计算）
-        const totalScore = (() => {
-          if (!loc.fireSafetyScore || !loc.fireSafetyScore.scoreItems) return 0
-          let s = 0
-          const items = loc.fireSafetyScore.scoreItems
-          for (const k in items) if (items[k] && typeof items[k].score === 'number') s += items[k].score
-          return s
-        })()
-        loc.safeLevelId = this.getSafetyLevelByScore(totalScore)
         submissionData = { ...loc }
       }
 
@@ -247,17 +234,6 @@ export default {
       }
       return totalScore;
     },
-    
-    // 根据总分获取安全等级
-    getSafetyLevelByScore(totalScore) {
-      if (totalScore >= 90) {
-        return 1; // 优秀
-      } else if (totalScore >= 70) {
-        return 2; // 一般
-      } else {
-        return 3; // 较差
-      }
-    },
 
     // 新增方法：添加安全评分
     addSafetyScore() {
@@ -309,14 +285,14 @@ export default {
         const currentFormData = locationForm.getFormData();
         currentFormData.fireSafetyScore = {
           scoreItems: data.scoreItems,
+          safeId: data.safeId,
+          safeLevelId: data.safeLevelId,
+          safeLevelName: data.safeLevelName,
           isLocal: true
         };
         locationForm.setFormData(currentFormData);
       }
-      
-      // 清除本地存储的安全评分
-      uni.removeStorageSync('tempSafetyScore');
-      
+    
       // 显示提示
       uni.showToast({
         title: '安全评分已填充，请完善地址信息后保存',
@@ -334,7 +310,9 @@ export default {
         if (data.addressId === currentFormData.addressId) {
           currentFormData.fireSafetyScore = {
             scoreItems: data.scoreItems,
-            safeId: data.safeId
+            safeId: data.safeId,
+            safeLevelId: data.safeLevelId,
+            safeLevelName: data.safeLevelName,
           };
           locationForm.setFormData(currentFormData);
           
@@ -346,37 +324,7 @@ export default {
           });
         }
       }
-    },
-    
-    // 检查本地保存的安全评分
-    checkLocalSafetyScore() {
-      try {
-        const localData = uni.getStorageSync('tempSafetyScore');
-        if (localData && localData.isLocal) {
-          // 自动填充安全评分到LocationForm
-          this.$nextTick(() => {
-            const locationForm = this.$refs.locationFormRef;
-            if (locationForm) {
-              const currentFormData = locationForm.getFormData();
-              currentFormData.fireSafetyScore = {
-                scoreItems: localData.scoreItems,
-                isLocal: true
-              };
-              locationForm.setFormData(currentFormData);
-            }
-          });
-          
-          // 显示提示
-          uni.showToast({
-            title: '检测到本地安全评分，已自动填充',
-            icon: 'none',
-            duration: 3000
-          });
-        }
-      } catch (error) {
-        console.log('检查本地安全评分失败:', error);
-      }
-    },
+    }
   }
 }
 </script>

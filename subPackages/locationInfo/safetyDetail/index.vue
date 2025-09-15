@@ -12,7 +12,7 @@
     <view class="safety-header">
       <view class="safety-overview">
         <view class="safety-level">
-          <view class="level-tag" :class="safetyLevelInfo.cssClass" :style="{ backgroundColor: safetyLevelInfo.cssColor }">
+          <view class="level-tag" :class="['safety-tag',  safetyData.safeLevelId === 1 ? 'safety-excellent' : safetyData.safeLevelId === 2 ? 'safety-normal' : 'safety-danger']">
             <text>{{ safetyLevelInfo.level }}</text>
           </view>
         </view>
@@ -22,7 +22,7 @@
       </view>
       <view class="safety-progress">
         <view class="progress-bar">
-          <view class="progress-fill" :style="{ width: progressPercent + '%', backgroundColor: safetyLevelInfo.cssColor }"></view>
+          <view class="progress-fill" :style="{ width: progressPercent + '%' }"></view>
         </view>
         <text class="progress-text">{{ safetyData.totalScore || 0 }}/{{ safetyData.maxPossibleScore || 100 }}分</text>
       </view>
@@ -59,7 +59,6 @@
     
     <!-- 占位元素，防止固定时内容跳动 -->
     <view class="filter-placeholder" v-if="isFilterFixed"></view>
-    
     <!-- 评分明细 -->
     <view class="score-details">
       <view class="detail-list">
@@ -73,30 +72,30 @@
               </view>
             </view>
             <view class="item-details">
-                              <view class="sub-item">
-                  <view class="sub-item-left">
-                    <view class="sub-item-left-top">
-                      <view class="sub-title">{{ itemConf.description || '' }}</view>
-                      <view class="sub-option">{{ getOptionLabel(itemConf) }}</view>
-                    </view>
-                    <view class="sub-score">{{ getScoreLabelByConf(itemConf) }}</view>
+              <view class="sub-item">
+                <view class="sub-item-left">
+                  <view class="sub-item-left-top">
+                    <view class="sub-title">{{ itemConf.description || '' }}</view>
+                    <view class="sub-option">{{ getOptionLabel(itemConf) }}</view>
                   </view>
-                  <!-- 进度条移到sub-item下方 -->
-                  <view class="item-progress">
-                    <view class="progress-bar">
-                      <view class="progress-fill" :style="{ width: getScorePercent(itemConf) + '%', backgroundColor: safetyLevelInfo.cssColor }"></view>
-                    </view>
-                    <view class="progress-score-text">
-                      <text>{{ itemConf.actualScore || 0 }}/{{ itemConf.weight || 10 }}分</text>
-                    </view>
+                  <view class="sub-score">{{ getScoreLabelByConf(itemConf) }}</view>
+                </view>
+                <!-- 进度条移到sub-item下方 -->
+                <view class="item-progress">
+                  <view class="progress-bar">
+                    <view class="progress-fill" :style="{ width: getScorePercent(itemConf) + '%' }"></view>
                   </view>
-                  <!-- 备注信息（仅当存在且不为空时显示） -->
-                  <view class="remark-section" v-if="getRemarkText(itemConf)">
-                    <image :src="serverUrl + '/static/icons/location/description-info-active.png'" class="remark-icon" />
-                    <view class="remark-title">概述</view>
-                    <view class="remark-text">{{ getRemarkText(itemConf) }}</view>
+                  <view class="progress-score-text">
+                    <text>{{ itemConf.actualScore || 0 }}/{{ itemConf.weight || 10 }}分</text>
                   </view>
                 </view>
+                <!-- 备注信息（仅当存在且不为空时显示） -->
+                <view class="remark-section" v-if="getRemarkText(itemConf)">
+                  <image :src="serverUrl + '/static/icons/location/description-info-active.png'" class="remark-icon" />
+                  <view class="remark-title">概述</view>
+                  <view class="remark-text">{{ getRemarkText(itemConf) }}</view>
+                </view>
+              </view>
             </view>
           </view>
         </view>
@@ -166,7 +165,7 @@ export default {
           return lv;
         }
       }
-      return levels[0] || { level: '一般', cssClass: 'safety-normal', cssColor: '#faad14' };
+      return levels[0] || { level: '一般' };
     },
     filteredAndSortedScoreItems() {
       // 只根据scoreItems罗列，不分组
@@ -344,7 +343,7 @@ export default {
 
 /* 恢复最初主色调：安全等级色为主，卡片白色，分数/进度条用原色 */
 .safety-header {
-  background: linear-gradient(135deg, #667eea 0%, #007aff 100%);
+  background: linear-gradient(135deg, #40caff, #667eea);
   margin: 10px;
   border-radius: 16px;
   padding: 12px 24px;
@@ -792,4 +791,8 @@ export default {
   transform: translateZ(0);
   will-change: transform;
 }
+
+.safety-tag.safety-excellent { background: linear-gradient(135deg, #4CAF50, #45a049); } /* 优秀-绿色 */
+.safety-tag.safety-normal { background: linear-gradient(135deg, #FF9800, #F57C00); }    /* 一般-橙色 */
+.safety-tag.safety-danger { background: linear-gradient(135deg, #F44336, #D32F2F); }    /* 较差-红色 */
 </style> 

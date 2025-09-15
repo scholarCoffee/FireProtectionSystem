@@ -13,17 +13,19 @@
           <!-- 地址名称 -->
           <view class="address-name">
             <text class="address-name-text">{{ locationObj.addressName }}</text>
-            <view class="type-value">
-              <image :src="showImgUrl(locationObj.type)" class="type-icon" />
-              <text>{{ getLocationTypeName() }}</text>
-            </view>
             <image :src="serverUrl + '/static/icons/location/copy.png'" class="location-icon" @tap="copyAddressName" />
           </view>
           
           <!-- 地址详情 -->
           <view class="address-detail">
-            <image :src="serverUrl + '/static/icons/location/showLocation.png'" class="location-icon" />
-            <text>{{ locationObj.addressExt }}</text>
+            <view class="address-detail-left">
+              <image :src="serverUrl + '/static/icons/location/showLocation.png'" class="location-icon" />
+              <text class="address-name-text address-ext">{{ locationObj.addressExt }}</text>
+            </view>
+            <view class="address-detail-right">
+              <image :src="showImgUrl(locationObj.type)" class="type-icon" />
+              <text>{{ getLocationTypeName() }}</text>
+            </view>
           </view>
                     
           <!-- 单位类型和720全云景 -->
@@ -55,7 +57,7 @@
           </view>
           
           <!-- 安全等级卡片 -->
-          <view class="safety-card-full" @tap="goToSafetyDetail" v-if="locationObj.fireSafetyScore">
+          <view class="safety-card-full" :class="safeLevelClass" @tap="goToSafetyDetail" v-if="locationObj.fireSafetyScore">
             <view class="safety-header">
                 <view class="safety-info">
                   <view class="score-display">
@@ -63,8 +65,8 @@
                     <text class="score-unit">分</text>
                   </view>
                 </view>
-                <view class="safety-badge" :class="safeLevelClass">
-                  <text class="badge-text">{{ locationObj.fireSafetyScore.safetyLevelName }}</text>
+                <view class="safety-badge" :class="['safety-tag',  locationObj.fireSafetyScore.safeLevelId === 1 ? 'safety-excellent' : locationObj.fireSafetyScore.safeLevelId === 2 ? 'safety-normal' : 'safety-danger']">
+                  <text class="badge-text">{{ locationObj.fireSafetyScore.safeLevelName }}</text>
                 </view>
               </view>
             <view class="score-progress">
@@ -240,8 +242,9 @@
     </view>
   </scroll-view>
 </template>
-
 <script>
+import { getSafetyLevelClass } from '@/pages/personal/userDetail/components/safetyScoreData.js';
+import { locationTabList } from '@/commons/mock/index.js';
 export default {
   data() {
     return {
@@ -270,8 +273,7 @@ export default {
   },
   computed: {
     safeLevelClass() {
-      const map = { 1: 'safety-excellent', 2: 'safety-good', 3: 'safety-normal', 4: 'safety-danger' };
-      return map[this.locationObj.safeLevelId] || '';
+      return getSafetyLevelClass(this.locationObj?.fireSafetyScore?.safeLevelId) || '';
     },
     showImgUrl() {
       return (type) => {
@@ -333,9 +335,7 @@ export default {
     },
     // 兼容保留（不再主动全屏）
     getLocationTypeName() {
-      // 直接用locationObj.type判断
-      const typeMap = { 1: '高层小区', 2: '重点单位', 3: '沿街商铺' };
-      return typeMap[this.locationObj.type] || '未知类型';
+      return locationTabList.find(item => item.type === this.locationObj.type)?.name || '未知类型';
     },
     // 户主查询跳转
     goToOwnerQuery() {
@@ -476,6 +476,7 @@ export default {
 </script>
 
 <style scoped>
+@import '@/commons/css/safety-score.css';
 /* 容器样式 */
 .detail-container {
   height: 100vh;
@@ -524,6 +525,12 @@ export default {
   align-items: center;
 }
 
+.address-ext {
+  font-size: 12px;
+  max-width: 240px;
+  color: #666;
+}
+
 .address-name-text {
   flex: 1;
   white-space: nowrap;
@@ -543,12 +550,29 @@ export default {
   padding: 0 15px 0 15px;
   font-size: 12px;
   color: #666;
+  justify-content: space-between;
+  .address-detail-left {
+    display: flex;
+    align-items: center;
+  }
+  .address-detail-right {
+    display: flex;
+    align-items: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 6px 6px;
+    border-radius: 12px;
+    background: #40a9ff;
+    color: #ffffff;
+    font-size: 12px;
+  }
 }
 
 .location-icon {
-  width: 16px;
-  height: 16px;
-  margin-right: 5px;
+  width: 14px;
+  height: 14px;
+  margin-right: 3px;
 }
 
 .address-name .location-icon {
@@ -637,8 +661,6 @@ export default {
   border: 1px solid rgba(0, 0, 0, 0.08);
 }
 
-
-
 .type-header {
   display: flex;
   align-items: center;
@@ -671,20 +693,9 @@ export default {
 
 .type-icon {
   margin-right: 2px;
-  width: 20px;
-  height: 20px;
+  width: 16px;
+  height: 16px;
   opacity: 0.7;
-}
-
-.type-value {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 6px 12px;
-  border-radius: 16px;
-  background: #40a9ff;
-  color: #ffffff;
-  font-size: 12px;
 }
 
 /* 图纸卡片 */
@@ -698,8 +709,6 @@ export default {
   overflow: hidden;
   cursor: pointer;
 }
-
-
 
 .drawing-card:active {
   transform: scale(0.98);
@@ -760,7 +769,7 @@ export default {
 
 /* 安全等级卡片 */
 .safety-card-full {
-  background: linear-gradient(135deg, #FF8A65, #FFAB91);
+  background: linear-gradient(135deg, #40caff, #667eea);
   border-radius: 12px;
   padding: 16px;
   margin: 0 15px 15px 15px;
@@ -769,8 +778,6 @@ export default {
   overflow: hidden;
   cursor: pointer;
 }
-
-
 
 .safety-card-full:active {
   transform: scale(0.98);
@@ -790,11 +797,15 @@ export default {
 }
 
 .safety-badge {
-  padding: 6px 18px;
-  border-radius: 16px;
+  padding: 4px 16px;
+  border-radius: 12px;
   background: rgba(255, 255, 255, 0.25);
   margin-right: 8px;
 }
+
+.safety-tag.safety-excellent { background: linear-gradient(135deg, #4CAF50, #45a049); } /* 优秀-绿色 */
+.safety-tag.safety-normal { background: linear-gradient(135deg, #FF9800, #F57C00); }    /* 一般-橙色 */
+.safety-tag.safety-danger { background: linear-gradient(135deg, #F44336, #D32F2F); }    /* 较差-红色 */
 
 .badge-text {
   font-size: 14px;
@@ -842,8 +853,6 @@ export default {
   transition: width 0.3s ease;
   position: relative;
 }
-
-
 
 /* 出行大门样式 */
 .gate-list {
@@ -908,12 +917,11 @@ export default {
   align-items: center;
   justify-content: center;
   gap: 6px;
-  padding: 6px 12px;
   margin: 0;
   background: linear-gradient(135deg, #1890ff 0%, #40a9ff 100%);
   color: #ffffff;
   border: none;
-  border-radius: 16px;
+  border-radius: 12px;
   font-size: 13px;
   font-weight: 500;
   box-shadow: 0 2px 6px rgba(24, 144, 255, 0.2);

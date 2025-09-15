@@ -6,7 +6,7 @@
                     <image :src="speakIcon" class="icon gray"></image>
                 </view>
                 <textarea v-model="msg" :auto-height="false" :show-confirm-bar="false" :adjust-position="false" class="chat-send btn" :class="{ displayNone: isRecord}" @input="onClickInput" @focus="focus" @blur="onBlur"></textarea>
-                <view class="record btn" :class="{ displayNone: !isRecord }" @longpress="touchstart" @touchend="touchend" @touchmove="touchmove">按住说话</view>
+                <view class="record btn" :class="{ displayNone: !isRecord }" @longpress="touchstart" @touchend="touchend" @touchmove="touchmove" @touchcancel="touchcancel">按住说话</view>
                 <view class="bt-img emoji-icon" @tap="onShowEmoji">
                     <image :src="serverUrl + '/static/icons/chat/smile.png'" class="icon gray"></image>
                 </view>
@@ -62,6 +62,7 @@
                 timer: '',
                 vlength: 0,
                 pageY: 0,
+                recordingStarted: false,
             }
         },
         mounted() {
@@ -85,6 +86,7 @@
                         recorderManager.stop()
                     }
                 }, 1000)
+                this.recordingStarted = true
             })
             // 统一处理停止事件
             recorderManager.onStop((res) => {
@@ -99,6 +101,7 @@
                 }
                 this.vlength = 0
                 this.isVoice = true
+                this.recordingStarted = false
             })
             // 权限被拒或启动失败
             recorderManager.onError(() => {
@@ -108,6 +111,7 @@
                 }
                 this.vlength = 0
                 this.isVoice = true
+                this.recordingStarted = false
                 uni.showToast({ title: '需要麦克风权限', icon: 'none' })
             })
         },
@@ -250,7 +254,19 @@
                    clearInterval(this.timer)
                    this.timer = ''
                }
-               recorderManager.stop()
+               // 松开即发送：仅在已开始录音时才停止并触发 onStop
+               if (this.recordingStarted) {
+                   recorderManager.stop()
+               }
+            },
+            touchcancel(e) {
+                if (this.timer) {
+                    clearInterval(this.timer)
+                    this.timer = ''
+                }
+                if (this.recordingStarted) {
+                    recorderManager.stop()
+                }
             },
             touchmove(e) {
                 if (this.pageY - e.changedTouches[0].pageY > 100) {
@@ -348,14 +364,12 @@
         flex: auto;
         margin: 0 10rpx;
         height: 92rpx; /* 固定输入控件高度，避免切换时跳动 */
-        max-height: 92rpx;
         padding: 10rpx;
         border: 1px solid #ccc;
         border-radius: 10rpx;
         background-color: #fff;
     }
     .chat-send {
-        min-height: 46rpx;
         height: 46rpx; /* 强制 textarea 与录音按钮同高 */
         line-height: 46rpx;
     }
@@ -461,7 +475,6 @@
         display: inline-block ;
         line-height: 84rpx;
         width: 120rpx;
-        min-width: 120rpx;
         border-radius: 42rpx;
         background-color: $uni-color-primary;
     }

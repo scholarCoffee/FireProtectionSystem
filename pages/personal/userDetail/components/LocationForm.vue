@@ -54,11 +54,11 @@
       </view>
         
       <view class="form-item">
-        <text class="form-label">地址代号 <text class="required">*</text></text>
+        <text class="form-label">地址编号 <text class="required">*</text></text>
         <input 
           v-model="formData.addressId" 
           class="form-input" 
-          placeholder="请输入地址代号"
+          placeholder="请输入地址编号"
           maxlength="20"
           @input="onAddressIdInput"
         />
@@ -66,26 +66,31 @@
         
       <view class="form-item">
         <text class="form-label">全云景地址 <text class="required">*</text></text>
-        <input 
-          v-model="formData.allSenceLink" 
-          class="form-input" 
-          placeholder="请输入全云景链接"
-          maxlength="500"
-          @input="onAllSenceLinkInput"
-        />
+        <view class="url-input-container">
+          <text class="url-prefix">{{ urlBase }}</text>
+          <view class="url-input">
+            <input 
+              v-model="allSenceLinkSuffix" 
+              class="form-input" 
+              placeholder="请输入地址"
+              maxlength="500"
+              @input="onAllSenceLinkInput"
+            />
+          </view>
+        </view>
       </view>
       
       <view class="form-item">
         <text class="form-label">位置类型 <text class="required">*</text></text>
         <picker 
-          :value="formData.type - 1" 
+          :value="formData.type" 
           :range="locationTypeOptions" 
           range-key="label"
           @change="onLocationTypeChange"
           class="form-picker"
         >
           <view class="picker-display">
-            <text class="picker-text">{{ getLocationTypeText(formData.type) }}</text>
+            <text class="picker-text">{{ getLocationTypeText }}</text>
             <image :src="serverUrl + '/static/icons/common/down.png'" class="picker-arrow" />
           </view>
         </picker>
@@ -409,7 +414,7 @@
     getSafetyLevelClass, 
     getProgressBarClass 
   } from './safetyScoreData.js';
-  import { withDatedPath } from '@/commons/js/utils.js'
+  import { withDatedPath, debounce } from '@/commons/js/utils.js'
 
   export default {
     name: 'LocationForm',
@@ -437,9 +442,7 @@
           allSenceLink: '',
           ownerQueryUrl: '',
           type: 1,
-          safeLevelId: 1,
           description: '',
-          safeId: '',
           fireUnitDeploymentMap: [],
           fireSafetyScore: null,
           enterGateList: [],
@@ -448,6 +451,9 @@
           defaultImg: ''
         },
         errors: {},
+        // 仅用于输入后缀，最终组合为 urlBase + allSenceLinkSuffix
+        allSenceLinkSuffix: '',
+        urlBase: 'https://www.720yun.com/',
         locationTypeOptions: [], // 位置类型选项
         // 消防单位相关
         fireUnitOptions: [],
@@ -472,7 +478,9 @@
           index: -1
         },
         showMediaSheet: false,
-        uploadingDeployment: false
+        uploadingDeployment: false,
+        // 节流时间戳
+        throttleTimestamps: { chooseMedia: 0, addImage: 0, addDefault: 0 }
       }
     },
     created() {
@@ -484,6 +492,8 @@
       this.setFormData(this.initialData)
       // 重点单位下拉：预加载消防单位
       this.fetchFireUnits()
+      // 防抖：地址编号唯一性校验
+      this.debouncedCheckAddressId = debounce(this.checkAddressIdRaw, 600)
     },
     computed: {
       contactTypeLimits() {
@@ -495,7 +505,10 @@
           fireFull: fireContacts?.length >= 1
         };
       },
-      
+      getLocationTypeText() {
+        if (this.locationTypeOptions.length === 0 || !this.formData.type) return '请选择类型'
+        return this.locationTypeOptions.find(item => item.value === this.formData.type).label
+      },
       safetyLevelClass() {
         const totalScore = this.calculateTotalScore();
         const level = getSafetyLevelByScore(totalScore);
@@ -522,11 +535,30 @@
       }
     },
     methods: {      
-      
-      // 暴露给父组件
+      // 是否需要节流：同一 key 在 wait 内仅触发一次
+      shouldThrottle(key, wait = 800) {
+        const now = Date.now()
+        const last = this.throttleTimestamps?.[key] || 0
+        if (now - last < wait) return true
+        if (this.throttleTimestamps) this.throttleTimestamps[key] = now
+        return false
+      },
+
       getFormData() { return { ...this.formData } },
       setFormData(data = {}) {
-        this.formData = data
+        if (Object.keys(data).length > 0) {
+          this.formData = { ...this.formData, ...data }
+          // 初始化后缀：若已有完整 https:// 前缀，去掉前缀后放入后缀输入框
+          const link = String(this.formData.allSenceLink || '')
+          if (link.startsWith(this.urlBase)) {
+            this.allSenceLinkSuffix = link.slice(this.urlBase.length)
+          } else {
+            this.allSenceLinkSuffix = link
+          }
+        } else {
+          this.formData = this.$options.data().formData
+          this.allSenceLinkSuffix = ''
+        }
       },
       validate() {
         this.errors = {}
@@ -534,7 +566,7 @@
         const must = v => v && String(v).trim()
         if (!must(fd.addressName)) this.errors.addressName = '请输入地址名称'
         if (!must(fd.addressExt)) this.errors.addressExt = '请输入详细地址'
-        if (!must(fd.addressId)) this.errors.addressId = '请输入地址代号'
+        if (!must(fd.addressId)) this.errors.addressId = '请输入地址编号'
         if (!must(fd.allSenceLink)) this.errors.allSenceLink = '请输入全云景地址'
         if (!fd.type) this.errors.type = '请输入位置类型'
         if (!must(fd.defaultImg)) this.errors.defaultImg = '必须配置一张默认图片'
@@ -553,13 +585,46 @@
       
       onAddressExtInput(e) {},
       
-      onAddressIdInput(e) {},
+      async onAddressIdInput(e) {
+        this.debouncedCheckAddressId(e?.detail?.value || '')
+      },
+      async checkAddressIdRaw(value) {
+        if (!String(value || '').trim()) {
+          this.errors.addressId = '请输入地址编号'
+          return
+        }
+        try {
+          const res = await new Promise((resolve, reject) => {
+            uni.request({
+              url: this.serverUrl + '/location/checkAddressId?addressId=' + encodeURIComponent(value),
+              method: 'GET',
+              success: resolve,
+              fail: reject
+            })
+          })
+          if (res?.data?.data?.exists) {
+            this.errors.addressId = res?.data?.msg || '地址编号已存在'
+            uni.showToast({ title: res?.data?.msg || '地址编号已存在', icon: 'none' })
+          } else {
+            this.errors.addressId = ''
+          }
+        } catch (e) {
+          this.errors.addressId = e?.message || '校验失败'
+        }
+      },
       
-      onAllSenceLinkInput(e) {},
+      onAllSenceLinkInput(e) {
+        const suffix = e?.detail?.value || ''
+        this.allSenceLinkSuffix = suffix
+        // 组合到表单字段，始终以指定 urlBase 开头
+        const normalized = suffix.replace(/^https?:\/\//i, '')
+        this.formData.allSenceLink = this.urlBase + normalized
+        if (this.errors.allSenceLink) this.errors.allSenceLink = ''
+      },
       
       onLocationTypeChange(e) {
         const newType = this.locationTypeOptions[e.detail.value].value;
-        const oldType = this.formData.type;
+        const oldType = this.formData.type
         // 如果类型发生变化，处理相关字段
         if (newType !== oldType) {
           const originalList = this._ensureDeploymentArray(this.formData.fireUnitDeploymentMap)
@@ -572,12 +637,7 @@
             this.formData.fireUnitDeploymentMap = [...originalList]
           }
         }
-        
-        this.formData.type = newType;
-        // 切换到重点单位时，如果尚未加载消防单位则加载
-        if (newType === 2 && (!this.fireUnitOptions || this.fireUnitOptions.length === 0)) {
-          this.fetchFireUnits()
-        }
+        this.$set(this.formData, 'type', newType)
       },
       // 消防单位
       async fetchFireUnits() {
@@ -622,14 +682,7 @@
         const opt = this.fireUnitOptions[idx]
         this.selectedFireUnit = opt ? opt.value : null
         // 不自动拉取素材，改为仅根据选择显示本地映射并支持手动上传
-      },
-      // 移除自动接口拉取逻辑，仅保留本地上传映射
-      
-      getLocationTypeText(type) {
-        const option = this.locationTypeOptions.find(item => item.value === type);
-        return option ? option.label : '请选择类型';
-      },
-      
+      }, 
       getContactTypeText(type) {
         const option = this.contactTypeOptions.find(item => item.value === type);
         return option ? option.label : '未知类型';
@@ -778,6 +831,7 @@
     
       // 图片管理方法
       addImage() {
+        if (this.shouldThrottle('addImage')) return
         if (this.formData.imgList.length >= 3) {
           uni.showToast({
             title: '最多只能上传3张图片',
@@ -867,6 +921,7 @@
 
       // 作战实景部署：统一选择器
       chooseDeploymentMedia() {
+        if (this.shouldThrottle('chooseMedia')) return
         this.showMediaSheet = true
       },
             // 作战实景部署：统一上传方法（视频或动画）
@@ -993,6 +1048,7 @@
       },
       // 默认图片管理方法
       addDefaultImage() {
+        if (this.shouldThrottle('addDefault')) return
         uni.chooseImage({
           count: 1,
           sizeType: ['compressed'],
@@ -1089,6 +1145,7 @@
   </script>
 
 <style lang="scss" scoped>
+@import '@/commons/css/safety-score.css';
 /* 根容器样式 */
 .location-form {
   width: 100%;
@@ -1238,18 +1295,6 @@
     height: 100%;
     border-radius: 8rpx;
     transition: width 0.6s ease;
-    
-    &.progress-excellent {
-      background: linear-gradient(90deg, #52c41a 0%, #73d13d 100%);
-    }
-    
-    &.progress-good {
-      background: linear-gradient(90deg, #1890ff 0%, #40a9ff 100%);
-    }
-    
-    &.progress-poor {
-      background: linear-gradient(90deg, #fa8c16 0%, #ffa940 100%);
-    }
   }
   
   .progress-markers {
@@ -1605,6 +1650,28 @@
   min-width: 160rpx;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Helvetica Neue', Helvetica, Arial, sans-serif;
   letter-spacing: 0.5rpx;
+}
+
+/* URL 组合输入样式 */
+.url-input-container {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  padding: 0 12rpx;
+  .url-input {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    background: #ffffff;
+    border-radius: 12rpx;
+    border: 2rpx solid #e6e6e6;
+  }
+  .url-prefix {
+    padding-right: 8rpx;
+    color: #666;
+    font-size: 24rpx;
+    white-space: nowrap;
+  }
 }
 
 .form-item .required {

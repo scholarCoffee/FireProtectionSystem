@@ -127,7 +127,7 @@ export default {
             searchKeyword: '',
             currentUserRole: 0, // 默认普通用户
             // 用户身份选项
-            roleOptions: ['普通用户', '管理员', '超级管理员'],
+            roleOptions: ['普通用户', '管理员'],
             // 模板映射，避免 :class 调用方法
             statusClassMap: {
                 active: 'status-active',
@@ -341,17 +341,7 @@ export default {
                 });
                 return;
             }
-            
-            // 不能修改其他超级管理员
-            if (user.permissionStatus === 2) {
-                uni.showToast({
-                    title: '不能修改其他超级管理员',
-                    icon: 'none',
-                    duration: 2000
-                });
-                return;
-            }
-            
+                        
             const newRole = Number(roleIndex) || 0;
             const oldRole = user.permissionStatus;
             

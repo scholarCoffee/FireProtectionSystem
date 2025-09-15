@@ -56,7 +56,7 @@
     </view>
 
     <!-- 位置信息内容 -->
-    <view v-if="currentTab === 'location'" class="location-content">
+    <view v-show="currentTab === 'location'" class="location-content">
       <LocationManagement 
         :serverUrl="serverUrl"
         :searchKeyword="searchKeyword"
@@ -64,7 +64,7 @@
       />
     </view>
     <!-- 聊天管理内容 -->
-    <view v-if="currentTab === 'chat'" class="chat-content">
+    <view v-show="currentTab === 'chat'" class="chat-content">
       <ChatManagement 
         :serverUrl="serverUrl"
         :searchKeyword="searchKeyword"
@@ -73,7 +73,7 @@
     </view>
     
     <!-- 数据指挥内容 -->
-    <view v-if="currentTab === 'command'" class="command-content">
+    <view v-show="currentTab === 'command'" class="command-content">
       <view class="command-list">
         <view 
           class="command-item" 
@@ -171,6 +171,17 @@ export default {
     }
   },
 
+  onShow() {
+    this.$nextTick(() => {
+      if (this.currentTab === 'command') {
+        this.loadCommandConfig();
+      } else if (this.currentTab === 'location') {
+        this.$refs.locationManagement && this.$refs.locationManagement.loadData();
+      } else if (this.currentTab === 'chat') {
+        this.$refs.chatManagement && this.$refs.chatManagement.loadData();
+      }
+    })
+  },
   methods: {
     // 从接口获取数据指挥配置
     loadCommandConfig() {
@@ -269,6 +280,10 @@ export default {
       this.searchKeyword = ''; // 切换标签时清空搜索
       if (tab === 'command') {
         this.loadCommandConfig();
+      } else if (tab === 'location') {
+        this.$refs.locationManagement && this.$refs.locationManagement.loadData();
+      } else if (tab === 'chat') {
+        this.$refs.chatManagement && this.$refs.chatManagement.loadData();
       }
     },
     
@@ -380,8 +395,6 @@ export default {
     closeCommandModal() {
       this.showCommandModal = false
     },
-
-
 
     // 保存数据指挥配置
     saveCommand() {

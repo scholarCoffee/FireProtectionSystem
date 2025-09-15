@@ -114,8 +114,8 @@
               </view>
             </view>
             <view class="total-rule">
-              <text class="rule-title">总分规则：</text>
-              <text class="rule-content">100分，90分以上为优秀，70-89分为一般，70分以下为较差</text>
+              <text class="rule-title">评分规则：</text>
+              <text class="rule-content">总分为100分，其中90 ~ 100分为优秀，70 ~ 89分为一般，70分以下为较差</text>
             </view>
           </view>
         </scroll-view>
@@ -332,7 +332,7 @@ export default {
         });
         
         if (result.data && result.data.code === 200) {
-          this.handleSaveSuccess('更新成功');
+          this.handleSaveSuccess(result.data.data);
         } else {
           throw new Error(result.data?.msg || '更新失败');
         }
@@ -373,9 +373,9 @@ export default {
     },
     
     // 处理保存成功（编辑模式）
-    handleSaveSuccess(message) {
+    handleSaveSuccess(data) {
       uni.showToast({
-        title: message,
+        title: data.message,
         icon: 'success',
         duration: 1500
       });
@@ -387,6 +387,8 @@ export default {
           addressId: this.addressId,
           scoreItems: this.scoreItems,
           safeId: this.safeId,
+          safeLevelId: data.safeLevelId,
+          safeLevelName: data.safeLevelName,
           isLocal: false
         });
       }
@@ -400,6 +402,7 @@ export default {
 </script>
 
 <style lang="scss" scoped>
+@import '@/commons/css/safety-score.css';
 .safety-score-edit {
   height: 100vh;
   background: #f7f7f7;
@@ -452,27 +455,6 @@ export default {
   margin: 0 8rpx;
 }
 
-.total-score-level {
-  font-size: 24rpx;
-  color: #666666;
-  font-weight: 400;
-  
-  &.level-excellent {
-    color: #52c41a;
-    font-weight: 600;
-  }
-  
-  &.level-good {
-    color: #1890ff;
-    font-weight: 600;
-  }
-  
-  &.level-poor {
-    color: #fa8c16;
-    font-weight: 600;
-  }
-}
-
 /* 分数进度条 */
 .score-progress-container {
   width: 100%;
@@ -491,18 +473,6 @@ export default {
   height: 100%;
   border-radius: 4rpx;
   transition: width 0.3s ease-in-out;
-  
-  &.progress-excellent {
-    background: linear-gradient(135deg, #52c41a 0%, #73d13d 100%);
-  }
-  
-  &.progress-good {
-    background: linear-gradient(135deg, #1890ff 0%, #40a9ff 100%);
-  }
-  
-  &.progress-poor {
-    background: linear-gradient(135deg, #fa8c16 0%, #faad14 100%);
-  }
 }
 
 .progress-labels {

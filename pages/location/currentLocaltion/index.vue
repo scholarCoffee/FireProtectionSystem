@@ -45,8 +45,8 @@
                 <view class="img-container">
                   <image :src= "serverUrl + item.defaultImg" class="card-img" @click="goToDetail(item)"/>
                   <!-- 安全等级标签 -->
-                  <text  v-if="item.fireSafetyScore" :class="['safety-tag',  item.fireSafetyScore.safetyLevelId === 1 ? 'safety-excellent' : item.fireSafetyScore.safetyLevelId === 2 ? 'safety-good' : item.fireSafetyScore.safetyLevelId === 3 ? 'safety-normal' : 'safety-danger']">
-                    {{ item.fireSafetyScore.safetyLevelName }}
+                  <text  v-if="item.fireSafetyScore" :class="['safety-tag',  item.fireSafetyScore.safeLevelId === 1 ? 'safety-excellent' : item.fireSafetyScore.safeLevelId === 2 ? 'safety-normal' : 'safety-danger']">
+                    {{ item.fireSafetyScore.safeLevelName }}
                   </text>
                 </view>
               </view>
@@ -418,7 +418,6 @@ body, html {
   box-shadow: 0 2px 4px rgba(0,0,0,0.2);
 }
 .safety-tag.safety-excellent { background: linear-gradient(135deg, #4CAF50, #45a049); } /* 优秀-绿色 */
-.safety-tag.safety-good { background: linear-gradient(135deg, #2196F3, #1976D2); }      /* 良好-蓝色 */
 .safety-tag.safety-normal { background: linear-gradient(135deg, #FF9800, #F57C00); }    /* 一般-橙色 */
 .safety-tag.safety-danger { background: linear-gradient(135deg, #F44336, #D32F2F); }    /* 较差-红色 */
 
