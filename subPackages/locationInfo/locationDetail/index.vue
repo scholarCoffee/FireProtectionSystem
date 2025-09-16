@@ -558,6 +558,12 @@ export default {
 .address-detail-left {
   display: flex;
   align-items: center;
+  max-width: 250px;
+  white-space: nowrap;
+  overflow-x: auto;
+  overflow-y: hidden;
+  margin-right: 10px;
+  scrollbar-width: none;
 }
 
 .address-detail-right {
