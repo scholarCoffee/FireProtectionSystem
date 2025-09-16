@@ -43,6 +43,17 @@
                     </view>
                 </view>
             </view>
+
+            <!-- 二维码入口 -->
+            <view class="column">
+                <view class="row" @tap="openQrModal">
+                    <view class="title">二维码：</view>
+                    <view class="cont">点击查看</view>
+                    <view class="more">
+                        <image :src="serverUrl + '/static/icons/common/right.png'" mode="aspectFit"></image>
+                    </view>
+                </view>
+            </view>
             
             <!-- 管理后台入口 -->
             <view class="column settings-column" v-if="canAccessDataManagement">
@@ -92,9 +103,25 @@
                         focus
                     />
                 </view>
-                <view class="modal-footer">
+                <view class="modal-footer simple-actions">
                     <button class="modal-btn cancel-btn" @tap="closeModal">取消</button>
                     <button class="modal-btn confirm-btn" @tap="confirmModify">确认</button>
+                </view>
+            </view>
+        </view>
+
+        <!-- 二维码弹窗 -->
+        <view v-if="showQrModal" class="modal-overlay" @tap="closeQrModal">
+            <view class="modal-content qr-modal" @tap.stop>
+                <view class="modal-header">
+                    <text class="modal-title">二维码</text>
+                </view>
+                <view class="modal-body">
+                    <image :src= "qrImageUrl" class="qr-image" mode="aspectFit"></image>
+                </view>
+                <view class="modal-footer qr-actions">
+                    <button class="modal-btn cancel-btn" @tap="closeQrModal">关闭</button>
+                    <button class="modal-btn confirm-btn" @tap="saveQrImage">保存图片</button>
                 </view>
             </view>
         </view>
@@ -120,6 +147,9 @@
                 modifyType: '', // 修改类型
                 modifyTitle: '', // 修改标题
                 tempFilePaths: '',
+                // 二维码
+                showQrModal: false,
+                qrImageUrl: ''
             }
         },
         
@@ -162,6 +192,47 @@
             this.getStorages(); // 获取本地存储的用户信息
         },
         methods: {
+            // 打开二维码
+            openQrModal() {
+                // 这里可替换为后端返回的二维码地址
+                // 若有用户唯一标识拼接，可按需生成
+                const defaultPath = '/static/qrcode/qrcode.jpg'
+                this.qrImageUrl = this.serverUrl + defaultPath
+                this.showQrModal = true
+            },
+            closeQrModal() { this.showQrModal = false },
+            
+            // 保存二维码图片（小程序/APP保存到相册；H5回退为新窗口预览）
+            saveQrImage() {
+                const url = this.qrImageUrl
+                if (!url) { uni.showToast({ title: '暂无图片', icon: 'none' }); return }
+                // #ifdef MP-WEIXIN
+                // 下载后保存到相册
+                uni.showLoading({ title: '保存中...' })
+                uni.downloadFile({
+                    url,
+                    success: (res) => {
+                        const tempFilePath = res.tempFilePath
+                        uni.saveImageToPhotosAlbum({
+                            filePath: tempFilePath,
+                            success: () => uni.showToast({ title: '已保存到相册', icon: 'success' }),
+                            fail: () => uni.showToast({ title: '保存失败', icon: 'none' })
+                        })
+                    },
+                    fail: () => uni.showToast({ title: '下载失败', icon: 'none' }),
+                    complete: () => uni.hideLoading()
+                })
+                // #endif
+                
+                // #ifndef MP-WEIXIN
+                // 其他端：打开新窗口预览，由用户长按或右键保存
+                try {
+                    window && window.open(url, '_blank')
+                } catch (e) {
+                    uni.showToast({ title: '请长按图片保存', icon: 'none' })
+                }
+                // #endif
+            },
             getStorages() {
                 // 获取本地存储的用户信息
                 const userInfo = uni.getStorageSync('userInfo');
@@ -488,10 +559,8 @@
 </script>
 
 <style lang="scss">
-/* 内容区下移，避免被导航栏遮挡 */
-.page-content {
-  padding-top: 0;
-}
+/* 内容区下移，避免被导航栏遮挡（未使用） */
+/* .page-content { padding-top: 0; } */
 .main, .login-prompt, .login-container {
   margin-top: 0;
 }
@@ -563,11 +632,8 @@
     }
 }
 
-.prompt-text {
-    font-size: 30rpx;
-    color: $uni-text-color;
-    margin-bottom: 20rpx;
-}
+/* .prompt-text 未使用，注释以便回退 */
+/* .prompt-text { font-size: 30rpx; color: $uni-text-color; margin-bottom: 20rpx; } */
 
 .main {
     padding-top: 20rpx;
@@ -750,6 +816,12 @@
     box-shadow: 0 8rpx 32rpx rgba(0, 0, 0, 0.2);
 }
 
+/* 更简洁的二维码弹窗外观 */
+.qr-modal {
+    border-radius: 24rpx;
+    box-shadow: 0 24rpx 64rpx rgba(0, 0, 0, 0.18);
+}
+
 .modal-header {
     padding: 30rpx;
     text-align: center;
@@ -765,6 +837,17 @@
 .modal-body {
     padding: 30rpx;
 }
+
+.qr-image {
+    width: 100%;
+    height: 400rpx;
+    object-fit: contain;
+    background: #f8f9fa;
+    border-radius: 12rpx;
+}
+
+/* 复制按钮已移除，不再需要 */
+/* .copy-btn { color: #666; } */
 
 .modify-input {
     width: 100%;
@@ -787,29 +870,20 @@
     display: flex;
 }
 
-.modal-btn {
-    flex: 1;
-    height: 88rpx;
-    border: none;
-    font-size: 30rpx;
-    font-weight: 500;
-    background: transparent;
-    
-    &.cancel-btn {
-        color: #666;
-        &:active {
-            background: #f5f5f5;
-        }
-    }
-    
-    &.confirm-btn {
-        color: #1296db;
-        
-        &:active {
-            background: #f0f9f0;
-        }
-    }
+/* 二维码弹窗底部按钮美化，仅作用于二维码弹窗 */
+/* 柔和简约底部按钮样式（二维码/昵称通用） */
+.qr-actions, .simple-actions { gap: 16rpx; padding: 16rpx 20rpx; }
+.qr-actions .modal-btn, .simple-actions .modal-btn {
+    height: 80rpx; border-radius: 14rpx; font-weight: 600;
 }
+.qr-actions .cancel-btn, .simple-actions .cancel-btn {
+    background: #f6f7f9; color: #666; border: 2rpx solid #eef0f4;
+}
+.qr-actions .confirm-btn, .simple-actions .confirm-btn {
+    background: #1890ff; color: #fff; box-shadow: 0 2rpx 8rpx rgba(24,144,255,0.18);
+}
+
+.modal-btn { flex: 1; height: 88rpx; border: none; font-size: 30rpx; font-weight: 500; background: transparent; }
 
 // 手机绑定按钮样式
 .hidden-phone-btn {

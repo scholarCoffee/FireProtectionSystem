@@ -66,17 +66,9 @@
         
       <view class="form-item">
         <text class="form-label">全云景地址 <text class="required">*</text></text>
-        <view class="url-input-container">
-          <text class="url-prefix">{{ urlBase }}</text>
-          <view class="url-input">
-            <input 
-              v-model="allSenceLinkSuffix" 
-              class="form-input" 
-              placeholder="请输入地址"
-              maxlength="500"
-              @input="onAllSenceLinkInput"
-            />
-          </view>
+        <view class="url-display" @tap="openLinkModal">
+          <text class="url-display-text">{{ (urlBase || '') + (allSenceLinkSuffix || '') }}</text>
+          <image :src="serverUrl + '/static/icons/common/edit-white.png'" class="edit-inline-icon" />
         </view>
       </view>
       
@@ -302,6 +294,41 @@
         </view>
       </view>
     </view>
+
+    <!-- 全云景地址弹窗（仅填写后缀，前缀固定为 urlBase） -->
+    <view class="contact-modal" v-if="showLinkModalFlag" @tap="closeLinkModal">
+      <view class="modal-content link-modal" @tap.stop>
+        <view class="modal-header">
+          <text class="modal-title">编辑全云景地址</text>
+          <view class="close-btn" @tap="closeLinkModal">
+            <text class="close-icon">×</text>
+          </view>
+        </view>
+        <view class="modal-body">
+          <view class="form-group">
+            <text class="form-label">地址后缀 <text class="required">*</text></text>
+            <view class="url-input-container vertical">
+              <text class="url-prefix">{{ urlBase }}</text>
+              <view class="url-input multiline">
+                <textarea
+                  v-model="tempAllSenceLinkSuffix"
+                  class="form-modal-textarea"
+                  placeholder="请输入地址后缀"
+                  maxlength="500"
+                  auto-height
+                  show-confirm-bar="false"
+                />
+              </view>
+            </view>
+            <text class="tip-text">只需填写后缀，例如: my/scene/path</text>
+          </view>
+        </view>
+        <view class="modal-footer">
+          <button class="footer-btn cancel-btn" @tap="closeLinkModal">取消</button>
+          <button class="footer-btn confirm-btn" @tap="confirmLinkSuffix">确定</button>
+        </view>
+      </view>
+    </view>
       
     <!-- 消防地图配置 -->
     <view class="config-section">
@@ -453,7 +480,7 @@
         errors: {},
         // 仅用于输入后缀，最终组合为 urlBase + allSenceLinkSuffix
         allSenceLinkSuffix: '',
-        urlBase: 'https://www.720yun.com/',
+        urlBase: 'https://71ez3e7oi8u.720yun.com/',
         locationTypeOptions: [], // 位置类型选项
         // 消防单位相关
         fireUnitOptions: [],
@@ -480,7 +507,10 @@
         showMediaSheet: false,
         uploadingDeployment: false,
         // 节流时间戳
-        throttleTimestamps: { chooseMedia: 0, addImage: 0, addDefault: 0 }
+        throttleTimestamps: { chooseMedia: 0, addImage: 0, addDefault: 0 },
+        // 全云景地址编辑弹窗
+        showLinkModalFlag: false,
+        tempAllSenceLinkSuffix: ''
       }
     },
     created() {
@@ -620,6 +650,22 @@
         const normalized = suffix.replace(/^https?:\/\//i, '')
         this.formData.allSenceLink = this.urlBase + normalized
         if (this.errors.allSenceLink) this.errors.allSenceLink = ''
+      },
+      // 打开/关闭全云景地址弹窗
+      openLinkModal() {
+        this.tempAllSenceLinkSuffix = this.allSenceLinkSuffix || ''
+        this.showLinkModalFlag = true
+      },
+      closeLinkModal() {
+        this.showLinkModalFlag = false
+      },
+      confirmLinkSuffix() {
+        const suffix = String(this.tempAllSenceLinkSuffix || '').trim()
+        this.allSenceLinkSuffix = suffix
+        const normalized = suffix.replace(/^https?:\/\//i, '')
+        this.formData.allSenceLink = this.urlBase + normalized
+        if (this.errors.allSenceLink) this.errors.allSenceLink = ''
+        this.closeLinkModal()
       },
       
       onLocationTypeChange(e) {
@@ -1388,20 +1434,20 @@
   justify-content: space-between;
   padding: 16rpx 8rpx;
   align-items: center;
-  background: linear-gradient(135deg, #1890ff 0%, #40a9ff 100%);
+  background: #ffffff;
   position: relative;
-  color: #ffffff;
+  color: #1f2d3d;
+  border-bottom: 1rpx solid #f0f0f0;
 }
 
 .modal-title {
   font-size: 24rpx;
   font-weight: 600;
-  color: #ffffff;
+  color: #1f2d3d;
   flex: 1;
   text-align: left;
   padding-left: 20rpx;
   letter-spacing: 0.5rpx;
-  text-shadow: 0 2rpx 4rpx rgba(0, 0, 0, 0.2);
 }
 
 .close-btn {
@@ -1411,16 +1457,16 @@
   justify-content: center;
   align-items: center;
   font-size: 30rpx;
-  color: rgba(255, 255, 255, 0.9);
+  color: #666;
   font-weight: 300;
   border-radius: 50%;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   cursor: pointer;
-  background: rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(10rpx);
+  background: #f5f7fa;
+  backdrop-filter: none;
   
   &:active {
-    background: rgba(255, 255, 255, 0.2);
+    background: #f0f0f0;
     transform: scale(0.9) rotate(90deg);
   }
 }
@@ -1553,7 +1599,7 @@
   display: flex;
   padding: 10rpx;
   border-top: 1rpx solid #e1e8ed;
-  background: #fff;
+  background: #ffffff;
   gap: 20rpx;
 }
 
@@ -1595,9 +1641,16 @@
 }
 
 /* 确认按钮继承footer-btn的样式，只需要特殊背景 */
-.confirm-btn {
-  background: linear-gradient(135deg, #1890ff 0%, #40a9ff 100%);
-  color: #ffffff;
+.confirm-btn { background: #1890ff; color: #ffffff; }
+
+/* 链接弹窗体更紧凑 */
+.link-modal { max-width: 620rpx; }
+
+.tip-text {
+  margin-top: 8rpx;
+  font-size: 22rpx;
+  color: #8c8c8c;
+  padding-left: 2rpx;
 }
 
 /* 弹窗动画 */
@@ -1652,6 +1705,36 @@
   letter-spacing: 0.5rpx;
 }
 
+/* 链接展示区（点击唤起弹窗） */
+.url-display {
+  flex: 1;
+  min-height: 64rpx;
+  padding: 0 14rpx;
+  border-radius: 12rpx;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: linear-gradient(135deg, #f8faff 0%, #ffffff 100%);
+  border: 2rpx solid #e8f1ff;
+  box-shadow: 0 2rpx 8rpx rgba(24, 144, 255, 0.06);
+}
+
+.url-display-text {
+  flex: 1;
+  font-size: 24rpx;
+  color: #1f2d3d;
+  word-break: break-all;
+  padding-right: 12rpx;
+}
+
+.edit-inline-icon {
+  width: 32rpx;
+  height: 32rpx;
+  padding: 6rpx;
+  border-radius: 10rpx;
+  background: linear-gradient(135deg, #1890ff 0%, #096dd9 100%);
+}
+
 /* URL 组合输入样式 */
 .url-input-container {
   flex: 1;
@@ -1672,6 +1755,29 @@
     font-size: 24rpx;
     white-space: nowrap;
   }
+}
+
+/* 弹窗中的竖向布局与多行输入 */
+.url-input-container.vertical {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8rpx;
+  padding: 0;
+}
+.url-input.multiline {
+  padding: 0;
+}
+.form-modal-textarea {
+  min-height: 120rpx;
+  padding: 12rpx;
+  border: none;
+  border-radius: 12rpx;
+  font-size: 24rpx;
+  color: #333333;
+  box-sizing: border-box;
+  text-align: left;
+  background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+  box-shadow: inset 0 2rpx 4rpx rgba(0, 0, 0, 0.05);
 }
 
 .form-item .required {
