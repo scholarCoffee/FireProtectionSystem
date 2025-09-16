@@ -553,22 +553,22 @@ export default {
   font-size: 12px;
   color: #666;
   justify-content: space-between;
-  .address-detail-left {
-    display: flex;
-    align-items: center;
-  }
-  .address-detail-right {
-    display: flex;
-    align-items: center;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 6px 6px;
-    border-radius: 12px;
-    background: #40a9ff;
-    color: #ffffff;
-    font-size: 12px;
-  }
+}
+
+.address-detail-left {
+  display: flex;
+  align-items: center;
+}
+
+.address-detail-right {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 6px;
+  border-radius: 12px;
+  background: #40a9ff;
+  color: #ffffff;
+  font-size: 12px;
 }
 
 .location-icon {
@@ -1210,10 +1210,11 @@ export default {
 .phone-name {
   display: flex;
   align-items: center;
-  .phone-text {
-    flex: 1;
-    margin-left: 12rpx;
-  }
+}
+
+.phone-text {
+  flex: 1;
+  margin-left: 12rpx;
 }
 
 /* 电话号码标签样式 */
