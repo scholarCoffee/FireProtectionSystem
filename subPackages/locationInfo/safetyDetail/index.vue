@@ -91,8 +91,7 @@
                 </view>
                 <!-- 备注信息（仅当存在且不为空时显示） -->
                 <view class="remark-section" v-if="getRemarkText(itemConf)">
-                  <image :src="serverUrl + '/static/icons/location/description-info-active.png'" class="remark-icon" />
-                  <view class="remark-title">概述</view>
+                  <view class="remark-title">具体描述：</view>
                   <view class="remark-text">{{ getRemarkText(itemConf) }}</view>
                 </view>
               </view>
@@ -604,7 +603,6 @@ export default {
   font-weight: 600;
   line-height: 16px;
   white-space: nowrap;
-  margin-right: 2px;
 }
 
 .remark-text {

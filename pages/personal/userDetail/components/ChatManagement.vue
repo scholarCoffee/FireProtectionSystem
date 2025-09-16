@@ -301,7 +301,7 @@ export default {
 }
 
 .action-icon-btn {
-  height: 56rpx;
+  padding: 8rpx;
   border-radius: 8rpx;
   background: #1890ff;
   border: none;
@@ -310,7 +310,6 @@ export default {
   justify-content: center;
   line-height: 0;
   overflow: hidden;
-  padding: 8px;
 }
 
 .action-icon-btn.member-btn {
@@ -324,7 +323,6 @@ export default {
 .action-icon {
   width: 32rpx;
   height: 32rpx;
-  display: block;
 }
 
 .item-content {

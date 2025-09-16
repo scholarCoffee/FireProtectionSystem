@@ -436,6 +436,7 @@ export default {
 .item-actions {
   display: flex;
   gap: 12rpx;
+  margin-right: 12rpx;
 }
 
 .action-icon {
@@ -528,7 +529,7 @@ export default {
   align-items: center;
   justify-content: center;
   padding: 30rpx 0;
-  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+  background: linear-gradient(135deg, #fff 0%, #ffffff 100%);
   border-radius: 16rpx;
   margin: 30rpx 20rpx 20rpx 20rpx;
   box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.05);

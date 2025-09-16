@@ -450,7 +450,6 @@ body, html {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  margin-right: 8px;
   min-width: 0;
 }
 .card-desc {
@@ -479,10 +478,8 @@ body, html {
   justify-content: center;
   flex-shrink: 0;
   margin-left: 8px;
-  background-color: rgba(18, 150, 219, 0.15);
   border-radius: 50%;
   padding: 2px;
-  border: 1px solid rgba(18, 150, 219, 0.2);
 }
 
 .phone-icon {
@@ -498,11 +495,10 @@ body, html {
   color: #fff;
   border: none;
   border-radius: 8px;
-  padding: 10px 0;
   font-size: 14px;
   width: 100%;
-  height: 38px;
-  line-height: 18px;
+  height: 32px;
+  line-height: 32px;
   align-self: stretch;
   box-sizing: border-box;
   cursor: pointer;

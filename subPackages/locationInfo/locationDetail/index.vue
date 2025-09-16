@@ -81,8 +81,10 @@
             <view class="phone-content">
               <view class="phone-name">
                 <image :src="serverUrl + '/static/icons/location/userPhone.png'" class="user-phone-icon" />
-                <text class="label">{{ phoneItem.type === 1 ? '单位负责人：' : '消防负责人：' }}</text>
                 <text class="phone-text">{{ phoneItem.name }}</text>
+                <view class="phone-tag" :class="phoneItem.type === 1 ? 'tag-responsible' : 'tag-fire'">
+                  <text class="tag-text">{{ phoneItem.type === 1 ? '单位负责人' : '消防负责人' }}</text>
+                </view>
               </view>
               <view class="phone-number">
                 <text>{{ phoneItem.phone }}</text>
@@ -129,10 +131,10 @@
             <!-- 户主查询URL按钮（仅高层小区且有配置时显示） -->
             <view class="info-row" v-if="locationObj.ownerQueryUrl">
               <view class="owner-query-section">
-                <text class="label">户主查询：</text>
+                <text class="label">户主信息</text>
                 <button class="owner-query-btn" @tap="goToOwnerQuery">
                   <image :src="serverUrl + '/static/icons/common/white-link.png'" class="query-icon" />
-                  <text class="query-text">查询户主信息</text>
+                  <text class="query-text">一键查询</text>
                 </button>
               </view>
             </view>
@@ -187,7 +189,7 @@
           <!-- 出行大门 -->
           <view class="info-row gate-list">
             <view class="gate-items">
-              <text class="label">可出行大门：</text>
+              <text class="label">可出行大门</text>
               <view class="gate-item" v-for="(gate, index) in locationObj.enterGateList" :key="index">
                 <!-- 勾选框 -->
                 <image :src="serverUrl + '/static/icons/common/checked.png'" class="check-icon"/>
@@ -903,7 +905,6 @@ export default {
 
 .owner-query-section .label {
   min-width: 80px;
-  color: #666;
   font-weight: 500;
   flex-shrink: 0;
 }
@@ -1204,5 +1205,40 @@ export default {
   text-align: left;
   word-wrap: break-word;
   white-space: pre-wrap;
+}
+
+.phone-name {
+  display: flex;
+  align-items: center;
+  .phone-text {
+    flex: 1;
+    margin-left: 12rpx;
+  }
+}
+
+/* 电话号码标签样式 */
+.phone-tag {
+  padding: 4px 8px;
+  border-radius: 12px;
+  margin-left: 8px;
+  font-size: 11px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.tag-responsible {
+  background: linear-gradient(135deg, #52c41a, #73d13d);
+  color: #ffffff;
+}
+
+.tag-fire {
+  background: linear-gradient(135deg, #ff4d4f, #ff7875);
+  color: #ffffff;
+}
+
+.tag-text {
+  font-size: 11px;
+  font-weight: 500;
+  color: inherit;
 }
 </style>

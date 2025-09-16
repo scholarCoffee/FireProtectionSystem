@@ -15,7 +15,6 @@
             class="avatar-img"
           />
           <view class="avatar-overlay" @tap="chooseAvatar">
-            <image :src="serverUrl + '/static/icons/common/camera.png'" class="camera-icon" />
             <text class="change-text">更换头像</text>
           </view>
         </view>

@@ -660,6 +660,7 @@ export default {
   &:active {
     transform: scale(0.95);
     box-shadow: 0 2rpx 8rpx rgba(24, 144, 255, 0.2);
+    border: none;
   }
   
   &:hover {

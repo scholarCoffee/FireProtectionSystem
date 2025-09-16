@@ -415,7 +415,7 @@ export default {
 /* 移动端优化 */
 @media (max-width: 750rpx) {
   .footer {
-    padding: 16rpx 24rpx 30rpx 24rpx;
+    padding: 16rpx 24rpx 16rpx 24rpx;
     gap: 20rpx;
   }
 }
@@ -423,7 +423,7 @@ export default {
 /* 超小屏幕优化 */
 @media (max-width: 600rpx) {
   .footer {
-    padding: 16rpx 20rpx 30rpx 20rpx;
+    padding: 16rpx 20rpx 16rpx 20rpx;
     gap: 16rpx;
   }
 }

@@ -700,7 +700,7 @@ export default {
   transition: all 0.3s ease;
   
   &::before {
-    content: '字符数：';
+    content: '字数：';
     margin-right: 4rpx;
     color: #999999;
     font-size: 20rpx;
@@ -946,7 +946,6 @@ export default {
 }
 
 .total-rule {
-  margin-top: 24rpx;
   padding: 16rpx;
   border-radius: 8rpx;
   background: linear-gradient(135deg, #fff7e6 0%, #fff2d9 100%);
