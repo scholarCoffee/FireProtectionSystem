@@ -58,17 +58,24 @@
             }
         },
         {
+            "path": "pages/personal/userDetail/OwnerInfo",
+            "style": {
+                "navigationStyle": "default",
+                "navigationBarTitleText": "户主信息"
+            }
+        },
+        {
+            "path": "pages/personal/userDetail/OwnerInfoEdit",
+            "style": {
+                "navigationStyle": "default",
+                "navigationBarTitleText": "新增户主信息"
+            }
+        },
+        {
             "path": "pages/personal/userDetail/components/GroupMemberManagement",
             "style": {
                 "navigationStyle": "default",
                 "navigationBarTitleText": "群成员管理"
-            }
-        },
-        {
-            "path": "pages/personal/userDetail/components/CommandManagement",
-            "style": {
-                "navigationStyle": "default",
-                "navigationBarTitleText": "数据指挥管理"
             }
         }
     ],

@@ -11,7 +11,6 @@
           <image :src="currentTab === 'location' ? serverUrl + '/static/icons/location/location-active.png' : serverUrl + '/static/icons/location/location.png'" class="tab-icon" />
           <text class="tab-text">位置信息</text>
         </view>
-
         <view 
           class="tab-item" 
           :class="{ active: currentTab === 'chat' }"
@@ -19,15 +18,6 @@
         >
           <image :src="currentTab === 'chat' ? serverUrl + '/static/icons/chat/chat-active.png' : serverUrl + '/static/icons/chat/chat.png'" class="tab-icon" />
           <text class="tab-text">聊天管理</text>
-        </view>
-        
-        <view 
-          class="tab-item" 
-          :class="{ active: currentTab === 'command' }"
-          @tap="switchTab('command')"
-        >
-          <image :src="currentTab === 'command' ? serverUrl + '/static/icons/data/manage-active.png' : serverUrl + '/static/icons/data/manage.png'" class="tab-icon" />
-          <text class="tab-text">数据指挥</text>
         </view>
       </view>
     </view>
@@ -63,6 +53,7 @@
         ref="locationManagement"
       />
     </view>
+
     <!-- 聊天管理内容 -->
     <view v-if="currentTab === 'chat'" class="chat-content">
       <ChatManagement 
@@ -71,29 +62,17 @@
         ref="chatManagement"
       />
     </view>
-    
-    <!-- 数据指挥内容 -->
-    <view v-if="currentTab === 'command'" class="command-content">
-      <CommandManagement 
-        :serverUrl="serverUrl"
-        :searchKeyword="searchKeyword"
-        ref="commandManagement"
-      />
-    </view>
   </view>
 </template>
 
 <script>
-import LocationManagement from './components/LocationManagement.vue'
 import ChatManagement from './components/ChatManagement.vue'
-import CommandManagement from './components/CommandManagement.vue'
-
+import LocationManagement from './components/LocationManagement.vue'
 export default {
   name: 'DataManagement',
   components: {
-    LocationManagement,
     ChatManagement,
-    CommandManagement
+    LocationManagement,
   },
   data() {
     return {
@@ -112,12 +91,10 @@ export default {
     
     getSearchPlaceholder() {
       switch(this.currentTab) {
-        case 'location':
-          return '根据关键字查询位置信息';
         case 'chat':
           return '根据关键字查询聊天信息';
-        case 'command':
-          return '搜索数据指挥功能';
+        case 'location':
+          return '根据关键字查询位置信息';
         default:
           return '搜索...';
       }
@@ -135,39 +112,29 @@ export default {
     
     performSearch() {
       // 根据当前标签页执行搜索
-      if (this.currentTab === 'location' && this.$refs.locationManagement) {
-        this.$refs.locationManagement.search(this.searchKeyword);
-      } else if (this.currentTab === 'chat' && this.$refs.chatManagement) {
+      if (this.currentTab === 'chat' && this.$refs.chatManagement) {
         this.$refs.chatManagement.search(this.searchKeyword);
-      } else if (this.currentTab === 'command' && this.$refs.commandManagement) {
-        this.$refs.commandManagement.search(this.searchKeyword);
+      } else if (this.currentTab === 'location' && this.$refs.locationManagement) {
+        this.$refs.locationManagement.search(this.searchKeyword);
       }
     },
     
     refreshData() {
       // 刷新当前组件的数据
-      if (this.currentTab === 'location' && this.$refs.locationManagement) {
-        this.$refs.locationManagement.loadData();
-      } else if (this.currentTab === 'chat' && this.$refs.chatManagement) {
+      if (this.currentTab === 'chat' && this.$refs.chatManagement) {
         this.$refs.chatManagement.loadData();
-      } else if (this.currentTab === 'command' && this.$refs.commandManagement) {
-        this.$refs.commandManagement.loadData();
+      } else if (this.currentTab === 'location' && this.$refs.locationManagement) {
+        this.$refs.locationManagement.loadData();
       }
     },
     
     showAddModal() {
       // 保持原有位置/聊天新增逻辑
       let url = ''
-      if (this.currentTab === 'location') {
-        url = `/pages/personal/userDetail/DataEdit?type=location&mode=add`
-      } else if (this.currentTab === 'chat') {
+      if (this.currentTab === 'chat') {
         url = `/pages/personal/userDetail/DataEdit?type=chat&mode=add`
-      } else if (this.currentTab === 'command') {
-        // 数据指挥新增通过组件内部处理
-        if (this.$refs.commandManagement) {
-          this.$refs.commandManagement.openAddCommand()
-        }
-        return
+      } else if (this.currentTab === 'location') {
+        url = `/pages/personal/userDetail/DataEdit?type=location&mode=add`
       }
       if (url) uni.navigateTo({ url })
     }
@@ -346,12 +313,6 @@ export default {
   min-height: 0; /* 允许flex子项收缩 */
 }
 
-/* 数据指挥样式 */
-.command-content {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  min-height: 0; /* 允许flex子项收缩 */
-}
+/* 删除了数据指挥页样式 */
 
 </style> 

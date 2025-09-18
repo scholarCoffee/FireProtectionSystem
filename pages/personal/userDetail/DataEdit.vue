@@ -19,13 +19,6 @@
         :serverUrl="serverUrl"
         :initialData="chatInitialData"
       />
-      <!-- Command表单 -->
-      <CommandForm 
-        v-if="type === 'command'"
-        ref="commandFormRef"
-        :serverUrl="serverUrl"
-        :initialData="commandInitialData"
-      />
       <!-- 底部占位，防止内容被固定按钮遮挡 -->
       <view class="scroll-spacer"></view>
     </scroll-view>
@@ -42,13 +35,11 @@
 import SafetyScoreDetail from './components/SafetyScoreDetail.vue'
 import LocationForm from './components/LocationForm.vue'
 import ChatForm from './components/ChatForm.vue'
-import CommandForm from './components/CommandForm.vue'
 export default {
   components: {
     SafetyScoreDetail,
     LocationForm,
-    ChatForm,
-    CommandForm
+    ChatForm
   },
   name: 'DataEdit',
   data() {
@@ -56,11 +47,9 @@ export default {
       type: 'location', // location 或 safety 或 command
       mode: 'add', // add 或 edit
       editId: '', // 编辑时的ID
-      commandKey: '', // 数据指挥的key
-      serverUrl: 'https://www.xiaobei.space',
+      serverUrl: 'http://172.17.121.65:3000',
       // 子组件初始化数据（避免父传子双向修改）
       chatInitialData: {},
-      commandInitialData: {},
       locationInitialData: {}
     }
   },
@@ -73,20 +62,8 @@ export default {
     this.type = options.type || 'location';
     this.mode = options.mode || 'add';
     this.editId = options.id || '';
-    // 如果是数据指挥编辑模式，设置初始数据
-    if (this.type === 'command' && options.key) {
-      this.commandKey = options.key;
-      this.commandInitialData = {
-        commandTitle: decodeURIComponent(options.title || ''),
-        commandDesc: decodeURIComponent(options.desc || ''),
-        commandUrl: decodeURIComponent(options.url || '')
-      };
-      this.$nextTick(() => {
-        this.$refs.commandFormRef && this.$refs.commandFormRef.setFormData(this.commandInitialData);
-      })
-    }
     
-    if (this.isEdit && this.editId && this.type !== 'command') {
+    if (this.isEdit && this.editId) {
       this.loadEditData();
     }
   },
@@ -158,15 +135,6 @@ export default {
         if (!childOk) return
         const loc = this.$refs.locationFormRef?.getFormData?.() || {}
         submissionData = { ...loc }
-      }
-
-      // 命令、聊天：先从子组件获取数据
-      if (this.type === 'command') {
-        const childOk = await (this.$refs.commandFormRef?.validate?.() ?? true)
-        if (!childOk) { uni.hideLoading(); return }
-        const cmd = this.$refs.commandFormRef?.getFormData?.() || {}
-        submissionData = { ...cmd }
-        return;
       }
       
       if (this.type === 'chat') {

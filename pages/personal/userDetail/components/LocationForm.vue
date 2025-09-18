@@ -166,15 +166,22 @@
     <view class="config-section" v-if="formData.type === 1">
       <view class="section-header">
         <text class="section-title">户主信息</text>
+        <view class="header-actions">
+          <image 
+            :src="serverUrl + '/static/icons/common/edit-white.png'" 
+            class="action-icon edit-icon" 
+            @tap="goOwnerInfoEdit" 
+          />
+        </view>
       </view>
       <view class="form-item">
-        <text class="form-label">户主查询URL</text>
-        <input 
-          v-model="formData.ownerQueryUrl" 
-          class="form-input" 
-          placeholder="请输入户主信息查询URL"
-          maxlength="500"
-        />
+        <text class="form-label">当前住户总数</text>
+        <view class="owner-inline">
+          <view class="owner-badge">
+            <text class="badge-num">{{ residentCount }}</text>
+            <text class="badge-suffix">人</text>
+          </view>
+        </view>
       </view>
     </view>
 
@@ -467,9 +474,12 @@
           addressExt: '',
           addressId: '',
           allSenceLink: '',
-          ownerQueryUrl: '',
           type: 1,
           description: '',
+          ownerInfo: {
+            total: 0,
+            count: 0
+          },
           fireUnitDeploymentMap: [],
           fireSafetyScore: null,
           enterGateList: [],
@@ -510,7 +520,9 @@
         throttleTimestamps: { chooseMedia: 0, addImage: 0, addDefault: 0 },
         // 全云景地址编辑弹窗
         showLinkModalFlag: false,
-        tempAllSenceLinkSuffix: ''
+        tempAllSenceLinkSuffix: '',
+        // 户主统计
+        residentCount: 0
       }
     },
     created() {
@@ -525,6 +537,7 @@
       // 防抖：地址编号唯一性校验
       this.debouncedCheckAddressId = debounce(this.checkAddressIdRaw, 600)
     },
+    watch: {},
     computed: {
       contactTypeLimits() {
         const unitContacts = this.formData?.phoneList?.filter(contact => contact.type === 1);
@@ -585,9 +598,17 @@
           } else {
             this.allSenceLinkSuffix = link
           }
+          // 从 location/detail 返回的 ownerInfo 节点回填住户总数
+          const ownerInfo = data && data.ownerInfo
+          if (ownerInfo && typeof ownerInfo.total === 'number') {
+            this.residentCount = ownerInfo.total
+          } else if (ownerInfo && typeof ownerInfo.count === 'number') {
+            this.residentCount = ownerInfo.count
+          }
         } else {
           this.formData = this.$options.data().formData
           this.allSenceLinkSuffix = ''
+          this.residentCount = 0
         }
       },
       validate() {
@@ -666,6 +687,18 @@
         this.formData.allSenceLink = this.urlBase + normalized
         if (this.errors.allSenceLink) this.errors.allSenceLink = ''
         this.closeLinkModal()
+      },
+      // 住户数量从 location/detail 接口的 ownerInfo 节点回填
+      // 跳转户主编辑页
+      goOwnerInfoEdit() {
+        const addressId = this.formData.addressId || this.editId || ''
+        if (!addressId) {
+          uni.showToast({ title: '请先填写地址编号', icon: 'none' })
+          return
+        }
+        uni.navigateTo({
+          url: `/pages/personal/userDetail/OwnerInfo?mode=edit&addressId=${encodeURIComponent(addressId)}`
+        })
       },
       
       onLocationTypeChange(e) {
@@ -1704,6 +1737,31 @@
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Helvetica Neue', Helvetica, Arial, sans-serif;
   letter-spacing: 0.5rpx;
 }
+
+.owner-inline { display: flex; align-items: center; gap: 16rpx; margin-left: auto; }
+.owner-count { font-size: 26rpx; color: #1f2d3d; font-weight: 600; }
+.owner-badge {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6rpx;
+  background: linear-gradient(135deg, #e6f7ff 0%, #f0faff 100%);
+  border: 1rpx solid #bae7ff;
+  border-radius: 24rpx;
+  padding: 6rpx 14rpx;
+  box-shadow: 0 2rpx 8rpx rgba(24, 144, 255, 0.08);
+}
+.badge-num {
+  font-size: 28rpx;
+  font-weight: 700;
+  color: #1890ff;
+  line-height: 1;
+}
+.badge-suffix {
+  font-size: 22rpx;
+  color: #1890ff;
+  opacity: 0.8;
+}
+.owner-edit-btn { height: 56rpx; line-height: 56rpx; padding: 0 20rpx; border-radius: 12rpx; background: #1890ff; color: #fff; font-size: 24rpx; }
 
 /* 链接展示区（点击唤起弹窗） */
 .url-display {

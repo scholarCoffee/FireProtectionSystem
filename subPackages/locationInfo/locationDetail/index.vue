@@ -126,19 +126,7 @@
             </view>
           </view>
 
-          <!-- 户主信息与反馈（仅高层小区） -->
-          <view class="owner-feedback-card" v-if="locationObj.ownerQueryUrl">
-            <!-- 户主查询URL按钮（仅高层小区且有配置时显示） -->
-            <view class="info-row" v-if="locationObj.ownerQueryUrl">
-              <view class="owner-query-section">
-                <text class="label">户主信息</text>
-                <button class="owner-query-btn" @tap="goToOwnerQuery">
-                  <image :src="serverUrl + '/static/icons/common/white-link.png'" class="query-icon" />
-                  <text class="query-text">一键查询</text>
-                </button>
-              </view>
-            </view>
-          </view>
+          
           
           <!-- 作战实景部署（仅重点单位且有配置时显示） -->
           <view class="deployment-card" v-if="locationObj.type === 2 && locationObj.fireUnitDeploymentMap && locationObj.fireUnitDeploymentMap.length > 0">
@@ -339,14 +327,7 @@ export default {
     getLocationTypeName() {
       return locationTabList.find(item => item.type === this.locationObj.type)?.name || '未知类型';
     },
-    // 户主查询跳转
-    goToOwnerQuery() {
-      if (this.locationObj.ownerQueryUrl) {
-        uni.navigateTo({ 
-          url: '/subPackages/common/webview/index?url=' + encodeURIComponent(this.locationObj.ownerQueryUrl) + '&title=' + encodeURIComponent('户主信息查询')
-        });
-      }
-    },
+    
     // 消防单位相关方法
     async fetchFireUnits() {
       try {
@@ -894,64 +875,7 @@ export default {
 }
 
 /* 户主信息卡片样式 */
-.owner-feedback-card {
-  background: #FFF;
-  border: none;
-  border-radius: 12px;
-  overflow: hidden;
-}
-
-/* 户主查询按钮样式 */
-.owner-query-section {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  width: 100%;
-}
-
-.owner-query-section .label {
-  min-width: 80px;
-  font-weight: 500;
-  flex-shrink: 0;
-}
-
-.owner-query-section .owner-query-btn {
-  margin-left: auto;
-}
-
-.owner-query-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  margin: 0;
-  background: linear-gradient(135deg, #1890ff 0%, #40a9ff 100%);
-  color: #ffffff;
-  border: none;
-  border-radius: 12px;
-  font-size: 13px;
-  font-weight: 500;
-  box-shadow: 0 2px 6px rgba(24, 144, 255, 0.2);
-  cursor: pointer;
-  min-width: 100px;
-}
-
-.owner-query-btn:active {
-  transform: scale(0.98);
-}
-
-.query-icon {
-  width: 14px;
-  height: 14px;
-  filter: brightness(0) invert(1);
-}
-
-.query-text {
-  font-size: 13px;
-  color: #ffffff;
-  font-weight: 500;
-  white-space: nowrap;
-}
+ 
 
 /* 作战部署卡片样式 */
 .deployment-card {
