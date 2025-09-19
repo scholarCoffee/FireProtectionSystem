@@ -10,7 +10,7 @@
             v-model="form.building" 
             type="number" 
             :disabled="!canEditAll" 
-            placeholder="1-100" 
+            placeholder="请输入栋号" 
             @input="onBuildingInput"
           />
         </view>
@@ -21,7 +21,7 @@
             v-model="form.unit" 
             type="number" 
             :disabled="!canEditAll" 
-            placeholder="1-100" 
+            placeholder="请输入单元号" 
             @input="onUnitInput"
           />
         </view>
@@ -32,7 +32,7 @@
             v-model="form.floor" 
             type="number" 
             :disabled="!canEditAll" 
-            placeholder="1-100" 
+            placeholder="请输入楼层" 
             @input="onFloorInput"
           />
         </view>
@@ -41,13 +41,13 @@
       <!-- 房间号 - 必填 -->
       <view class="row1">
         <text class="label required">房间号</text>
-        <input class="input" v-model="form.roomNo" :disabled="!canEditAll" placeholder="例如 301 或 A-301" />
+        <input class="input normal-input" v-model="form.roomNo" :disabled="!canEditAll" placeholder="例如 301 或 A-301" />
       </view>
       
       <!-- 住户姓名 - 必填，单独一行 -->
       <view class="row1">
         <text class="label required">住户姓名</text>
-        <input class="input" v-model="form.name" :disabled="!canEditAll && mode==='edit'" placeholder="请输入住户姓名" />
+        <input class="input normal-input" v-model="form.name" :disabled="!canEditAll && mode==='edit'" placeholder="请输入住户姓名" />
       </view>
       
       <!-- 住户电话 - 必填，单独一行 -->
@@ -90,11 +90,11 @@
       
       <view class="row1">
         <text class="label">房间大小(㎡)</text>
-        <input class="input" v-model="form.area" type="digit" :disabled="!canEditAll" placeholder="支持小数点后两位" @input="onAreaInput" />
+        <input class="input normal-input" v-model="form.area" type="digit" :disabled="!canEditAll" placeholder="支持小数点后两位" @input="onAreaInput" />
       </view>
       <view class="row1">
         <text class="label">备注</text>
-        <input class="input" v-model="form.remark" :disabled="!canEditAll && mode==='edit'" />
+        <input class="input normal-input" v-model="form.remark" :disabled="!canEditAll && mode==='edit'" />
       </view>
     </view>
 
@@ -112,7 +112,7 @@ import { validatePhone } from '@/commons/js/utils.js'
 export default {
   data() {
     return {
-      serverUrl: 'http://172.17.121.65:3000',
+      serverUrl: 'http://192.168.1.4:3000',
       addressId: '',
       mode: 'add', // add | edit
       userInfo: {},
@@ -356,6 +356,9 @@ export default {
       if (this.mode === 'add') {
         delete payload._id
       }
+      if (this.form.status !== 1 ) {
+        delete payload.peopleCount
+      }
       const url = this.mode === 'edit' ? '/owner/update' : '/owner/save'
       uni.request({
         url: this.serverUrl + url,
@@ -404,6 +407,9 @@ export default {
   gap: 12rpx; 
   align-items: center; 
   margin-bottom: 24rpx; 
+  .normal-input {
+    flex: 1;
+  }
 }
 
 // 选填项行样式 - 平铺显示，优化样式
@@ -665,6 +671,8 @@ export default {
   transform: translateY(2rpx);
   border: none;
 }
+
+.btn.secondary::after { border: none !important; }
 
 .btn:disabled {
   opacity: 0.5;

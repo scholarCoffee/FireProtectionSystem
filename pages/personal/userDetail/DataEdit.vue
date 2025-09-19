@@ -47,7 +47,7 @@ export default {
       type: 'location', // location 或 safety 或 command
       mode: 'add', // add 或 edit
       editId: '', // 编辑时的ID
-      serverUrl: 'http://172.17.121.65:3000',
+      serverUrl: 'http://192.168.1.4:3000',
       // 子组件初始化数据（避免父传子双向修改）
       chatInitialData: {},
       locationInitialData: {}

@@ -1,11 +1,6 @@
 import App from './App'
 import Vue from 'vue'
-// #ifdef MP-WEIXIN
-import io from '@hyoga/uni-socket.io'
-// #endif
-// #ifndef MP-WEIXIN
 import io from './commons/js/weapp.socket.io.js'
-// #endif
 Vue.config.productionTip = false
 Vue.prototype.serverUrl = 'https://www.xiaobei.space' 
 

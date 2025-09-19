@@ -50,9 +50,11 @@
     <!-- 操作区（保留，已移至筛选栏右侧） -->
     <!-- 列表区 -->
     <view class="list-card">
-      <view v-if="ownerList.length === 0" class="empty">暂无数据</view>
+      <view v-if="ownerList.length === 0" class="empty">
+        <text class="empty-text">暂无数据</text>
+      </view>
       <view v-else class="owner-list">
-         <view class="owner-item" :class="(statusClass(item.status) + '-card')" v-for="(item, idx) in ownerList" :key="item.id || idx">
+         <view class="owner-item" :class="item.cardClassName" v-for="(item, idx) in ownerList" :key="idx">
            <!-- 顶部信息区域 -->
            <view class="owner-top">
              <!-- 地址信息 -->
@@ -64,7 +66,7 @@
              <!-- 状态位置行：状态 + 栋单元楼层 + 房间号 + 房间人数 -->
              <view class="status-location-row">
                <view class="left-info">
-                 <text class="owner-status-badge" :class="statusClass(item.status)">{{ statusLabel(item.status) }}</text>
+                 <text class="owner-status-badge" :class="item.statusClassName">{{ statusLabel(item.status) }}</text>
                  <text class="owner-building">{{ formatBuilding(item) }}</text>
                  <text class="room-no">{{ item.roomNo || '-' }}</text>
                </view>
@@ -105,6 +107,7 @@
         </view>
       </view>
     </view>
+    <view class="page-bottom-spacer"></view>
     <!-- 编辑/新增弹窗 -->
     <view class="modal-mask" v-if="showModal" @tap="closeModal">
       <view class="modal-panel" @tap.stop>
@@ -176,7 +179,7 @@ import { statusFilterOptions, numberPickerOptions, getStatusLabel, getStatusClas
 export default {
   data() {
     return {
-      serverUrl: 'http://172.17.121.65:3000',
+      serverUrl: 'http://192.168.1.4:3000',
       addressId: '',
       mode: 'query', // edit/detail/query
       basicInfo: {},
@@ -350,12 +353,16 @@ export default {
           }
           // 支持两种返回结构：{data:{list,total}} 或 直接 data 数组
           const list = body.data && Array.isArray(body.data.list) ? body.data.list : (Array.isArray(body.data) ? body.data : [])
+          const mapped = list.map((it) => {
+            const cls = getStatusClass(it.status)
+            return { ...it, statusClassName: cls, cardClassName: cls + '-card' }
+          })
           const total = body.data && typeof body.data.total === 'number' ? body.data.total : undefined
-          this.ownerList = this.page === 1 ? list : this.ownerList.concat(list)
+          this.ownerList = this.page === 1 ? mapped : this.ownerList.concat(mapped)
           if (typeof total === 'number') {
             this.hasMore = this.ownerList.length < total
           } else {
-            this.hasMore = list.length >= this.pageSize
+            this.hasMore = mapped.length >= this.pageSize
           }
         },
         fail: (e) => {
@@ -389,9 +396,20 @@ export default {
             uni.request({
               url: this.serverUrl + '/owner/delete',
               method: 'POST',
-              data: { id: item.id, addressId: this.addressId },
-              success: () => { this.fetchOwnerList(); uni.showToast({ title: '已删除', icon: 'success' }) },
-              fail: () => uni.showToast({ title: '删除失败', icon: 'none' })
+              data: { _id: item._id, addressId: this.addressId },
+              success: res => {
+                if (res && res.data && res.data.code === 200) {
+                  this.fetchOwnerList()
+                  uni.showToast({ title: '已删除', icon: 'success' })
+                } else {
+                  const msg = (res && (res.message || res.msg)) || '删除失败'
+                  uni.showToast({ title: msg, icon: 'none' })
+                }
+              },
+              fail: (err) => {
+                const msg = (err && (err.message || err.msg)) || '网络异常'
+                uni.showToast({ title: msg, icon: 'none' })
+              }
             })
           }
         }
@@ -411,12 +429,19 @@ export default {
   background: #f5f9ff; 
   min-height: 100vh; 
   overflow-y: auto;
+  /* 避免底部被系统/Tab遮挡 */
+  padding-bottom: calc(40rpx + constant(safe-area-inset-bottom));
+  padding-bottom: calc(40rpx + env(safe-area-inset-bottom));
 }
 .list-card { 
   background: #fff; 
   border-radius: 20rpx; 
   margin-bottom: 16rpx; 
   box-shadow: 0 4rpx 16rpx rgba(24,144,255,0.06); 
+}
+.page-bottom-spacer {
+  height: calc(120rpx + constant(safe-area-inset-bottom));
+  height: calc(120rpx + env(safe-area-inset-bottom));
 }
 /* 蓝白调筛选卡片 */
 .filter-card {
@@ -583,6 +608,13 @@ export default {
   scrollbar-width: thin;
   scrollbar-color: rgba(24, 144, 255, 0.3) transparent;
 }
+/* 额外保险：在滚动内容末尾再增加一个占位 */
+.owner-list::after {
+  content: '';
+  display: block;
+  height: calc(60rpx + constant(safe-area-inset-bottom));
+  height: calc(60rpx + env(safe-area-inset-bottom));
+}
 
 /* Webkit 浏览器滚动条样式 */
 .owner-list::-webkit-scrollbar {
@@ -612,7 +644,8 @@ export default {
   box-shadow: 0 2rpx 8rpx rgba(0,0,0,0.04);
 }
 .owner-item:last-child {
-  margin-bottom: 12rpx;
+  margin-bottom: calc(24rpx + constant(safe-area-inset-bottom));
+  margin-bottom: calc(24rpx + env(safe-area-inset-bottom));
 }
 .owner-item:hover {
   background: #fafbfc;
@@ -671,6 +704,15 @@ export default {
 .field-remark { grid-column: 1 / span 2; }
 .field-2col { grid-column: 1 / span 2; }
 .empty { text-align: center; color: #999; padding: 24rpx; }
+/* 空状态图片样式 */
+.empty-img {
+  display: block;
+  width: 220rpx;
+  max-width: 60%;
+  height: auto;
+  margin: 24rpx auto 12rpx auto;
+  opacity: 0.9;
+}
 
 /* 底部更新时间 */
 .owner-bottom {
