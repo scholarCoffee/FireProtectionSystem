@@ -77,6 +77,24 @@
                 "navigationStyle": "default",
                 "navigationBarTitleText": "群成员管理"
             }
+        },
+        {
+            "path": "pages/data/fireUpload/index",
+            "style": {
+                "navigationBarTitleText": "火灾情况上传"
+            }
+        },
+        {
+            "path": "pages/data/fireQuery/index",
+            "style": {
+                "navigationBarTitleText": "火灾情况查询"
+            }
+        },
+        {
+            "path": "pages/data/addressSelector/index",
+            "style": {
+                "navigationBarTitleText": "选择救灾地址"
+            }
         }
     ],
     "subPackages": [

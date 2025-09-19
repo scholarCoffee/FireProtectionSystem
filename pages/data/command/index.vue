@@ -51,12 +51,18 @@ export default {
         // 路由到 OwnerInfo（查询）
         onCommandItemClick(item) {
             const title = item?.title || ''
-            // 仅“户主反馈查询”走 OwnerInfo（查询模式）。其余保持占位提示或跳转既有逻辑
+            if (title === '火灾情况上传') {
+                uni.navigateTo({ url: '/pages/data/fireUpload/index' })
+                return
+            }
+            if (title === '火灾情况查询') {
+                uni.navigateTo({ url: '/pages/data/fireQuery/index' })
+                return
+            }
             if (title === '户主反馈查询') {
                 uni.navigateTo({ url: `/pages/personal/userDetail/OwnerInfo?mode=query` })
                 return
             }
-            // 暂未接入的仍提示
             this.goToWebviewByUrl(item?.url, item?.title)
         },
         

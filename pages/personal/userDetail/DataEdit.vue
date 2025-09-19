@@ -53,11 +53,11 @@ export default {
       locationInitialData: {}
     }
   },
-  computed: {
-    isEdit() {
-      return this.mode === 'edit';
-    },
-  },
+     computed: {
+     isEdit() {
+       return this.mode === 'edit';
+     },
+   },
   onLoad(options) {
     this.type = options.type || 'location';
     this.mode = options.mode || 'add';
@@ -145,11 +145,11 @@ export default {
       }
       
       uni.showLoading({ title: this.isEdit ? '更新中...' : '保存中...' });
-      try {        
+      try {
         const url = this.type === 'location' 
           ? this.serverUrl + '/location/save'
           : this.serverUrl + '/group/save';
-        
+      
         const result = await new Promise((resolve, reject) => {
           uni.request({
             url,
@@ -182,8 +182,8 @@ export default {
         });
       } finally {
         uni.hideLoading();
-      }
-    },
+              }
+      },
     // 计算安全评分总分（从LocationForm子组件获取数据）
     calculateTotalScore() {
       const locationForm = this.$refs.locationFormRef;
@@ -210,16 +210,16 @@ export default {
       uni.navigateTo({
         url: `/pages/personal/userDetail/SafetyScoreEdit?mode=add&safeId=${formData.safeId || ''}&addressId=${formData.addressId || ''}`,
         events: {
-          // 监听安全评分更新事件
-          safetyScoreUpdated: (data) => {
-            if (data.isLocal) {
-              // 本地保存的安全评分
-              this.handleLocalSafetyScore(data);
-            } else {
-              // 编辑模式的安全评分
-              this.handleEditSafetyScore(data);
+                      // 监听安全评分更新事件
+            safetyScoreUpdated: (data) => {
+              if (data.isLocal) {
+                // 本地保存的安全评分
+                this.handleLocalSafetyScore(data);
+              } else {
+                // 编辑模式的安全评分
+                this.handleEditSafetyScore(data);
+              }
             }
-          }
         }
       });
     },
@@ -252,15 +252,15 @@ export default {
       if (locationForm) {
         const currentFormData = locationForm.getFormData();
         currentFormData.fireSafetyScore = {
-          scoreItems: data.scoreItems,
+        scoreItems: data.scoreItems,
           safeId: data.safeId,
           safeLevelId: data.safeLevelId,
           safeLevelName: data.safeLevelName,
-          isLocal: true
-        };
+        isLocal: true
+      };
         locationForm.setFormData(currentFormData);
       }
-    
+      
       // 显示提示
       uni.showToast({
         title: '安全评分已填充，请完善地址信息后保存',
@@ -277,20 +277,20 @@ export default {
         const currentFormData = locationForm.getFormData();
         if (data.addressId === currentFormData.addressId) {
           currentFormData.fireSafetyScore = {
-            scoreItems: data.scoreItems,
+          scoreItems: data.scoreItems,
             safeId: data.safeId,
             safeLevelId: data.safeLevelId,
             safeLevelName: data.safeLevelName,
-          };
+        };
           locationForm.setFormData(currentFormData);
-          
-          // 显示更新成功提示
-          uni.showToast({
-            title: '安全评分已更新',
-            icon: 'success',
-            duration: 2000
-          });
-        }
+        
+        // 显示更新成功提示
+        uni.showToast({
+          title: '安全评分已更新',
+          icon: 'success',
+          duration: 2000
+        });
+      }
       }
     }
   }
@@ -317,12 +317,12 @@ export default {
 /* 滚动占位符 */
 .scroll-spacer {
   height: calc(100rpx + env(safe-area-inset-bottom)); /* 为底部按钮留出实际空间 */
-  width: 100%;
+    width: 100%;
 }
 
 /* 底部按钮 */
 .footer {
-  display: flex;
+      display: flex;
   padding: 16rpx 20rpx calc(16rpx + env(safe-area-inset-bottom)) 20rpx;
   gap: 24rpx;
   background: #ffffff;
@@ -345,23 +345,23 @@ export default {
   transition: all 0.2s ease;
   position: relative;
   overflow: hidden;
-
+  
   &::before {
     display: none;
   }
-
+  
   &:active {
     transform: scale(0.98);
   }
 }
-
+  
 .cancel-btn {
   background: #f5f5f5;
   color: #666666;
   font-weight: 400;
   font-size: 24rpx;
   border: none !important;
-  
+
   &::after {
     border: none !important;
   }
