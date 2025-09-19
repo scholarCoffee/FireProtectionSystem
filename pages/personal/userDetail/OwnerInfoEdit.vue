@@ -1,25 +1,40 @@
 <template>
   <view class="owner-edit-page">
     <view class="card">
-      <!-- 栋、单元、楼层 - 选填，平铺显示 -->
+      <!-- 栋、单元、楼层 - 选填，平铺显示，支持手动输入 -->
       <view class="row-optional">
         <view class="col-optional">
           <text class="label-optional">栋</text>
-          <picker :value="buildingIndex" :range="buildingOptions" @change="onBuildingChange" :disabled="!canEditAll">
-            <view class="picker-box-optional" :class="{ 'has-value': form.building }">{{ buildingOptions[buildingIndex] || '请选择' }}</view>
-          </picker>
+          <input 
+            class="input-optional" 
+            v-model="form.building" 
+            type="number" 
+            :disabled="!canEditAll" 
+            placeholder="1-100" 
+            @input="onBuildingInput"
+          />
         </view>
         <view class="col-optional">
           <text class="label-optional">单元</text>
-          <picker :value="unitIndex" :range="unitOptions" @change="onUnitChange" :disabled="!canEditAll">
-            <view class="picker-box-optional" :class="{ 'has-value': form.unit }">{{ unitOptions[unitIndex] || '请选择' }}</view>
-          </picker>
+          <input 
+            class="input-optional" 
+            v-model="form.unit" 
+            type="number" 
+            :disabled="!canEditAll" 
+            placeholder="1-100" 
+            @input="onUnitInput"
+          />
         </view>
         <view class="col-optional">
           <text class="label-optional">楼层</text>
-          <picker :value="floorIndex" :range="floorOptions" @change="onFloorChange" :disabled="!canEditAll">
-            <view class="picker-box-optional" :class="{ 'has-value': form.floor }">{{ floorOptions[floorIndex] || '请选择' }}</view>
-          </picker>
+          <input 
+            class="input-optional" 
+            v-model="form.floor" 
+            type="number" 
+            :disabled="!canEditAll" 
+            placeholder="1-100" 
+            @input="onFloorInput"
+          />
         </view>
       </view>
       
@@ -38,7 +53,10 @@
       <!-- 住户电话 - 必填，单独一行 -->
       <view class="row1">
         <text class="label required">住户电话</text>
-        <input class="input" v-model="form.phone" type="number" :disabled="!canEditAll && mode==='edit'" placeholder="请输入住户电话" />
+        <view class="input-container">
+          <input class="input" v-model="form.phone" type="number" :disabled="!canEditAll && mode==='edit'" placeholder="请输入手机号码" @input="onPhoneInput" />
+          <text class="phone-error" v-if="phoneError">{{ phoneError }}</text>
+        </view>
       </view>
       
       <!-- 住户情况 - 平铺显示 -->
@@ -88,7 +106,8 @@
 </template>
 
 <script>
-import { statusOptions, numberPickerOptionsWithEmpty, peopleCountOptions } from '@/commons/js/ownerConstants.js'
+import { statusOptions, peopleCountOptions } from '@/commons/js/ownerConstants.js'
+import { validatePhone } from '@/commons/js/utils.js'
 
 export default {
   data() {
@@ -99,21 +118,15 @@ export default {
       userInfo: {},
       statusOptions,
       statusIndex: 0,
-      // 栋、单元、楼层选项 (空值 + 1-100)
-      buildingOptions: numberPickerOptionsWithEmpty,
-      unitOptions: numberPickerOptionsWithEmpty,
-      floorOptions: numberPickerOptionsWithEmpty,
       // 房间人数选项 (1-100)
       peopleCountOptions,
       // 选择器索引
-      buildingIndex: 0,
-      unitIndex: 0,
-      floorIndex: 0,
       peopleCountIndex: 0,
       form: {
-        id: '', building: '', unit: '', floor: '', roomNo: '',
-        name: '', phone: '', status: 1, peopleCount: '', area: '', remark: ''
-      }
+        _id: '', building: '', unit: '', floor: '', roomNo: '',
+        name: '', phone: '', status: 1, peopleCount: 1, area: '', remark: ''
+      },
+      phoneError: '' // 手机号码错误提示
     }
   },
   computed: {
@@ -133,10 +146,10 @@ export default {
     this.mode = options.mode || 'add'
     const local = uni.getStorageSync('userInfo')
     if (local) this.userInfo = local
-    // 如果未来支持编辑，读取详情填充
-    if (this.mode === 'edit' && options.id) {
-      this.form.id = options.id
-      this.fetchDetail(options.id)
+    // 编辑模式：根据id查询详情并回填
+    if (this.mode === 'edit' && options._id) {
+      this.form._id = options._id
+      this.fetchDetail(options._id)
     }
   },
   methods: {
@@ -144,28 +157,55 @@ export default {
     selectStatus(index) {
       this.statusIndex = index
       this.form.status = this.statusOptions[index].value
+      
+      // 新增模式下，如果选择"房间有人"，默认设置房间人数为1
+      if (this.mode === 'add' && this.form.status === 1 && !this.form.peopleCount) {
+        this.form.peopleCount = 1
+        this.peopleCountIndex = this.peopleCountOptions.findIndex(v => String(v) === '1')
+        if (this.peopleCountIndex < 0) this.peopleCountIndex = 0
+      }
     },
     onStatusChange(e) {
       this.statusIndex = Number(e.detail.value)
       this.form.status = this.statusOptions[this.statusIndex].value
+      
+      // 新增模式下，如果选择"房间有人"，默认设置房间人数为1
+      if (this.mode === 'add' && this.form.status === 1 && !this.form.peopleCount) {
+        this.form.peopleCount = 1
+        this.peopleCountIndex = this.peopleCountOptions.findIndex(v => String(v) === '1')
+        if (this.peopleCountIndex < 0) this.peopleCountIndex = 0
+      }
     },
-    // 栋选择
-    onBuildingChange(e) {
-      this.buildingIndex = Number(e.detail.value)
-      const selectedValue = this.buildingOptions[this.buildingIndex]
-      this.form.building = selectedValue === '请选择' ? '' : selectedValue
+    // 栋输入 - 限制1-100正整数
+    onBuildingInput(e) {
+      this.form.building = this.normalizeNumber(e.detail.value, 1, 100)
     },
-    // 单元选择
-    onUnitChange(e) {
-      this.unitIndex = Number(e.detail.value)
-      const selectedValue = this.unitOptions[this.unitIndex]
-      this.form.unit = selectedValue === '请选择' ? '' : selectedValue
+    // 单元输入 - 限制1-100正整数
+    onUnitInput(e) {
+      this.form.unit = this.normalizeNumber(e.detail.value, 1, 100)
     },
-    // 楼层选择
-    onFloorChange(e) {
-      this.floorIndex = Number(e.detail.value)
-      const selectedValue = this.floorOptions[this.floorIndex]
-      this.form.floor = selectedValue === '请选择' ? '' : selectedValue
+    // 楼层输入 - 限制1-100正整数
+    onFloorInput(e) {
+      this.form.floor = this.normalizeNumber(e.detail.value, 1, 100)
+    },
+    // 数字规范化：限制在指定范围内的正整数
+    normalizeNumber(value, min, max) {
+      if (!value) return ''
+      
+      // 只保留数字
+      let numStr = String(value).replace(/\D/g, '')
+      
+      // 如果为空，返回空字符串
+      if (!numStr) return ''
+      
+      // 转换为数字
+      let num = parseInt(numStr, 10)
+      
+      // 限制范围
+      if (num < min) num = min
+      if (num > max) num = max
+      
+      return String(num)
     },
     // 房间人数选择
     onPeopleCountChange(e) {
@@ -175,6 +215,22 @@ export default {
     // 房间大小输入限制
     onAreaInput(e) {
       this.form.area = this.normalizeArea(e.detail.value)
+    },
+    // 手机号码输入校验
+    onPhoneInput(e) {
+      this.form.phone = e.detail.value
+      this.phoneError = ''
+      
+      // 如果输入不为空，进行实时校验
+      if (this.form.phone) {
+        const phoneValidation = validatePhone(this.form.phone)
+        if (!phoneValidation.valid) {
+          this.phoneError = phoneValidation.message
+        } else {
+          // 校验通过，使用清理后的手机号码
+          this.form.phone = phoneValidation.cleanPhone
+        }
+      }
     },
     // 归一化面积：仅数字与一个小数点，小数点后最多两位；示例 12.333 -> 12.33
     normalizeArea(raw) {
@@ -199,33 +255,34 @@ export default {
       }
       return value
     },
-    fetchDetail(id) {
+    fetchDetail(_id) {
+      uni.showLoading({ title: '加载中...' })
       uni.request({
         url: this.serverUrl + '/owner/detail',
         method: 'GET',
-        data: { id, addressId: this.addressId },
+        data: { _id: _id, addressId: this.addressId },
         success: (res) => {
-          const data = (res && res.data && res.data.data) || {}
-          // 直接使用接口返回的数据，不做逐字段重新赋值
-          this.form = { ...this.form, ...data }
+          uni.hideLoading()
+          if (res.data && res.data.code === 200) {
+            const data = res.data.data || {}
+            // 直接使用接口返回的数据，不做逐字段重新赋值
+            this.form = { ...this.form, ...data }
 
-          // 状态选择索引
-          const sIdx = this.statusOptions.findIndex(op => String(op.value) === String(this.form.status))
-          this.statusIndex = sIdx > -1 ? sIdx : 0
+            // 状态选择索引
+            const sIdx = this.statusOptions.findIndex(op => String(op.value) === String(this.form.status))
+            this.statusIndex = sIdx > -1 ? sIdx : 0
 
-          // 选择器索引（通过字符串比较定位，避免改动原始数据）
-          this.buildingIndex = this.form.building ? this.buildingOptions.findIndex(v => String(v) === String(this.form.building)) : 0
-          this.unitIndex = this.form.unit ? this.unitOptions.findIndex(v => String(v) === String(this.form.unit)) : 0
-          this.floorIndex = this.form.floor ? this.floorOptions.findIndex(v => String(v) === String(this.form.floor)) : 0
-          this.peopleCountIndex = this.form.peopleCount ? this.peopleCountOptions.findIndex(v => String(v) === String(this.form.peopleCount)) : 0
-
-          // 若未匹配到则回退到0（"请选择"）
-          if (this.buildingIndex < 0) this.buildingIndex = 0
-          if (this.unitIndex < 0) this.unitIndex = 0
-          if (this.floorIndex < 0) this.floorIndex = 0
-          if (this.peopleCountIndex < 0) this.peopleCountIndex = 0
+            // 房间人数选择器索引
+            this.peopleCountIndex = this.form.peopleCount ? this.peopleCountOptions.findIndex(v => String(v) === String(this.form.peopleCount)) : 0
+            if (this.peopleCountIndex < 0) this.peopleCountIndex = 0
+          } else {
+            uni.showToast({ title: res.data?.msg || '获取详情失败', icon: 'none' })
+          }
         },
-        fail: () => {}
+        fail: (err) => {
+          uni.hideLoading()
+          uni.showToast({ title: err.errMsg || '网络错误', icon: 'none' })
+        }
       })
     },
     submit() {
@@ -245,11 +302,43 @@ export default {
         return
       }
       
+      // 手机号码格式校验
+      const phoneValidation = validatePhone(this.form.phone)
+      if (!phoneValidation.valid) {
+        uni.showToast({ title: phoneValidation.message, icon: 'none' })
+        return
+      }
+      // 使用清理后的手机号码
+      this.form.phone = phoneValidation.cleanPhone
+      
       // 如果住房情况选择房间有人，房间人数必填
       if (this.form.status === 1) {
         const n = Number(this.form.peopleCount)
         if (!n || n < 1 || n > 100 || !Number.isInteger(n)) {
           uni.showToast({ title: '请输入房间人数（1-100）', icon: 'none' })
+          return
+        }
+      }
+      
+      // 栋、单元、楼层验证（1-100正整数）
+      if (this.form.building) {
+        const building = Number(this.form.building)
+        if (!Number.isInteger(building) || building < 1 || building > 100) {
+          uni.showToast({ title: '栋号必须是1-100的正整数', icon: 'none' })
+          return
+        }
+      }
+      if (this.form.unit) {
+        const unit = Number(this.form.unit)
+        if (!Number.isInteger(unit) || unit < 1 || unit > 100) {
+          uni.showToast({ title: '单元号必须是1-100的正整数', icon: 'none' })
+          return
+        }
+      }
+      if (this.form.floor) {
+        const floor = Number(this.form.floor)
+        if (!Number.isInteger(floor) || floor < 1 || floor > 100) {
+          uni.showToast({ title: '楼层必须是1-100的正整数', icon: 'none' })
           return
         }
       }
@@ -264,6 +353,9 @@ export default {
       }
       
       const payload = { ...this.form, addressId: this.addressId }
+      if (this.mode === 'add') {
+        delete payload._id
+      }
       const url = this.mode === 'edit' ? '/owner/update' : '/owner/save'
       uni.request({
         url: this.serverUrl + url,
@@ -369,6 +461,35 @@ export default {
   color: #333;
 }
 
+// 选填项输入框样式
+.input-optional {
+  height: 72rpx;
+  background: #fff;
+  border-radius: 16rpx;
+  padding: 0 16rpx;
+  font-size: 26rpx;
+  border: 2rpx solid #e6f4ff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #333;
+  font-weight: 500;
+  box-shadow: 0 2rpx 8rpx rgba(24, 144, 255, 0.08);
+  transition: all 0.3s ease;
+  text-align: center;
+}
+
+.input-optional:focus {
+  border-color: #1890ff;
+  box-shadow: 0 4rpx 12rpx rgba(24, 144, 255, 0.15);
+  transform: translateY(-2rpx);
+}
+
+.input-optional::placeholder {
+  color: #999;
+  font-weight: 500;
+}
+
 // 住户情况平铺样式
 .row-status {
   margin-bottom: 24rpx;
@@ -472,9 +593,15 @@ export default {
   color: #ff4d4f;
 }
 
+// 输入框容器
+.input-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
 // 输入框和选择器样式
 .input, .picker-box { 
-  flex: 1; 
   height: 72rpx; 
   background: #f7fbff; 
   border-radius: 16rpx; 
@@ -482,6 +609,14 @@ export default {
   font-size: 26rpx; 
   border: 2rpx solid #e6f4ff;
   transition: all 0.3s ease;
+}
+
+// 手机号码错误提示
+.phone-error {
+  color: #ff4d4f;
+  font-size: 22rpx;
+  margin-top: 8rpx;
+  padding-left: 4rpx;
 }
 
 .input:focus, .picker-box:active {

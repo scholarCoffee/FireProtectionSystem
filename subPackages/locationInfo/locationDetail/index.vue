@@ -93,9 +93,25 @@
             </view>
           </view>
           
-          <!-- 分割线 -->
-          <view class="divider" />
-          
+          <!-- 户主信息（仅：高层小区 type === 1） -->
+          <view class="owner-info-card" v-if="locationObj.type === 1">
+            <view class="card-header">
+              <text class="card-title">户主信息</text>
+              <view class="header-actions">
+                <text class="query-btn" @tap="goToOwnerInfo">一键查询</text>
+              </view>
+            </view>
+            <view class="owner-info-content">
+              <view class="owner-count-display">
+                <text class="count-label">当前住户总数</text>
+                <view class="owner-badge">
+                  <text class="badge-num">{{ (locationObj.ownerInfo && locationObj.ownerInfo.total) || (locationObj.ownerInfo && locationObj.ownerInfo.count) || 0 }}</text>
+                  <text class="badge-suffix">人</text>
+                </view>
+              </view>
+            </view>
+          </view>
+
           <!-- 作战实景部署（仅重点单位；统一使用 battleDeploymentMaterials） -->
           <view class="deployment-card" v-if="locationObj.type === 2 && locationObj.battleDeploymentMaterials && locationObj.battleDeploymentMaterials.length">
             <view class="card-header">
@@ -171,8 +187,6 @@
               </view>
             </view>
           </view>
-          <!-- 分割线 -->
-          <view class="divider" />
 
           <!-- 出行大门 -->
           <view class="info-row gate-list">
@@ -244,7 +258,7 @@ export default {
       currentImageIndex: 0, // 当前图片索引
       showCustomModal: false, // 控制自定义弹窗显示
       modalContent: '', // 弹窗内容
-      serverUrl: 'https://www.xiaobei.space',
+      serverUrl: 'http://172.17.121.65:3000',
       isShowHeaderImage: true,
       scrollTop: 0, // 滚动位置
       isAnyVideoFullscreen: false,
@@ -453,6 +467,15 @@ export default {
     hideCustomModal() {
       this.showCustomModal = false;
       this.modalContent = '';
+    },
+    goToOwnerInfo() {
+      if (!this.addressId) {
+        uni.showToast({ title: '缺少地址ID', icon: 'none' });
+        return;
+      }
+      uni.navigateTo({
+        url: `/pages/personal/userDetail/OwnerInfo?mode=location&addressId=${encodeURIComponent(this.addressId)}`
+      });
     },
   }
 };
@@ -671,6 +694,7 @@ export default {
   display: -webkit-box;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 5;
+  line-clamp: 5;
   overflow: hidden;
   cursor: pointer;
   transition: color 0.2s ease;
@@ -875,6 +899,84 @@ export default {
 }
 
 /* 户主信息卡片样式 */
+.owner-info-card {
+  background-color: #FFF;
+  margin: 10px;
+  border-radius: 4px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  overflow: hidden;
+}
+
+.owner-info-card .card-header {
+  padding: 8px 12px;
+  border-bottom: 1px solid #f0f0f0;
+  background: #f8f9fa;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.owner-info-card .card-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #333;
+}
+
+.query-btn {
+  font-size: 12px;
+  color: #1890ff;
+  background: #e6f7ff;
+  border: 1px solid #bae7ff;
+  border-radius: 8px;
+  padding: 3px 10px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.query-btn:active {
+  background: #bae7ff;
+  transform: scale(0.95);
+}
+
+.owner-info-content {
+  padding: 8px 12px;
+}
+
+.owner-count-display {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.count-label {
+  font-size: 13px;
+  color: #333;
+  font-weight: 500;
+}
+
+.owner-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  background: #f0f8ff;
+  border: 1px solid #d6e4ff;
+  border-radius: 12px;
+  padding: 3px 8px;
+}
+
+.badge-num {
+  font-size: 16px;
+  font-weight: 600;
+  color: #1890ff;
+  line-height: 1;
+}
+
+.badge-suffix {
+  font-size: 12px;
+  color: #1890ff;
+  opacity: 0.8;
+}
+
  
 
 /* 作战部署卡片样式 */
@@ -890,13 +992,13 @@ export default {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 12px 15px;
+  padding: 8px 12px;
   border-bottom: 1px solid #f0f0f0;
   background: #f8f9fa;
 }
 
 .card-title {
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 600;
   color: #333;
 }

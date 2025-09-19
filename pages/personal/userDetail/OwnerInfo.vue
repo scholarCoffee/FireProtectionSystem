@@ -1,16 +1,5 @@
 <template>
   <view class="owner-info-page">
-    <!-- 顶部基本信息 -->
-    <view class="basic-card" v-if="mode !== 'query'">
-      <view class="basic-row">
-        <text class="basic-label">地址名称：</text>
-        <text class="basic-text">{{ basicInfo.addressName || '-' }}</text>
-      </view>
-      <view class="basic-row">
-        <text class="basic-label">详细地址：</text>
-        <text class="basic-text">{{ basicInfo.addressExt || '-' }}</text>
-      </view>
-    </view>
 
     <!-- 筛选区 -->
     <view class="filter-card">
@@ -53,46 +42,65 @@
         </view>
         <view class="actions-right">
           <button class="btn secondary" @tap="refreshPage">刷新</button>
-          <button class="btn primary add-btn-inline" v-if="mode !== 'query' && canCreate" @tap="goToAddOwnerPage">新增户主信息</button>
+          <button class="btn primary add-btn-inline" v-if="canCreate" @tap="goToAddOwnerPage">新增户主信息</button>
         </view>
       </view>
     </view>
 
     <!-- 操作区（保留，已移至筛选栏右侧） -->
-
     <!-- 列表区 -->
     <view class="list-card">
       <view v-if="ownerList.length === 0" class="empty">暂无数据</view>
       <view v-else class="owner-list">
-        <view class="owner-item" :class="(statusClass(item.status) + '-card')" v-for="(item, idx) in ownerList" :key="item.id || idx">
-          <view class="owner-header">
-            <text class="owner-status-badge" :class="statusClass(item.status)">{{ statusLabel(item.status) }}</text>
-            <text class="owner-building">{{ formatBuilding(item) }}</text>
-            <view class="owner-actions">
-              <view class="icon-btn edit" v-if="canEditItem" @tap="goToEditPage(item)" aria-label="编辑">
-                <image class="icon-img" :src="serverUrl + '/static/icons/common/edit-white.png'" mode="aspectFit" />
-              </view>
-              <view class="icon-btn delete" v-if="canDelete" @tap="deleteOwner(item)" aria-label="删除">
-                <image class="icon-img" :src="serverUrl + '/static/icons/common/delete-white.png'" mode="aspectFit" />
-              </view>
-            </view>
-          </view>
+         <view class="owner-item" :class="(statusClass(item.status) + '-card')" v-for="(item, idx) in ownerList" :key="item.id || idx">
+           <!-- 顶部信息区域 -->
+           <view class="owner-top">
+             <!-- 地址信息 -->
+             <view class="address-info">
+               <text class="address-name">{{ item.location.addressName || '-' }}</text>
+               <text class="address-detail">{{ item.location.addressExt || '-' }}</text>
+             </view>
+             
+             <!-- 状态位置行：状态 + 栋单元楼层 + 房间号 + 房间人数 -->
+             <view class="status-location-row">
+               <view class="left-info">
+                 <text class="owner-status-badge" :class="statusClass(item.status)">{{ statusLabel(item.status) }}</text>
+                 <text class="owner-building">{{ formatBuilding(item) }}</text>
+                 <text class="room-no">{{ item.roomNo || '-' }}</text>
+               </view>
+               <view class="people-count" v-if="item.status === 1">
+                 <text class="people-count-text">{{ item.peopleCount || '-' }}人</text>
+               </view>
+             </view>
+             
+             <!-- 户主姓名和电话行 -->
+             <view class="name-phone-row">
+               <text class="owner-name">{{ item.name || '-' }}</text>
+               <view class="phone-section">
+                 <text class="phone-number" @tap="copyPhone(item.phone)">{{ item.phone || '-' }}</text>
+                 <image :src="serverUrl + '/static/icons/common/phone.png'" class="phone-icon" @tap="callPhone(item.phone)" />
+               </view>
+             </view>
+             
+             <!-- 右上角操作按钮 -->
+             <view class="owner-actions">
+               <view class="icon-btn edit" v-if="canEditItem" @tap="goToEditPage(item)" aria-label="编辑">
+                 <image class="icon-img" :src="serverUrl + '/static/icons/common/edit-white.png'" mode="aspectFit" />
+               </view>
+               <view class="icon-btn delete" v-if="canDelete" @tap="deleteOwner(item)" aria-label="删除">
+                 <image class="icon-img" :src="serverUrl + '/static/icons/common/delete-white.png'" mode="aspectFit" />
+               </view>
+             </view>
+           </view>
+          <!-- 底部详细信息 -->
           <view class="owner-body">
-            <view class="field roomno-row">
-              <view class="roomno-tag">
-                <text class="roomno-text">房间号</text>
-                {{ item.roomNo || '-' }}
-              </view>
-              <view class="roomno-right">
-                <text class="phone-number" @tap="copyPhone(item.phone)">{{ item.phone || '-' }}</text>
-                <image :src="serverUrl + '/static/icons/common/phone.png'" class="phone-icon" @tap="callPhone(item.phone)" />
-              </view>
-            </view>
-            <view class="field"><text class="f-label">户主姓名</text><text class="f-text">{{ item.name || '-' }}</text></view>
-            <view class="field peoplecount-row" v-if="item.status === 1"><text class="f-label emph">房间人数</text><text class="f-text emph peoplecount-text">{{ item.peopleCount || '-' }}人</text></view>
             <view class="field"><text class="f-label">房间大小</text><text class="f-text">{{ formatArea(item.area) }}</text></view>
-            
             <view class="field field-2col field-remark"><text class="f-label">备注</text><text class="f-text">{{ item.remark || '-' }}</text></view>
+          </view>
+          
+          <!-- 底部更新时间 -->
+          <view class="owner-bottom">
+            <text class="update-time-text">更新时间：{{ formatUpdateTime(item.updateTime) || '-' }}</text>
           </view>
         </view>
       </view>
@@ -208,11 +216,23 @@ export default {
       const p = Number((this.userInfo && this.userInfo.permissionStatus) || 0)
       return p === 2
     },
-    canCreate() { return this.isAdmin },
-    canDelete() { return this.mode === 'edit' },
-    canEditItem() { return this.mode === 'edit' },
-    // detail 模式：仅允许修改住户情况
-    canChangeStatus() { return (this.mode === 'edit') || (this.mode === 'detail' && this.isAdmin) },
+    canCreate() { 
+      // edit模式：管理员可以新增；query模式：不能新增；location模式：不能新增
+      return this.mode === 'edit' && this.isAdmin 
+    },
+    canDelete() { 
+      // edit模式：管理员可以删除；query模式：不能删除；location模式：不能删除
+      return this.mode === 'edit' && this.isAdmin 
+    },
+    canEditItem() { 
+      // edit模式：管理员可以编辑；query模式：不能编辑；location模式：管理员可以编辑
+      return (this.mode === 'edit' && this.isAdmin) || (this.mode === 'location' && this.isAdmin)
+    },
+    // 修改住户情况权限
+    canChangeStatus() { 
+      // edit模式：管理员可以修改；query模式：不能修改；location模式：管理员可以修改
+      return (this.mode === 'edit' && this.isAdmin) || (this.mode === 'location' && this.isAdmin)
+    },
     canSubmit() {
       if (this.modalMode === 'add' || this.modalMode === 'edit') {
         if (this.modalForm.status === 1) {
@@ -241,16 +261,14 @@ export default {
     // 读取本地权限
     const local = uni.getStorageSync('userInfo')
     if (local) this.userInfo = local
-    if (this.mode !== 'query') this.fetchBasicInfo()
     this.resetAndFetch()
   },
   methods: {
     // 跳转到编辑页
     goToEditPage(item) {
-      if (!item || !item.id) { uni.showToast({ title: '缺少id', icon: 'none' }); return }
-      const id = encodeURIComponent(item.id)
+      const _id = encodeURIComponent(item._id)
       const addressId = encodeURIComponent(this.addressId || '')
-      uni.navigateTo({ url: `/pages/personal/userDetail/OwnerInfoEdit?mode=edit&addressId=${addressId}&id=${id}` })
+      uni.navigateTo({ url: `/pages/personal/userDetail/OwnerInfoEdit?mode=edit&addressId=${addressId}&_id=${_id}` })
     },
     // 重置并拉取
     resetAndFetch() {
@@ -267,15 +285,22 @@ export default {
       if (!phone) return
       uni.setClipboardData({ data: String(phone), success: () => uni.showToast({ title: '已复制', icon: 'none' }) })
     },
-    fetchBasicInfo() {
-      if (!this.addressId) return
-      uni.request({
-        url: this.serverUrl + '/location/detail',
-        method: 'GET',
-        data: { addressId: this.addressId },
-        success: (res) => { this.basicInfo = (res && res.data && res.data.data) || {} },
-        fail: () => {}
-      })
+    // 格式化更新时间
+    formatUpdateTime(timeStr) {
+      if (!timeStr) return ''
+      try {
+        const date = new Date(timeStr)
+        return date.toLocaleString('zh-CN', {
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit',
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit'
+        })
+      } catch (e) {
+        return timeStr
+      }
     },
     onStatusChange(e) {
       this.statusIndex = Number(e.detail.value)
@@ -351,7 +376,6 @@ export default {
       })
     },
     refreshPage() {
-      this.fetchBasicInfo()
       this.fetchOwnerList()
     },
     // 移除弹窗逻辑，改为独立页面
@@ -382,20 +406,17 @@ export default {
 </script>
 
 <style lang="scss">
-.owner-info-page { padding: 20rpx; background: #f5f9ff; min-height: 100vh; }
-.basic-card, .list-card { 
+.owner-info-page { 
+  padding: 20rpx; 
+  background: #f5f9ff; 
+  min-height: 100vh; 
+  overflow-y: auto;
+}
+.list-card { 
   background: #fff; 
   border-radius: 20rpx; 
-  padding: 20rpx; 
   margin-bottom: 16rpx; 
   box-shadow: 0 4rpx 16rpx rgba(24,144,255,0.06); 
-}
-.basic-card { 
-  text-align: left; 
-  background: linear-gradient(135deg, #ffffff 0%, #fbfdff 100%);
-  border: 2rpx solid #e6f4ff;
-  box-shadow: 0 4rpx 12rpx rgba(24,144,255,0.06);
-  padding: 16rpx;
 }
 /* 蓝白调筛选卡片 */
 .filter-card {
@@ -406,36 +427,124 @@ export default {
   box-shadow: 0 6rpx 18rpx rgba(24,144,255,0.06);
   border: 1rpx solid #e6f4ff;
 }
-.basic-row { 
-  display: flex; 
-  gap: 12rpx; 
-  margin-bottom: 12rpx; 
-  justify-content: flex-start; 
-  align-items: center;
-  padding: 12rpx 16rpx;
-  background: linear-gradient(135deg, #f8fbff 0%, #f0f7ff 100%);
-  border-radius: 12rpx;
-  border: 2rpx solid #e6f4ff;
-  box-shadow: 0 2rpx 8rpx rgba(24, 144, 255, 0.06);
+/* 顶部信息区域 */
+.owner-top {
+  position: relative;
+  margin-bottom: 16rpx;
 }
-.basic-label { 
-  color: #1890ff; 
-  font-size: 22rpx; 
-  font-weight: 500;
-  min-width: 120rpx;
-  padding: 6rpx 10rpx;
-  border-radius: 10rpx;
-  text-align: center;
+
+.address-info {
+  margin-bottom: 12rpx;
 }
-.basic-text { 
-  color: #999; 
-  font-size: 24rpx; 
-  font-weight: 500;
-  flex: 1;
-  line-height: 1.3;
-  padding: 6rpx 0;
+
+.address-name {
+  display: block;
+  color: #1890ff;
+  font-size: 28rpx;
+  font-weight: 700;
+  margin-bottom: 6rpx;
+}
+
+.address-detail {
+  display: block;
+  color: #666;
+  font-size: 24rpx;
+  line-height: 1.4;
+}
+
+.status-location-row {
   display: flex;
   align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20rpx;
+}
+
+.left-info {
+  display: flex;
+  align-items: center;
+  gap: 20rpx;
+  flex: 1;
+}
+
+.people-count {
+  flex-shrink: 0;
+}
+
+.people-count-text {
+  font-size: 26rpx;
+  font-weight: 800;
+  color: #fa8c16;
+  background: #fff7e6;
+  padding: 4rpx 12rpx;
+  border-radius: 12rpx;
+  border: 1rpx solid #ffd591;
+}
+
+.name-phone-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8rpx;
+}
+
+.owner-name {
+  font-size: 28rpx;
+  font-weight: 700;
+  color: #1f2d3d;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 40rpx;
+}
+
+.owner-name .f-label {
+  font-size: 24rpx;
+  font-weight: 500;
+  color: #8a8f99;
+  min-width: 120rpx;
+  margin-right: 10rpx;
+}
+
+.owner-name .f-text {
+  color: #1f2d3d;
+  font-weight: 700;
+}
+
+.room-no {
+  color: #1677ff;
+  font-size: 26rpx;
+  font-weight: 700;
+  background: rgba(22,119,255,0.1);
+  padding: 4rpx 12rpx;
+  border-radius: 12rpx;
+  border: 1rpx solid rgba(22,119,255,0.2);
+}
+
+.phone-section {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+  flex-shrink: 0; /* 防止压缩 */
+}
+
+.phone-number {
+  color: #1677ff;
+  font-weight: 700;
+  font-size: 26rpx;
+}
+
+.phone-icon {
+  width: 32rpx;
+  height: 32rpx;
+}
+
+/* 右上角操作按钮 */
+.owner-actions {
+  position: absolute;
+  top: 0;
+  right: 0;
+  display: flex;
+  gap: 8rpx;
 }
 
 .filter-row { display: flex; gap: 12rpx; margin-bottom: 12rpx; }
@@ -461,15 +570,77 @@ export default {
 .mini-btn::after { border: none; }
 .mini-btn.danger { background: #ffefef; color: #ff4d4f; }
 
-.owner-list { display: flex; flex-direction: column; gap: 12rpx; }
-.owner-item { background: #fff; padding: 16rpx; border-radius: 16rpx; position: relative; }
-.status-yes-card { border: 3rpx solid rgba(255,77,79,0.35); box-shadow: 0 6rpx 16rpx rgba(255,77,79,0.18); }
-.status-no-card { border: 3rpx solid rgba(19,194,194,0.35); box-shadow: 0 6rpx 16rpx rgba(19,194,194,0.18); }
-.status-unk-card { border: 3rpx solid rgba(250,173,20,0.35); box-shadow: 0 6rpx 16rpx rgba(250,173,20,0.18); }
-.owner-header { display:flex; align-items:center; justify-content: space-between; gap: 12rpx; margin-bottom: 12rpx; }
-.owner-status-badge { padding: 8rpx 14rpx; border-radius: 14rpx; font-size: 24rpx; font-weight: 700; white-space: nowrap; }
-.owner-building { flex: 1; color: #1f2d3d; font-size: 28rpx; font-weight: 700; padding: 0 8rpx; }
-.owner-actions { display:flex; gap: 12rpx; }
+.owner-list { 
+  display: flex; 
+  flex-direction: column; 
+  background: #fff;
+  border-radius: 16rpx;
+  box-shadow: 0 4rpx 16rpx rgba(24,144,255,0.06);
+  padding: 12rpx 0;
+  max-height: 80vh;
+  overflow-y: auto;
+  /* 自定义滚动条样式 */
+  scrollbar-width: thin;
+  scrollbar-color: rgba(24, 144, 255, 0.3) transparent;
+}
+
+/* Webkit 浏览器滚动条样式 */
+.owner-list::-webkit-scrollbar {
+  width: 6rpx;
+}
+
+.owner-list::-webkit-scrollbar-track {
+  background: transparent;
+  border-radius: 3rpx;
+}
+
+.owner-list::-webkit-scrollbar-thumb {
+  background: rgba(24, 144, 255, 0.3);
+  border-radius: 3rpx;
+}
+
+.owner-list::-webkit-scrollbar-thumb:hover {
+  background: rgba(24, 144, 255, 0.5);
+}
+.owner-item { 
+  background: #fff; 
+  padding: 16rpx 20rpx; 
+  position: relative; 
+  margin: 12rpx 16rpx;
+  border-radius: 12rpx;
+  transition: all 0.3s ease;
+  box-shadow: 0 2rpx 8rpx rgba(0,0,0,0.04);
+}
+.owner-item:last-child {
+  margin-bottom: 12rpx;
+}
+.owner-item:hover {
+  background: #fafbfc;
+}
+.status-yes-card { 
+  border-left: 6rpx solid #ff4d4f; 
+  background: linear-gradient(90deg, rgba(255,77,79,0.08) 0%, #fff 100%);
+  box-shadow: 0 2rpx 12rpx rgba(255,77,79,0.15);
+}
+.status-no-card { 
+  border-left: 6rpx solid #13c2c2; 
+  background: linear-gradient(90deg, rgba(19,194,194,0.08) 0%, #fff 100%);
+  box-shadow: 0 2rpx 12rpx rgba(19,194,194,0.15);
+}
+.status-unk-card { 
+  border-left: 6rpx solid #faad14; 
+  background: linear-gradient(90deg, rgba(250,173,20,0.08) 0%, #fff 100%);
+  box-shadow: 0 2rpx 12rpx rgba(250,173,20,0.15);
+}
+.owner-status-badge { 
+  padding: 8rpx 16rpx; 
+  border-radius: 16rpx; 
+  font-size: 24rpx; 
+  font-weight: 700; 
+  white-space: nowrap;
+  box-shadow: 0 2rpx 8rpx rgba(0,0,0,0.1);
+}
+.owner-building { color: #1f2d3d; font-size: 24rpx; font-weight: 600; }
 .icon-btn { width: 50rpx; height: 50rpx; display:flex; align-items:center; justify-content:center; border-radius: 12rpx; }
 .icon-btn.edit { background: linear-gradient(135deg, #1890ff 0%, #40a9ff 100%); }
 .icon-btn.delete { background: linear-gradient(135deg, #ff7875 0%, #ff4d4f 100%); }
@@ -480,9 +651,10 @@ export default {
 .owner-body {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 10rpx 16rpx;
+  gap: 12rpx 20rpx;
   color: #333;
   font-size: 24rpx;
+  margin-bottom: 12rpx;
 }
 .field {
   display: flex;
@@ -496,30 +668,22 @@ export default {
 }
 .f-text { color: #1f2d3d; flex: 1; word-break: break-all; }
 .emph .f-label, .f-text.emph { color: #1f2d3d; font-weight: 700; }
-.roomno-row { grid-column: 1 / span 2; padding-top: 2rpx; padding-bottom: 2rpx; }
-.roomno-tag { 
-  min-width: 140rpx; max-width: 60%;
-  padding: 16rpx 30rpx; border-radius: 999rpx;
-  background: #eef7ff;
-  color:#1677ff;  text-align: center; font-weight: 800; font-size: 28rpx;
-  display:flex; align-items:center; justify-content:center; gap: 8rpx;
-}
-.roomno-text {
-  padding: 2rpx 8rpx; border-radius: 999rpx;
-  font-size: 22rpx; font-weight: 700;
-}
-.roomno-right { margin-left: auto; display:flex; align-items:center; gap: 10rpx; }
-.peoplecount-row .peoplecount-text {
-  font-size: 26rpx; font-weight: 800; color: #fa8c16;
-  background: #fff7e6; text-align: center;
-  padding: 2rpx 12rpx; border-radius: 999rpx;
-}
 .field-remark { grid-column: 1 / span 2; }
 .field-2col { grid-column: 1 / span 2; }
-.phone-row { align-items: center; }
-.phone-number { color:#1677ff; font-weight: 700; }
-.phone-icon { width: 36rpx; height: 36rpx; margin-left: 10rpx; }
 .empty { text-align: center; color: #999; padding: 24rpx; }
+
+/* 底部更新时间 */
+.owner-bottom {
+  display: flex;
+  justify-content: flex-end;
+  padding-top: 12rpx;
+  border-top: 1rpx solid #f0f0f0;
+}
+
+.update-time-text {
+  color: #999;
+  font-size: 22rpx;
+}
 
 /* 弹窗 */
 .modal-mask { position: fixed; left:0; right:0; top:0; bottom:0; background: rgba(0,0,0,0.45); display:flex; justify-content:center; align-items:center; z-index:1000; }

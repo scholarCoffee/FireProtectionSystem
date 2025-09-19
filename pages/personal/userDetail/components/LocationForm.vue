@@ -1449,7 +1449,7 @@
 
 .modal-content {
   width: 95%;
-  max-width: 600rpx;
+  max-width: 700rpx;
   border-radius: 32rpx;
   overflow: hidden;
   box-shadow: 
@@ -1465,7 +1465,7 @@
 .modal-header {
   display: flex;
   justify-content: space-between;
-  padding: 16rpx 8rpx;
+  padding: 20rpx 24rpx;
   align-items: center;
   background: #ffffff;
   position: relative;
@@ -1474,12 +1474,12 @@
 }
 
 .modal-title {
-  font-size: 24rpx;
+  font-size: 28rpx;
   font-weight: 600;
   color: #1f2d3d;
   flex: 1;
   text-align: left;
-  padding-left: 20rpx;
+  padding-left: 0;
   letter-spacing: 0.5rpx;
 }
 
@@ -1505,10 +1505,10 @@
 }
 
 .modal-body {
-  padding: 20rpx 20rpx;
+  padding: 24rpx 24rpx;
   display: flex;
   flex-direction: column;
-  gap: 28rpx;
+  gap: 32rpx;
   background: #ffffff;
 }
 
@@ -1527,6 +1527,8 @@
   display: flex;
   align-items: center;
   position: relative;
+  margin-bottom: 12rpx;
+  margin-top: 8rpx;
 }
 
 .form-group .required {
@@ -1596,6 +1598,11 @@
   background: #ffffff;
 }
 
+.type-option.active .checkbox {
+  border-color: #1890ff;
+  background: #1890ff;
+}
+
 .checkbox-inner {
   width: 20rpx;
   height: 20rpx;
@@ -1610,6 +1617,11 @@
   background-size: contain;
   background-repeat: no-repeat;
   background-position: center;
+}
+
+.type-option.active .checkbox-inner {
+  transform: scale(1);
+  background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="white"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>');
 }
 
 .type-label {
@@ -1677,7 +1689,7 @@
 .confirm-btn { background: #1890ff; color: #ffffff; }
 
 /* 链接弹窗体更紧凑 */
-.link-modal { max-width: 620rpx; }
+.link-modal { max-width: 720rpx; }
 
 .tip-text {
   margin-top: 8rpx;

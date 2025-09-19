@@ -159,3 +159,86 @@ const updateTabBarBadge = () => {
         });
     }
 };
+
+// 手机号码校验
+export const validatePhone = (phone) => {
+    if (!phone) {
+        return { valid: false, message: '请输入手机号码' };
+    }
+    
+    // 去除所有非数字字符
+    const cleanPhone = phone.replace(/\D/g, '');
+    
+    // 检查长度
+    if (cleanPhone.length !== 11) {
+        return { valid: false, message: '手机号码必须为11位数字' };
+    }
+    
+    // 检查是否以1开头
+    if (!cleanPhone.startsWith('1')) {
+        return { valid: false, message: '手机号码必须以1开头' };
+    }
+    
+    // 检查第二位数字（运营商号段）
+    const secondDigit = cleanPhone[1];
+    const validSecondDigits = ['3', '4', '5', '6', '7', '8', '9'];
+    if (!validSecondDigits.includes(secondDigit)) {
+        return { valid: false, message: '请输入正确的手机号码' };
+    }
+    
+    // 检查常见无效号码
+    const invalidPatterns = [
+        /^1[0-9]{10}$/, // 基本格式
+        /^1(3[0-9]|4[01456879]|5[0-35-9]|6[2567]|7[0-8]|8[0-9]|9[0-35-9])[0-9]{8}$/ // 详细运营商号段
+    ];
+    
+    // 使用更宽松的校验，只检查基本格式
+    if (!/^1[3-9]\d{9}$/.test(cleanPhone)) {
+        return { valid: false, message: '请输入正确的手机号码格式' };
+    }
+    
+    return { valid: true, message: '手机号码格式正确', cleanPhone };
+};
+
+// 身份证号码校验
+export const validateIdCard = (idCard) => {
+    if (!idCard) {
+        return { valid: false, message: '请输入身份证号码' };
+    }
+    
+    const cleanIdCard = idCard.replace(/\s/g, '');
+    
+    // 18位身份证号码校验
+    if (cleanIdCard.length === 18) {
+        const reg = /^[1-9]\d{5}(18|19|20)\d{2}((0[1-9])|(1[0-2]))(([0-2][1-9])|10|20|30|31)\d{3}[0-9Xx]$/;
+        if (!reg.test(cleanIdCard)) {
+            return { valid: false, message: '请输入正确的18位身份证号码' };
+        }
+        return { valid: true, message: '身份证号码格式正确', cleanIdCard };
+    }
+    
+    // 15位身份证号码校验（老版本）
+    if (cleanIdCard.length === 15) {
+        const reg = /^[1-9]\d{5}\d{2}((0[1-9])|(1[0-2]))(([0-2][1-9])|10|20|30|31)\d{3}$/;
+        if (!reg.test(cleanIdCard)) {
+            return { valid: false, message: '请输入正确的15位身份证号码' };
+        }
+        return { valid: true, message: '身份证号码格式正确', cleanIdCard };
+    }
+    
+    return { valid: false, message: '身份证号码必须为15位或18位' };
+};
+
+// 邮箱校验
+export const validateEmail = (email) => {
+    if (!email) {
+        return { valid: false, message: '请输入邮箱地址' };
+    }
+    
+    const reg = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+    if (!reg.test(email)) {
+        return { valid: false, message: '请输入正确的邮箱格式' };
+    }
+    
+    return { valid: true, message: '邮箱格式正确' };
+};
