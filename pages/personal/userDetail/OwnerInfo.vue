@@ -179,7 +179,7 @@ import { statusFilterOptions, numberPickerOptions, getStatusLabel, getStatusClas
 export default {
   data() {
     return {
-      serverUrl: 'http://192.168.1.4:3000',
+      serverUrl: 'https://www.xiaobei.space',
       addressId: '',
       mode: 'query', // edit/detail/query
       basicInfo: {},
