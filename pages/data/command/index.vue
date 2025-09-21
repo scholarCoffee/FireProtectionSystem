@@ -25,9 +25,7 @@
 export default {
     data() {
         return {
-            // 可以添加数据
             serverUrl: 'https://www.xiaobei.space',
-            // 本地静态功能清单（不再请求接口）
             commndList: [
                 { title: '户主反馈查询', desc: '查询住户信息', icon: 'analysis', url: '' },
                 { title: '火灾情况上传', desc: '上报现场火灾情况', icon: 'report', url: '' },
@@ -37,8 +35,68 @@ export default {
             ]
         }
     },
-    onShow() {},
+    async onLoad() {
+        // 检查并加载静态数据
+        await this.loadAllStaticData()
+    },
     methods: {
+        async loadAllStaticData() {
+            try {
+                // 检查是否已有缓存的静态数据
+                const cachedFireUnits = uni.getStorageSync('static_fireUnits')
+                const cachedFireCars = uni.getStorageSync('static_fireCars')
+                const cachedTaskTypes = uni.getStorageSync('static_taskTypes')
+                const cachedTaskStatuses = uni.getStorageSync('static_taskStatuses')
+                
+                // 如果所有静态数据都已缓存，直接返回
+                if (cachedFireUnits && cachedFireUnits.length > 0 &&
+                    cachedFireCars && cachedFireCars.length > 0 &&
+                    cachedTaskTypes && cachedTaskTypes.length > 0 &&
+                    cachedTaskStatuses && cachedTaskStatuses.length > 0) {
+                    console.log('静态数据已缓存，跳过请求')
+                    return
+                }
+                
+                uni.showLoading({ title: '加载数据中...' })
+                
+                // 并行加载所有静态数据
+                const [fireUnits, fireCars, taskTypes, taskStatuses] = await Promise.all([
+                    this.fetchStaticData('fireUnits', 'unitList'),
+                    this.fetchStaticData('fireUnits', 'carList'),
+                    this.fetchStaticData('fireUnits', 'taskList'),
+                    this.fetchStaticData('fireUnits', 'statusList')
+                ])
+                
+                // 存储到本地缓存
+                uni.setStorageSync('static_fireUnits', fireUnits)
+                uni.setStorageSync('static_fireCars', fireCars)
+                uni.setStorageSync('static_taskTypes', taskTypes)
+                uni.setStorageSync('static_taskStatuses', taskStatuses)
+                
+                uni.showToast({ title: '数据加载完成', icon: 'success' })
+            } catch (e) {
+                uni.showToast({ title: '数据加载失败', icon: 'none' })
+            } finally {
+                uni.hideLoading()
+            }
+        },
+        async fetchStaticData(type, key) {
+            try {
+                const res = await new Promise((resolve, reject) => {
+                    uni.request({
+                        url: this.serverUrl + '/static/data',
+                        method: 'GET',
+                        data: { type, key },
+                        success: resolve,
+                        fail: reject
+                    })
+                })
+                const list = res?.data?.data || []
+                return list.map((it, idx) => ({ label: it.data1, value: String(it.data2), index: idx, config: it.config }))
+            } catch (e) {
+                return []
+            }
+        },
         goToWebviewByUrl(url, title) {
             if (!url) {
                 uni.showToast({ title: '功能即将接入', icon: 'none' })
@@ -48,7 +106,6 @@ export default {
                 url: `/subPackages/common/webview/index?url=${encodeURIComponent(url)}&title=${encodeURIComponent(title || '数据指挥')}`
             })
         },
-        // 路由到 OwnerInfo（查询）
         onCommandItemClick(item) {
             const title = item?.title || ''
             if (title === '火灾情况上传') {
@@ -59,13 +116,20 @@ export default {
                 uni.navigateTo({ url: '/pages/data/fireQuery/index' })
                 return
             }
+            if (title === '作战任务下达') {
+                uni.navigateTo({ url: '/pages/data/taskAssign/index' })
+                return
+            }
+            if (title === '作战任务查询') {
+                uni.navigateTo({ url: '/pages/data/taskQuery/index' })
+                return
+            }
             if (title === '户主反馈查询') {
                 uni.navigateTo({ url: `/pages/personal/userDetail/OwnerInfo?mode=query` })
                 return
             }
             this.goToWebviewByUrl(item?.url, item?.title)
-        },
-        
+        }
     }
 }
 </script>
@@ -136,7 +200,6 @@ export default {
     line-height: 1.4;
 }
 
-/* 为不同图标类型设置不同的渐变色 */
 .command-icon[data-icon="analysis"] {
     background: linear-gradient(135deg, #667eea 0%, #a24b74 100%);
 }
@@ -149,7 +212,6 @@ export default {
     background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
 }
 
-/* 默认渐变色 */
 .command-icon {
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
 }

@@ -244,11 +244,18 @@
                 } 
             },
             onQuitLogin() {
-                // 清楚缓存
-                uni.removeStorageSync('userInfo')
+                // 清空所有缓存
+                uni.clearStorageSync()
                 this.isLoggedIn = false; // 用户已退出登录
                 // 清除未读消息数
                 clearUnreadCount();
+                
+                // 显示退出成功提示
+                uni.showToast({
+                    title: '已退出登录',
+                    icon: 'success',
+                    duration: 1500
+                });
             },
             updateUserInfoToServer(data, successMsg = '更新成功') {
                 uni.request({

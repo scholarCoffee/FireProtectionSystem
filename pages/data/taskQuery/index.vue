@@ -1,5 +1,5 @@
 <template>
-  <view class="fire-query-page">
+  <view class="task-query-page">
     <!-- 搜索和筛选区 -->
     <view class="search-filters-container">
       <!-- 地址名称搜索和筛选按钮 -->
@@ -25,12 +25,12 @@
       <!-- 筛选条件 -->
       <view class="filters-section" v-show="filtersExpanded">
         <view class="filters-grid">
-          <!-- 消防单位 -->
+          <!-- 救援单位 -->
           <view class="filter-item">
-            <text class="filter-label">消防单位</text>
+            <text class="filter-label">救援单位</text>
             <picker :value="unitIndex" :range="unitOptions" range-key="label" @change="onUnitChange" class="filter-picker">
               <view class="picker-box" :class="{ 'placeholder': unitIndex === 0 }">
-                {{ (unitOptions[unitIndex] && unitOptions[unitIndex].label) || '请选择消防单位' }}
+                {{ (unitOptions[unitIndex] && unitOptions[unitIndex].label) || '请选择救援单位' }}
               </view>
             </picker>
           </view>
@@ -45,12 +45,12 @@
             </picker>
           </view>
 
-          <!-- 任务状态 -->
+          <!-- 任务反馈状态 -->
           <view class="filter-item">
-            <text class="filter-label">任务状态</text>
+            <text class="filter-label">任务反馈</text>
             <picker :value="statusIndex" :range="statusOptions" range-key="label" @change="onStatusChange" class="filter-picker">
               <view class="picker-box" :class="{ 'placeholder': statusIndex === 0 }">
-                {{ (statusOptions[statusIndex] && statusOptions[statusIndex].label) || '请选择任务状态' }}
+                {{ (statusOptions[statusIndex] && statusOptions[statusIndex].label) || '请选择任务反馈' }}
               </view>
             </picker>
           </view>
@@ -65,14 +65,14 @@
             </picker>
           </view>
 
-          <!-- 记录人员和操作按钮 -->
+          <!-- 指派人员和操作按钮 -->
           <view class="filter-item-with-buttons">
-            <text class="filter-label">记录人员</text>
+            <text class="filter-label">指派人员</text>
             <view class="input-button-group">
               <input 
                 class="filter-input"
                 v-model="recordPerson"
-                placeholder="请输入记录人员"
+                placeholder="请输入指派人员"
                 @input="onInput"
               />
               <view class="button-group">
@@ -95,8 +95,8 @@
             <text class="floor-info" v-if="item.locationType === 1 && item.rescueFloor">{{ item.rescueFloor }}层</text>
             <text class="direction-info" v-if="item.locationType !== 1 && item.direction">{{ getDirectionName(item.direction) }}</text>
           </view>
-          <view class="task-status" :class="getTaskStatusClass(item.taskStatus)">
-            {{ getTaskStatusName(item.taskStatus) }}
+          <view class="task-status" :class="getTaskStatusClass(item.feedbackStatus)">
+            {{ getTaskStatusName(item.feedbackStatus) }}
           </view>
         </view>
         
@@ -109,7 +109,7 @@
             
             <view class="info-item">
               <image :src="serverUrl + '/static/icons/common/task.png'" class="info-icon" />
-              <text class="info-text">{{ getFireCarName(item.fireCar) }}</text>
+              <text class="info-text">{{ getTaskTypeName(item.taskType) }}</text>
             </view>
             
             <view class="info-item">
@@ -157,11 +157,10 @@ export default {
       keyword: '',
       recordPerson: '',
       debounceTimer: null,
-      filtersExpanded: false, // 新增：筛选条件展开状态
+      filtersExpanded: false,
       unitOptions: [],
       taskTypeOptions: [],
       statusOptions: [],
-      fireCarOptions: [],
       floorOptions: [],
       locationTypeOptions: locationTypeOptions,
       directionOptions: directionOptions,
@@ -176,7 +175,13 @@ export default {
       loadingText: '向下拉取更多',
       listHeight: '60vh',
       isLoading: false,
-      refresherTriggered: false
+      refresherTriggered: false,
+      // 任务反馈状态选项
+      taskFeedbackOptions: [
+        { label: '请选择任务反馈', value: '', index: 0 },
+        { label: '已接收', value: 'received', index: 1 },
+        { label: '未接收', value: 'unreceived', index: 2 }
+      ]
     }
   },
   async onLoad() {
@@ -198,7 +203,6 @@ export default {
   },
   methods: {
     initFloorOptions() {
-      // 生成1-100层的选项
       this.floorOptions = [
         { label: '请选择楼层', value: '', index: 0 },
         ...Array.from({ length: 100 }, (_, i) => ({
@@ -230,27 +234,18 @@ export default {
       // 先检查本地存储是否有数据
       const cachedUnits = uni.getStorageSync('static_fireUnits')
       const cachedTypes = uni.getStorageSync('static_taskTypes')
-      const cachedStatuses = uni.getStorageSync('static_taskStatuses')
-      const cachedCars = uni.getStorageSync('static_fireCars')
       
       // 如果本地有数据，直接使用
-      if (cachedUnits && cachedTypes && cachedStatuses && cachedCars) {
+      if (cachedUnits && cachedTypes) {
         this.unitOptions = [
-          { label: '请选择消防单位', value: '', index: 0 },
+          { label: '请选择救援单位', value: '', index: 0 },
           ...cachedUnits
         ]
         this.taskTypeOptions = [
           { label: '请选择任务类型', value: '', index: 0 },
           ...cachedTypes
         ]
-        this.statusOptions = [
-          { label: '请选择任务状态', value: '', index: 0 },
-          ...cachedStatuses
-        ]
-        this.fireCarOptions = [
-          { label: '请选择消防车辆', value: '', index: 0 },
-          ...cachedCars
-        ]
+        this.statusOptions = this.taskFeedbackOptions
         return
       }
       
@@ -259,41 +254,28 @@ export default {
         uni.request({ url: this.serverUrl + '/static/data', method: 'GET', data: { type: 'fireUnits', key }, success: resolve, fail: reject })
       })
       try {
-        const [units, types, statuses, cars] = await Promise.all([
+        const [units, types] = await Promise.all([
           req('unitList'), 
-          req('taskList'), 
-          req('statusList'),
-          req('carList')
+          req('taskList')
         ])
         
         // 处理数据并缓存到本地存储
         const unitList = ((units && units.data && units.data.data) ? units.data.data : []).map((it, i) => ({ label: it.data1, value: String(it.data2), index: i + 1 }))
         const typeList = ((types && types.data && types.data.data) ? types.data.data : []).map((it, i) => ({ label: it.data1, value: String(it.data2), index: i + 1 }))
-        const statusList = ((statuses && statuses.data && statuses.data.data) ? statuses.data.data : []).map((it, i) => ({ label: it.data1, value: String(it.data2), index: i + 1 }))
-        const carList = ((cars && cars.data && cars.data.data) ? cars.data.data : []).map((it, i) => ({ label: it.data1, value: String(it.data2), index: i + 1 }))
         
         // 缓存到本地存储
         uni.setStorageSync('static_fireUnits', unitList)
         uni.setStorageSync('static_taskTypes', typeList)
-        uni.setStorageSync('static_taskStatuses', statusList)
-        uni.setStorageSync('static_fireCars', carList)
         
         this.unitOptions = [
-          { label: '请选择消防单位', value: '', index: 0 },
+          { label: '请选择救援单位', value: '', index: 0 },
           ...unitList
         ]
         this.taskTypeOptions = [
           { label: '请选择任务类型', value: '', index: 0 },
           ...typeList
         ]
-        this.statusOptions = [
-          { label: '请选择任务状态', value: '', index: 0 },
-          ...statusList
-        ]
-        this.fireCarOptions = [
-          { label: '请选择消防车辆', value: '', index: 0 },
-          ...carList
-        ]
+        this.statusOptions = this.taskFeedbackOptions
       } catch(e) {
         console.error('加载静态数据失败:', e)
       }
@@ -306,14 +288,14 @@ export default {
         pageSize: this.pageSize,
         unit: (this.unitOptions[this.unitIndex] && this.unitOptions[this.unitIndex].value) || '',
         taskType: (this.taskTypeOptions[this.typeIndex] && this.taskTypeOptions[this.typeIndex].value) || '',
-        taskStatus: (this.statusOptions[this.statusIndex] && this.statusOptions[this.statusIndex].value) || '',
+        taskFeedback: (this.statusOptions[this.statusIndex] && this.statusOptions[this.statusIndex].value) || '',
         floor: (this.floorOptions[this.floorIndex] && this.floorOptions[this.floorIndex].value) || '',
         recordPerson: (this.recordPerson || '').trim(),
         keyword: (this.keyword || '').trim()
       }
       this.isLoading = true
       uni.request({
-        url: this.serverUrl + '/fire/list',
+        url: this.serverUrl + '/task/list',
         method: 'GET',
         data: params,
         success: (res) => {
@@ -356,56 +338,36 @@ export default {
       this.keyword = ''
       this.fetch(true)
     },
-    // 新增：切换筛选条件展开状态
     toggleFilters() {
       this.filtersExpanded = !this.filtersExpanded
     },
-    // 获取消防单位名称
     getFireUnitName(unitValue) {
       const unit = this.unitOptions.find(item => item.value === String(unitValue))
-      return unit ? unit.label : `单位${unitValue}`
+      return unit ? unit.label : `救援单位${unitValue}`
     },
-    // 获取消防车辆名称
-    getFireCarName(carValue) {
-      const car = this.fireCarOptions.find(item => item.value === String(carValue))
-      return car ? car.label : `车辆${carValue}`
-    },
-    // 获取任务类型名称
     getTaskTypeName(typeValue) {
       const type = this.taskTypeOptions.find(item => item.value === String(typeValue))
       return type ? type.label : `类型${typeValue}`
     },
-    // 获取任务状态名称
-    getTaskStatusName(statusValue) {
-      const status = this.statusOptions.find(item => item.value === String(statusValue))
-      return status ? status.label : `状态${statusValue}`
-    },
-    // 获取位置类型名称
-    getLocationTypeName(locationValue) {
-      const location = this.locationTypeOptions.find(item => item.value === Number(locationValue))
-      return location ? location.label : `位置${locationValue}`
-    },
-    // 获取方向名称
     getDirectionName(directionValue) {
       const direction = this.directionOptions.find(item => item.value === Number(directionValue))
       return direction ? direction.label : `方向${directionValue}`
     },
-    // 获取任务状态样式类
+    getTaskStatusName(statusValue) {
+      const status = this.statusOptions.find(item => item.value === String(statusValue))
+      return status ? status.label : `状态${statusValue}`
+    },
     getTaskStatusClass(statusValue) {
       const status = this.statusOptions.find(item => item.value === String(statusValue))
       if (!status) return 'status-unknown'
       
-      const statusText = status.label.toLowerCase()
-      if (statusText.includes('完成') || statusText.includes('结束')) {
-        return 'status-completed'
-      } else if (statusText.includes('进行') || statusText.includes('执行')) {
-        return 'status-progress'
-      } else if (statusText.includes('救援') || statusText.includes('紧急')) {
-        return 'status-rescue'
+      if (status.value === 'received') {
+        return 'status-received'
+      } else if (status.value === 'unreceived') {
+        return 'status-unreceived'
       }
       return 'status-unknown'
     },
-    // 格式化时间
     formatTime(timeStr) {
       if (!timeStr) return ''
       const date = new Date(timeStr)
@@ -416,7 +378,6 @@ export default {
       const minutes = String(date.getMinutes()).padStart(2, '0')
       return `${year}-${month}-${day} ${hours}:${minutes}`
     },
-    // 获取任务额外值的显示文本
     getTaskExtraValue(taskType, key, value) {
       // 火场供水 - 从消防单位静态配置读取供水目标
       if (taskType === '5' && key === 'supplyTarget') {
@@ -437,7 +398,7 @@ export default {
 </script>
 
 <style scoped>
-.fire-query-page {
+.task-query-page {
   min-height: 100vh;
   background: #f5f9ff;
 }
@@ -750,7 +711,51 @@ export default {
   border: 2rpx solid #fff;
 }
 
+.task-status.status-received {
+  background: linear-gradient(135deg, #52c41a, #73d13d);
+  box-shadow: 0 4rpx 12rpx rgba(82, 196, 26, 0.4);
+  font-weight: 600;
+  font-size: 22rpx;
+  min-width: 100rpx;
+  border: 2rpx solid #fff;
+  animation: receivedPulse 2s infinite;
+}
+
+.task-status.status-unreceived {
+  background: linear-gradient(135deg, #ff4d4f, #ff7875);
+  box-shadow: 0 4rpx 12rpx rgba(255, 77, 79, 0.4);
+  font-weight: 600;
+  font-size: 22rpx;
+  min-width: 100rpx;
+  border: 2rpx solid #fff;
+  animation: unreceivedPulse 2s infinite;
+}
+
 @keyframes pulse {
+  0% {
+    box-shadow: 0 4rpx 12rpx rgba(255, 77, 79, 0.4);
+  }
+  50% {
+    box-shadow: 0 6rpx 16rpx rgba(255, 77, 79, 0.6);
+  }
+  100% {
+    box-shadow: 0 4rpx 12rpx rgba(255, 77, 79, 0.4);
+  }
+}
+
+@keyframes receivedPulse {
+  0% {
+    box-shadow: 0 4rpx 12rpx rgba(82, 196, 26, 0.4);
+  }
+  50% {
+    box-shadow: 0 6rpx 16rpx rgba(82, 196, 26, 0.6);
+  }
+  100% {
+    box-shadow: 0 4rpx 12rpx rgba(82, 196, 26, 0.4);
+  }
+}
+
+@keyframes unreceivedPulse {
   0% {
     box-shadow: 0 4rpx 12rpx rgba(255, 77, 79, 0.4);
   }
@@ -884,4 +889,4 @@ export default {
     box-shadow: 0 4rpx 16rpx rgba(255, 77, 79, 0.2);
   }
 }
-</style>
+</style> 

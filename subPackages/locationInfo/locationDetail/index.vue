@@ -95,19 +95,16 @@
           
           <!-- 户主信息（仅：高层小区 type === 1） -->
           <view class="owner-info-card" v-if="locationObj.type === 1">
-            <view class="card-header">
-              <text class="card-title">户主信息</text>
-              <view class="header-actions">
-                <text class="query-btn" @tap="goToOwnerInfo">一键查询</text>
-              </view>
-            </view>
             <view class="owner-info-content">
               <view class="owner-count-display">
-                <text class="count-label">当前住户总数</text>
-                <view class="owner-badge">
-                  <text class="badge-num">{{ (locationObj.ownerInfo && locationObj.ownerInfo.total) || (locationObj.ownerInfo && locationObj.ownerInfo.count) || 0 }}</text>
-                  <text class="badge-suffix">人</text>
+                <view class="count-section">
+                  <text class="count-label">当前住户总数</text>
+                  <view class="owner-badge">
+                    <text class="badge-num">{{ (locationObj.ownerInfo && locationObj.ownerInfo.total) || (locationObj.ownerInfo && locationObj.ownerInfo.count) || 0 }}</text>
+                    <text class="badge-suffix">人</text>
+                  </view>
                 </view>
+                <text class="query-btn" @tap="goToOwnerInfo">一键查询</text>
               </view>
             </view>
           </view>
@@ -901,57 +898,33 @@ export default {
 /* 户主信息卡片样式 */
 .owner-info-card {
   background-color: #FFF;
-  margin: 10px;
-  border-radius: 4px;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  border-radius: 6px;
   overflow: hidden;
 }
 
-.owner-info-card .card-header {
-  padding: 8px 12px;
-  border-bottom: 1px solid #f0f0f0;
-  background: #f8f9fa;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.owner-info-card .card-title {
-  font-size: 13px;
-  font-weight: 600;
-  color: #333;
-}
-
-.query-btn {
-  font-size: 12px;
-  color: #1890ff;
-  background: #e6f7ff;
-  border: 1px solid #bae7ff;
-  border-radius: 8px;
-  padding: 3px 10px;
-  font-weight: 500;
-  transition: all 0.2s ease;
-}
-
-.query-btn:active {
-  background: #bae7ff;
-  transform: scale(0.95);
-}
-
 .owner-info-content {
-  padding: 8px 12px;
+  padding: 12px 16px;
 }
 
 .owner-count-display {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 10px;
+}
+
+.count-section {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
 }
 
 .count-label {
   font-size: 13px;
   color: #333;
   font-weight: 500;
+  white-space: nowrap;
 }
 
 .owner-badge {
@@ -961,11 +934,11 @@ export default {
   background: #f0f8ff;
   border: 1px solid #d6e4ff;
   border-radius: 12px;
-  padding: 3px 8px;
+  padding: 4px 8px;
 }
 
 .badge-num {
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 600;
   color: #1890ff;
   line-height: 1;
@@ -975,6 +948,23 @@ export default {
   font-size: 12px;
   color: #1890ff;
   opacity: 0.8;
+}
+
+.query-btn {
+  font-size: 12px;
+  color: #1890ff;
+  background: #e6f7ff;
+  border: 1px solid #bae7ff;
+  border-radius: 8px;
+  padding: 4px 12px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.query-btn:active {
+  background: #bae7ff;
+  transform: scale(0.95);
 }
 
  
