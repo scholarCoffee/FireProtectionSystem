@@ -87,7 +87,7 @@
   
     <!-- 列表 -->
     <scroll-view class="list" :style="{ height: listHeight }" scroll-y :lower-threshold="100" @scrolltolower="loadMore" refresher-enabled :refresher-triggered="refresherTriggered" @refresherrefresh="onRefresh">
-      <view v-for="(item, idx) in list" :key="idx" class="card" :class="{ 'rescue-card': getTaskStatusClass(item.taskStatus) === 'status-rescue' }">
+      <view v-for="(item, idx) in list" :key="idx" class="card" :class="item.cardClass">
         <view class="card-header">
           <view class="address-info">
             <text class="address-name">{{ item.addressName }}</text>
@@ -95,7 +95,7 @@
             <text class="floor-info" v-if="item.locationType === 1 && item.rescueFloor">{{ item.rescueFloor }}层</text>
             <text class="direction-info" v-if="item.locationType !== 1 && item.direction">{{ getDirectionName(item.direction) }}</text>
           </view>
-          <view class="task-status" :class="getTaskStatusClass(item.feedbackStatus)">
+          <view class="task-status" :class="item.statusClass">
             {{ getTaskStatusName(item.feedbackStatus) }}
           </view>
         </view>
@@ -301,7 +301,16 @@ export default {
         success: (res) => {
           if (res?.data?.code === 200) {
             const { data: list, pagination } = res.data
-            this.list = this.page === 1 ? list : this.list.concat(list)
+            // 为每个列表项添加样式类
+            const processedList = list.map(item => {
+              const statusClass = this.getTaskStatusClass(item.feedbackStatus)
+              return {
+                ...item,
+                cardClass: statusClass === 'status-unreceived' ? 'rescue-card' : '',
+                statusClass: statusClass
+              }
+            })
+            this.list = this.page === 1 ? processedList : this.list.concat(processedList)
             this.page = pagination.page || this.page
             this.finished = !pagination.hasNext || this.page >= pagination.pages
             this.loadingText = this.finished ? '没有更多了' : '向下拉取更多'
