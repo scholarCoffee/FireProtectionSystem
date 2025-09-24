@@ -151,7 +151,7 @@ box-shadow: 0 2px 12px rgba(18, 150, 219, 0.15);
 .name{font-size:28rpx;color:#333;font-weight:600;margin-bottom:8rpx}
 .address-tags{display:flex;align-items:center;gap:12rpx;flex-wrap:wrap}
 .address-id{font-size:20rpx;color:#666;background:#f0f8ff;padding:6rpx 12rpx;border-radius:8rpx;border:1rpx solid #d6e4ff}
-.location-type{display:flex;align-items:center;background:#e6f7ff;padding:6rpx 12rpx;border-radius:8rpx;border:1rpx solid #91d5ff;gap:6rpx}
+.location-type{display:flex;align-items:center;background:#fff;padding:6rpx 12rpx;border-radius:8rpx;border:1rpx solid #91d5ff;gap:6rpx}
 .type-icon{width:24rpx;height:24rpx;opacity:0.8;background:#fff;border-radius:4rpx;padding:2rpx}
 .type-text{font-size:20rpx;color:#1890ff;font-weight:500}
 .address-info{display:flex;align-items:center}

@@ -57,8 +57,6 @@ export default {
                     return
                 }
                 
-                uni.showLoading({ title: '加载数据中...' })
-                
                 // 并行加载所有静态数据
                 const [fireUnits, fireCars, taskTypes, taskStatuses] = await Promise.all([
                     this.fetchStaticData('fireUnits', 'unitList'),
@@ -72,8 +70,7 @@ export default {
                 uni.setStorageSync('static_fireCars', fireCars)
                 uni.setStorageSync('static_taskTypes', taskTypes)
                 uni.setStorageSync('static_taskStatuses', taskStatuses)
-                
-                uni.showToast({ title: '数据加载完成', icon: 'success' })
+            
             } catch (e) {
                 uni.showToast({ title: '数据加载失败', icon: 'none' })
             } finally {
