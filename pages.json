@@ -107,6 +107,18 @@
             "style": {
                 "navigationBarTitleText": "作战任务查询"
             }
+        },
+        {
+            "path": "pages/data/fireDetail/index",
+            "style": {
+                "navigationBarTitleText": "火灾详情"
+            }
+        },
+        {
+            "path": "pages/data/taskDeliver/index",
+            "style": {
+                "navigationBarTitleText": "任务下达"
+            }
         }
     ],
     "subPackages": [
@@ -209,4 +221,12 @@
         "paddingBottom": "10px"
     },
     "uniIdRouter": {}
+    ,
+    "easycom": {
+        "autoscan": true,
+        "custom": {
+            "^uni-swipe-action$": "node_modules/@dcloudio/uni-ui/lib/uni-swipe-action/uni-swipe-action.vue",
+            "^uni-swipe-action-item$": "node_modules/@dcloudio/uni-ui/lib/uni-swipe-action-item/uni-swipe-action-item.vue"
+        }
+    }
 }

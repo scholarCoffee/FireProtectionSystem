@@ -145,17 +145,18 @@ box-shadow: 0 2px 12px rgba(18, 150, 219, 0.15);
 }
 .search-bar{display:flex;align-items:center;justify-content:center;padding:16rpx 24rpx;gap:12rpx;background:#fff}
 .list{height:calc(100vh - 220rpx);background:#fff}
-.item{display:flex;align-items:center;justify-content:space-between;padding:28rpx;border-bottom:1rpx solid #f0f0f0}
+.list{padding:16rpx 20rpx;box-sizing:border-box}
+.item{display:flex;align-items:center;justify-content:space-between;padding:28rpx;border:1rpx solid #f0f0f0;border-radius:14rpx;background:#fff;box-shadow:0 4rpx 14rpx rgba(0,0,0,0.06);margin-bottom:16rpx}
 .left{display:flex;flex-direction:column;flex:1}
-.address-header{display:flex;flex-direction:column;margin-bottom:8rpx}
-.name{font-size:28rpx;color:#333;font-weight:600;margin-bottom:8rpx}
+.address-header{display:flex;flex-direction:column;margin-bottom:10rpx}
+.name{font-size:30rpx;color:#1f2d3d;font-weight:700;margin-bottom:10rpx}
 .address-tags{display:flex;align-items:center;gap:12rpx;flex-wrap:wrap}
-.address-id{font-size:20rpx;color:#666;background:#f0f8ff;padding:6rpx 12rpx;border-radius:8rpx;border:1rpx solid #d6e4ff}
-.location-type{display:flex;align-items:center;background:#fff;padding:6rpx 12rpx;border-radius:8rpx;border:1rpx solid #91d5ff;gap:6rpx}
+.address-id{font-size:20rpx;color:#666;background:#f0f8ff;padding:6rpx 12rpx;border-radius:8rpx;border:1rpx solid #d6e4ff;box-shadow:0 2rpx 6rpx rgba(0,0,0,0.04)}
+.location-type{display:flex;align-items:center;background:#fff;padding:6rpx 12rpx;border-radius:8rpx;border:1rpx solid #91d5ff;gap:6rpx;box-shadow:0 2rpx 6rpx rgba(0,0,0,0.04)}
 .type-icon{width:24rpx;height:24rpx;opacity:0.8;background:#fff;border-radius:4rpx;padding:2rpx}
-.type-text{font-size:20rpx;color:#1890ff;font-weight:500}
+.type-text{font-size:20rpx;color:#1890ff;font-weight:600}
 .address-info{display:flex;align-items:center}
-.ext{font-size:22rpx;color:#999}
-.right-icon{width:28rpx;height:28rpx;opacity:.6;margin-left:12rpx}
+.ext{font-size:24rpx;color:#666}
+.right-icon{width:32rpx;height:32rpx;opacity:.5;margin-left:12rpx}
 .load-more{text-align:center;color:#999;padding:16rpx 0}
 </style>

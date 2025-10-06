@@ -140,7 +140,7 @@
             <view class="drawer-item-info">
               <text class="unit-label">{{ car.label }}</text>
             </view>
-            <text class="status-badge" :class="getCarStatusClass(car)">{{ getCarStatusText(car) }}</text>
+            <text class="status-badge" :class="(car.status === 'rescuing' || car.state === 1 || car.status === 1) ? 'rescuing' : 'idle'">{{ getCarStatusText(car) }}</text>
           </view>
         </view>
         <view class="drawer-footer">
@@ -159,14 +159,14 @@
           </view>
         </view>
         <view class="drawer-body">
-          <view v-for="(unit, index) in availableUnits" :key="index" class="drawer-item" :class="{ disabled: isAlreadyAssigned(unit), active: isUnitSelected(unit) }" @tap="onPickUnit(unit)">
+          <view v-for="(unit, index) in fireUnitOptions" :key="index" class="drawer-item" :class="{ disabled: isAlreadyAssigned(unit), active: !isAlreadyAssigned(unit) && isUnitSelected(unit) }" @tap="onPickUnit(unit)">
             <view class="checkbox">
               <view class="checkbox-inner" v-if="isUnitSelected(unit)"></view>
             </view>
             <view class="drawer-item-info">
               <text class="unit-label">{{ unit.label }}</text>
             </view>
-            <text class="status-badge" :class="getUnitStatusClass(unit)">{{ getUnitStatusText(unit) }}</text>
+            <text class="status-badge" :class="(unit.status === 'rescuing' || unit.state === 1 || unit.status === 1) ? 'rescuing' : 'idle'">{{ getDrawerUnitStatusText(unit) }}</text>
           </view>
         </view>
         <view class="drawer-footer">
@@ -174,10 +174,6 @@
         </view>
       </view>
     </view>
-
-    <!-- 已内联配置，移除配置弹窗 -->
-
-    <!-- 车辆弹窗移除，改为内联 picker 选择 -->
   </view>
 </template>
 
@@ -188,7 +184,7 @@ export default {
   name: 'FireUpload',
   data() {
     return {
-      serverUrl: 'https://www.xiaobei.space',
+      serverUrl: 'http://192.168.3.87:3000',
       formData: {
         addressId: '',
         addressName: '',
@@ -205,7 +201,6 @@ export default {
       selectedUnits: [], // 已选择的救援单位
       showUnitDrawer: false,
       carDrawerVisible: false,
-      currentUnit: null, // 当前选车对应的单位
       currentUnitIndex: -1, // 当前单位索引
       tempSelectedUnits: [], // 临时选择的单位
       tempSelectedCars: [] // 车辆抽屉的临时选择
@@ -287,9 +282,8 @@ export default {
     },
     // 打开车辆抽屉
     showCarDrawer(unit, index) {
-      this.currentUnit = unit
       this.currentUnitIndex = index
-      this.tempSelectedCars = [...(unit.selectedCars || [])]
+      this.tempSelectedCars = [...((this.selectedUnits[index] && this.selectedUnits[index].selectedCars) || [])]
       this.carDrawerVisible = true
     },
     hideCarDrawer() {
@@ -316,7 +310,11 @@ export default {
     },
     confirmCarDrawer() {
       const list = [...this.tempSelectedCars]
-      this.$set(this.currentUnit, 'selectedCars', list)
+      if (this.currentUnitIndex > -1 && this.selectedUnits[this.currentUnitIndex]) {
+        this.$set(this.selectedUnits[this.currentUnitIndex], 'selectedCars', list)
+      }
+      // 同步更新表单数据
+      this.updateFormData()
       this.carDrawerVisible = false
     },
     getCarNames(unit) {
@@ -336,6 +334,10 @@ export default {
     getUnitStatusText(unit) {
       const st = unit.status || unit.state || 'idle'
       return (st === 'rescuing' || st === 1) ? '救援中' : '空闲中'
+    },
+    // 抽屉内单位状态文案：若已指派（禁用），固定显示“正在使用”，否则按原状态显示
+    getDrawerUnitStatusText(unit) {
+      return this.isAlreadyAssigned(unit) ? '正在使用' : this.getUnitStatusText(unit)
     },
     confirmUnits() {
       this.selectedUnits = [...this.tempSelectedUnits]
@@ -404,7 +406,6 @@ export default {
         this.$set(unit.taskExtra, unit.taskConfig.actionKey, picked ? picked.value : '')
       }
     },
-    // 冗余逻辑已移除：车辆 picker 模式、旧弹窗逻辑
     // 更新表单数据
     updateFormData() {
       this.formData.assignedUnits = this.selectedUnits.map(unit => ({
@@ -414,8 +415,7 @@ export default {
         direction: unit.direction,
         taskType: unit.taskType,
         taskExtra: unit.taskExtra,
-        carIds: unit.selectedCars.map(car => car.value),
-        carNames: unit.selectedCars.map(car => car.label)
+        carInfo: (unit.selectedCars || []).map(car => ({ ...car }))
       }))
     },
     // 移除救援单位
