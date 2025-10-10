@@ -184,7 +184,7 @@ export default {
   name: 'FireUpload',
   data() {
     return {
-      serverUrl: 'http://192.168.3.87:3000',
+      serverUrl: 'http://192.168.1.4:3000',
       formData: {
         addressId: '',
         addressName: '',

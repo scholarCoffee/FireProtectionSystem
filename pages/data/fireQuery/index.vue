@@ -98,46 +98,57 @@
               </view>
               
             </view>
-            <!-- 单线三段状态路线 -->
+            <!-- 状态进度条 -->
             <view class="status-route">
-              <view class="route-wrap">
-                <view class="base-line"></view>
-                <view class="progress-line" :class="(item.taskStatus == 1) ? 'success' : (item.taskStatus == 3 ? 'warn' : 'blue')" :style="{ width: (item.taskStatus == 1 ? '100%' : (item.taskStatus == 3 ? '66.66%' : '33.33%')) }"></view>
-              </view>
-              <view class="route-tags">
-                <view class="status-tag" :class="(item.taskStatus == 2) ? 'active' : ''">
-                  <view class="dot"></view>
-                  <text class="label">救援中</text>
+              <view class="route-container">
+                <!-- 救援中标签 -->
+                <view class="status-tag rescue-tag" :class="{ 'active': item.taskStatus == 2 }">
+                  <view class="tag-dot"></view>
+                  <text class="tag-label">救援中</text>
                   <view class="ripple" v-if="item.taskStatus == 2"></view>
                 </view>
-                <view class="status-tag" :class="(item.taskStatus == 3) ? 'active warn' : ''">
-                  <view class="dot"></view>
-                  <text class="label">需要支援</text>
+                
+                <!-- 第一段连接线 -->
+                <view class="route-line">
+                  <view class="line-base"></view>
+                  <view class="line-progress" :class="getProgressClass(item.taskStatus, 1)" :style="{ width: getProgressWidth(item.taskStatus, 1) }"></view>
+                </view>
+                
+                <!-- 需要支援标签 -->
+                <view class="status-tag support-tag" :class="{ 'active': item.taskStatus == 3 }">
+                  <view class="tag-dot"></view>
+                  <text class="tag-label">需要支援</text>
                   <view class="ripple" v-if="item.taskStatus == 3"></view>
                 </view>
-                <view class="status-tag" :class="(item.taskStatus == 1) ? 'active success' : ''">
-                  <view class="dot"></view>
-                  <text class="label">已完成</text>
+                
+                <!-- 第二段连接线 -->
+                <view class="route-line">
+                  <view class="line-base"></view>
+                  <view class="line-progress" :class="getProgressClass(item.taskStatus, 2)" :style="{ width: getProgressWidth(item.taskStatus, 2) }"></view>
+                </view>
+                
+                <!-- 已完成标签 -->
+                <view class="status-tag complete-tag" :class="{ 'active': item.taskStatus == 1 }">
+                  <view class="tag-dot"></view>
+                  <text class="tag-label">已完成</text>
                 </view>
               </view>
             </view>
             <view class="card-content">
               <view class="info-grid">
-                <view class="info-item">
+                <view class="info-item full-width">
                   <image :src="serverUrl + '/static/icons/location/factory.png'" class="info-icon" />
-                  <text class="info-text">{{ firstUnitName(item) }}</text>
+                  <text class="info-text">{{ getRescueUnits(item) }}</text>
                 </view>
-                <view class="info-item">
-                  <image :src="serverUrl + '/static/icons/common/task.png'" class="info-icon" />
-                  <text class="info-text">{{ firstCarNames(item) }}</text>
-                </view>
-                <view class="info-item">
-                  <image :src="serverUrl + '/static/icons/common/time.png'" class="info-icon" />
-                  <text class="info-text">{{ formatTime(item.updateTime) }}</text>
-                </view>
-                <view class="info-item" v-if="item.issuePersonName">
-                  <image :src="serverUrl + '/static/icons/common/issuePerson.png'" class="info-icon" />
-                  <text class="info-text">{{ item.issuePersonName }}</text>
+                <view class="info-row">
+                  <view class="info-item">
+                    <image :src="serverUrl + '/static/icons/common/issuePerson.png'" class="info-icon" />
+                    <text class="info-text">{{ item.issuePersonName || '—' }}</text>
+                  </view>
+                  <view class="info-item">
+                    <image :src="serverUrl + '/static/icons/common/time.png'" class="info-icon" />
+                    <text class="info-text">{{ formatTime(item.issueTime) }}</text>
+                  </view>
                 </view>
               </view>
             </view>
@@ -163,7 +174,7 @@ export default {
   components: { uniSwipeAction, uniSwipeActionItem },
   data() {
     return {
-      serverUrl: 'http://192.168.3.87:3000',
+      serverUrl: 'http://192.168.1.4:3000',
       keyword: '',
       recordPerson: '',
       debounceTimer: null,
@@ -395,11 +406,6 @@ export default {
       const u = this.firstUnit(item)
       return u ? (u.direction || '') : ''
     },
-    firstCarNames(item) {
-      const u = this.firstUnit(item)
-      if (!u || !u.carInfo || u.carInfo.length === 0) return '—'
-      return u.carInfo.map(c => c.label).join('、')
-    },
     // 获取任务类型名称
     getTaskTypeName(typeValue) {
       const type = this.taskTypeOptions.find(item => item.value === String(typeValue))
@@ -451,6 +457,34 @@ export default {
       
       // 其他情况直接显示值
       return value
+    },
+    // 获取进度条样式类
+    getProgressClass(taskStatus, segment) {
+      if (taskStatus == 1) return 'success'  // 已完成 - 绿色
+      if (taskStatus == 3) return 'warn'     // 需要支援 - 红色
+      if (taskStatus == 2) return 'progress' // 救援中 - 蓝色
+      return ''
+    },
+    // 获取进度条宽度
+    getProgressWidth(taskStatus, segment) {
+      if (taskStatus == 1) {
+        // 已完成 - 两段都填满
+        return '100%'
+      }
+      if (taskStatus == 3) {
+        // 需要支援 - 第一段填满，第二段填满
+        return '100%'
+      }
+      if (taskStatus == 2) {
+        // 救援中 - 第一段填满，第二段不填
+        return segment === 1 ? '100%' : '0%'
+      }
+      return '0%'
+    },
+    // 获取救灾单位名称（所有单位）
+    getRescueUnits(item) {
+      if (!item.assignedUnits || item.assignedUnits.length === 0) return '—'
+      return item.assignedUnits.map(unit => unit.unitName).join('、')
     },
     onSwipeClick(e, item) {
       const key = (e && e.content && e.content.key) || ''
@@ -747,22 +781,147 @@ export default {
 @keyframes rippleAnim{0%{transform:scale(.8);opacity:.8}70%{transform:scale(1.8);opacity:.2}100%{transform:scale(2.2);opacity:0}}
 
 /* 状态路线样式 */
-.status-route{padding:8rpx 0 0}
-.route-wrap{position:relative;height:10rpx;margin:0 4rpx 16rpx}
-.base-line{position:absolute;left:0;right:0;top:50%;height:6rpx;margin-top:-3rpx;border-radius:4rpx;background:#e6e6e6}
-.progress-line{position:absolute;left:0;top:50%;height:6rpx;margin-top:-3rpx;border-radius:4rpx;background:#1890ff;width:33.33%}
-.progress-line.warn{background:#faad14}
-.progress-line.success{background:#52c41a}
-.route-tags{display:flex;align-items:center;justify-content:space-between}
-.status-tag{position:relative;display:flex;align-items:center;gap:8rpx}
-.status-tag .dot{width:12rpx;height:12rpx;border-radius:50%;background:#d9d9d9}
-.status-tag .label{font-size:22rpx;color:#666}
-.status-tag.active .dot{background:#1890ff}
-.status-tag.active.warn .dot{background:#faad14}
-.status-tag.active.success .dot{background:#52c41a}
-.status-tag.active .label{color:#1890ff;font-weight:600}
-.status-tag.active.warn .label{color:#faad14}
-.status-tag.active.success .label{color:#52c41a}
+.status-route {
+  padding: 16rpx 0;
+}
+
+.route-container {
+  display: flex;
+  align-items: center;
+  position: relative;
+  padding: 0 20rpx;
+}
+
+.status-tag {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8rpx;
+  position: relative;
+  z-index: 2;
+}
+
+/* 波纹特效 */
+.ripple {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  width: 32rpx;
+  height: 32rpx;
+  margin-left: -16rpx;
+  margin-top: -8rpx;
+  border-radius: 50%;
+  border: 2rpx solid rgba(24, 144, 255, 0.6);
+  animation: rippleAnim 1.8s infinite;
+}
+
+.status-tag.support-tag .ripple {
+  border-color: rgba(255, 77, 79, 0.6);
+}
+
+@keyframes rippleAnim {
+  0% {
+    transform: scale(0.8);
+    opacity: 0.8;
+  }
+  70% {
+    transform: scale(1.8);
+    opacity: 0.2;
+  }
+  100% {
+    transform: scale(2.2);
+    opacity: 0;
+  }
+}
+
+.tag-dot {
+  width: 16rpx;
+  height: 16rpx;
+  border-radius: 50%;
+  background: #d9d9d9;
+  border: 3rpx solid #fff;
+  box-shadow: 0 2rpx 4rpx rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+}
+
+.tag-label {
+  font-size: 20rpx;
+  color: #999;
+  font-weight: 500;
+  white-space: nowrap;
+  transition: all 0.3s ease;
+}
+
+.status-tag.active .tag-dot {
+  background: #1890ff;
+  box-shadow: 0 2rpx 8rpx rgba(24, 144, 255, 0.3);
+}
+
+.status-tag.active .tag-label {
+  color: #1890ff;
+  font-weight: 600;
+}
+
+/* 需要支援状态样式 */
+.status-tag.support-tag.active .tag-dot {
+  background: #ff4d4f;
+  box-shadow: 0 2rpx 8rpx rgba(255, 77, 79, 0.3);
+}
+
+.status-tag.support-tag.active .tag-label {
+  color: #ff4d4f;
+  font-weight: 600;
+}
+
+/* 已完成状态样式 */
+.status-tag.complete-tag.active .tag-dot {
+  background: #52c41a;
+  box-shadow: 0 2rpx 8rpx rgba(82, 196, 26, 0.3);
+}
+
+.status-tag.complete-tag.active .tag-label {
+  color: #52c41a;
+  font-weight: 600;
+}
+
+.route-line {
+  flex: 1;
+  height: 6rpx;
+  position: relative;
+  margin: 0 20rpx;
+}
+
+.line-base {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 6rpx;
+  background: #e6e6e6;
+  border-radius: 3rpx;
+}
+
+.line-progress {
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 6rpx;
+  border-radius: 3rpx;
+  background: #1890ff;
+  transition: all 0.5s ease;
+}
+
+.line-progress.progress {
+  background: #1890ff;  /* 救援中 - 蓝色 */
+}
+
+.line-progress.warn {
+  background: #ff4d4f;  /* 需要支援 - 红色 */
+}
+
+.line-progress.success {
+  background: #52c41a;  /* 已完成 - 绿色 */
+}
 
 .address-info {
   display: flex;
@@ -849,9 +1008,19 @@ export default {
 }
 
 .info-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 12rpx;
+}
+
+.info-row {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 12rpx;
+}
+
+.info-item.full-width {
+  grid-column: 1 / -1;
 }
 
 .info-item {
