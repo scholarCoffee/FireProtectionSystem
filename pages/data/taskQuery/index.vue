@@ -35,34 +35,34 @@
             </picker>
           </view>
 
-          <!-- 任务类型 -->
+          <!-- 任务状态 -->
           <view class="filter-item">
-            <text class="filter-label">任务类型</text>
-            <picker :value="typeIndex" :range="taskTypeOptions" range-key="label" @change="onTypeChange" class="filter-picker">
-              <view class="picker-box" :class="{ 'placeholder': typeIndex === 0 }">
-                {{ (taskTypeOptions[typeIndex] && taskTypeOptions[typeIndex].label) || '请选择任务类型' }}
-              </view>
-            </picker>
-          </view>
-
-          <!-- 任务反馈状态 -->
-          <view class="filter-item">
-            <text class="filter-label">任务反馈</text>
+            <text class="filter-label">任务状态</text>
             <picker :value="statusIndex" :range="statusOptions" range-key="label" @change="onStatusChange" class="filter-picker">
               <view class="picker-box" :class="{ 'placeholder': statusIndex === 0 }">
-                {{ (statusOptions[statusIndex] && statusOptions[statusIndex].label) || '请选择任务反馈' }}
+                {{ statusOptions[statusIndex] ? statusOptions[statusIndex].label : '请选择任务状态' }}
               </view>
             </picker>
           </view>
 
-          <!-- 所在楼层 -->
-          <view class="filter-item">
-            <text class="filter-label">所在楼层</text>
-            <picker :value="floorIndex" :range="floorOptions" range-key="label" @change="onFloorChange" class="filter-picker">
-              <view class="picker-box" :class="{ 'placeholder': floorIndex === 0 }">
-                {{ (floorOptions[floorIndex] && floorOptions[floorIndex].label) || '请选择楼层' }}
-              </view>
-            </picker>
+          <!-- 时间区间行 -->
+          <view class="time-row">
+            <view class="time-item">
+              <text class="time-label">开始时间</text>
+              <picker mode="multiSelector" :value="startTimeIndex" :range="startTimeRange" @change="onStartTimeChange" class="filter-picker">
+                <view class="picker-box" :class="{ 'placeholder': !startTime }">
+                  {{ startTime || '请选择开始时间' }}
+                </view>
+              </picker>
+            </view>
+            <view class="time-item">
+              <text class="time-label">结束时间</text>
+              <picker mode="multiSelector" :value="endTimeIndex" :range="endTimeRange" @change="onEndTimeChange" class="filter-picker">
+                <view class="picker-box" :class="{ 'placeholder': !endTime }">
+                  {{ endTime || '请选择结束时间' }}
+                </view>
+              </picker>
+            </view>
           </view>
 
           <!-- 指派人员和操作按钮 -->
@@ -87,87 +87,91 @@
   
     <!-- 列表 -->
     <scroll-view class="list" :style="{ height: listHeight }" scroll-y :lower-threshold="100" @scrolltolower="loadMore" refresher-enabled :refresher-triggered="refresherTriggered" @refresherrefresh="onRefresh">
-      <view v-for="(item, idx) in list" :key="idx" class="card" :class="item.cardClass">
-        <view class="card-header">
-          <view class="address-info">
-            <text class="address-name">{{ item.addressName }}</text>
-            <!-- 高层小区显示楼层，非高层小区显示方向 -->
-            <text class="floor-info" v-if="item.locationType === 1 && item.rescueFloor">{{ item.rescueFloor }}层</text>
-            <text class="direction-info" v-if="item.locationType !== 1 && item.direction">{{ getDirectionName(item.direction) }}</text>
-          </view>
-          <view class="task-status" :class="item.statusClass">
-            {{ getTaskStatusName(item.feedbackStatus) }}
-          </view>
-        </view>
-        
-        <view class="card-content">
-          <view class="info-grid">
-            <view class="info-item">
-              <image :src="serverUrl + '/static/icons/location/factory.png'" class="info-icon" />
-              <text class="info-text">{{ getFireUnitName(item.fireUnit) }}</text>
+      <uni-swipe-action>
+        <uni-swipe-action-item v-for="(item, idx) in list" :key="idx" :right-options="getSwipeOptions(item)" @click="onSwipeClick($event, item)">
+          <view class="card" :class="item.cardClass" @tap="goDetail(item)">
+            <view class="card-header">
+              <view class="address-info">
+                <text class="address-name">{{ item.fireSituation.addressName }}</text>
+              </view>
+              <view class="task-status" :class="getTaskStatusClass(item.status)">
+                {{ getTaskStatusName(item.status) }}
+              </view>
             </view>
             
-            <view class="info-item">
-              <image :src="serverUrl + '/static/icons/common/task.png'" class="info-icon" />
-              <text class="info-text">{{ getTaskTypeName(item.taskType) }}</text>
+            <view class="card-content">
+              <view class="info-grid">
+                <!-- 救援单位信息 -->
+                <view class="info-item full-width">
+                  <image :src="serverUrl + '/static/icons/location/factory.png'" class="info-icon" />
+                  <text class="info-text">{{ getRescueUnits(item.fireSituation.assignedUnits) }}</text>
+                </view>
+                
+                <!-- 任务下达信息 -->
+                <view class="info-row">
+                  <view class="info-item">
+                    <image :src="serverUrl + '/static/icons/common/issuePerson.png'" class="info-icon" />
+                    <text class="info-text">{{ item.fireSituation.issuePersonName || '—' }}</text>
+                  </view>
+                  <view class="info-item">
+                    <image :src="serverUrl + '/static/icons/common/time.png'" class="info-icon" />
+                    <text class="info-text">{{ formatTime(item.fireSituation.issueTime) }}</text>
+                  </view>
+                </view>
+              </view>
+              
+              <!-- 任务详情信息 -->
+              <view class="extra-info" v-if="item.fireSituation.assignedUnits && item.fireSituation.assignedUnits.length > 0">
+                <view class="extra-item" v-for="(unit, index) in item.fireSituation.assignedUnits" :key="index">
+                  <image :src="serverUrl + '/static/icons/common/power.png'" class="info-icon" />
+                  <text class="info-text">{{ unit.unitName }} - {{ getTaskTypeName(unit.taskType) }}{{ getTaskExtraInfo(unit.taskType, unit.taskExtra) }}</text>
+                </view>
+              </view>
             </view>
             
-            <view class="info-item">
-              <image :src="serverUrl + '/static/icons/common/time.png'" class="info-icon" />
-              <text class="info-text">{{ formatTime(item.updateTime) }}</text>
-            </view>
-            
-            <view class="info-item" v-if="item.issuePersonName">
-              <image :src="serverUrl + '/static/icons/common/issuePerson.png'" class="info-icon" />
-              <text class="info-text">{{ item.issuePersonName }}</text>
+            <view class="remark" v-if="item.remark">
+              <text class="remark-label">备注：</text>
+              <text class="remark-text">{{ item.remark }}</text>
             </view>
           </view>
-          
-          <view class="extra-info" v-if="item.taskExtra && Object.keys(item.taskExtra).length > 0">
-            <view class="extra-item" v-for="(value, key) in item.taskExtra" :key="key">
-              <image :src="serverUrl + '/static/icons/common/power.png'" class="info-icon" />
-              <text class="info-text">{{ getTaskTypeName(item.taskType) }}：{{ getTaskExtraValue(item.taskType, key, value) }}</text>
-            </view>
-          </view>
-        </view>
-        
-        <view class="remark" v-if="item.remark">
-          <text class="remark-label">备注：</text>
-          <text class="remark-text">{{ item.remark }}</text>
-        </view>
-      </view>
+        </uni-swipe-action-item>
+      </uni-swipe-action>
       
       <view class="load-more">
-        <button class="load-more-btn" :disabled="finished || isLoading" @tap="manualLoadMore">
+        <view class="load-more-btn" :disabled="finished || isLoading" @tap="manualLoadMore">
           {{ isLoading ? '加载中...' : (finished ? '没有更多了' : '点击加载更多') }}
-        </button>
+        </view>
       </view>
     </scroll-view>
   </view>
 </template>
 
 <script>
-import { locationTabList } from '@/commons/mock/index.js'
 import { directionOptions, locationTypeOptions } from '@/commons/js/fireStatus.js'
+import uniSwipeAction from '@dcloudio/uni-ui/lib/uni-swipe-action/uni-swipe-action.vue'
+import uniSwipeActionItem from '@dcloudio/uni-ui/lib/uni-swipe-action-item/uni-swipe-action-item.vue'
 
 export default {
+  components: { uniSwipeAction, uniSwipeActionItem },
   data() {
     return {
-      serverUrl: 'https://www.xiaobei.space',
+      serverUrl: 'http://192.168.1.4:3000',
       keyword: '',
       recordPerson: '',
+      startTime: '', // 新增：开始时间
+      endTime: '', // 新增：结束时间
+      startTimeIndex: [0, 0, 0, 0, 0], // 新增：开始时间选择器索引
+      endTimeIndex: [0, 0, 0, 0, 0], // 新增：结束时间选择器索引
+      startTimeRange: [[], [], [], [], []], // 新增：开始时间选择器数据
+      endTimeRange: [[], [], [], [], []], // 新增：结束时间选择器数据
       debounceTimer: null,
       filtersExpanded: false,
       unitOptions: [],
-      taskTypeOptions: [],
       statusOptions: [],
-      floorOptions: [],
       locationTypeOptions: locationTypeOptions,
       directionOptions: directionOptions,
       unitIndex: 0, 
-      typeIndex: 0, 
       statusIndex: 0,
-      floorIndex: 0,
       list: [],
       page: 1, 
       pageSize: 10, 
@@ -186,7 +190,7 @@ export default {
   },
   async onLoad() {
     await this.loadStatic()
-    this.initFloorOptions()
+    this.initDateTimePickers()
     this.fetch(true)
   },
   onReachBottom() { this.loadMore() },
@@ -202,15 +206,43 @@ export default {
     }
   },
   methods: {
-    initFloorOptions() {
-      this.floorOptions = [
-        { label: '请选择楼层', value: '', index: 0 },
-        ...Array.from({ length: 100 }, (_, i) => ({
-          label: `${i + 1}层`,
-          value: String(i + 1),
-          index: i + 1
-        }))
-      ]
+    initDateTimePickers() {
+      // 初始化时间选择器数据
+      const now = new Date()
+      const currentYear = now.getFullYear()
+      
+      // 生成年份 (当前年份前后5年)
+      const years = []
+      for (let i = currentYear - 5; i <= currentYear + 5; i++) {
+        years.push(i)
+      }
+      
+      // 生成月份
+      const months = []
+      for (let i = 1; i <= 12; i++) {
+        months.push(i)
+      }
+      
+      // 生成日期 (1-31)
+      const days = []
+      for (let i = 1; i <= 31; i++) {
+        days.push(i)
+      }
+      
+      // 生成小时 (0-23)
+      const hours = []
+      for (let i = 0; i < 24; i++) {
+        hours.push(i)
+      }
+      
+      // 生成分钟 (0-59)
+      const minutes = []
+      for (let i = 0; i < 60; i++) {
+        minutes.push(i)
+      }
+      
+      this.startTimeRange = [years, months, days, hours, minutes]
+      this.endTimeRange = [years, months, days, hours, minutes]
     },
     computeListHeight() {
       try {
@@ -233,17 +265,12 @@ export default {
     async loadStatic() {
       // 先检查本地存储是否有数据
       const cachedUnits = uni.getStorageSync('static_fireUnits')
-      const cachedTypes = uni.getStorageSync('static_taskTypes')
       
       // 如果本地有数据，直接使用
-      if (cachedUnits && cachedTypes) {
+      if (cachedUnits) {
         this.unitOptions = [
           { label: '请选择救援单位', value: '', index: 0 },
           ...cachedUnits
-        ]
-        this.taskTypeOptions = [
-          { label: '请选择任务类型', value: '', index: 0 },
-          ...cachedTypes
         ]
         this.statusOptions = this.taskFeedbackOptions
         return
@@ -254,26 +281,17 @@ export default {
         uni.request({ url: this.serverUrl + '/static/data', method: 'GET', data: { type: 'fireUnits', key }, success: resolve, fail: reject })
       })
       try {
-        const [units, types] = await Promise.all([
-          req('unitList'), 
-          req('taskList')
-        ])
+        const units = await req('unitList')
         
         // 处理数据并缓存到本地存储
         const unitList = ((units && units.data && units.data.data) ? units.data.data : []).map((it, i) => ({ label: it.data1, value: String(it.data2), index: i + 1 }))
-        const typeList = ((types && types.data && types.data.data) ? types.data.data : []).map((it, i) => ({ label: it.data1, value: String(it.data2), index: i + 1 }))
         
         // 缓存到本地存储
         uni.setStorageSync('static_fireUnits', unitList)
-        uni.setStorageSync('static_taskTypes', typeList)
         
         this.unitOptions = [
           { label: '请选择救援单位', value: '', index: 0 },
           ...unitList
-        ]
-        this.taskTypeOptions = [
-          { label: '请选择任务类型', value: '', index: 0 },
-          ...typeList
         ]
         this.statusOptions = this.taskFeedbackOptions
       } catch(e) {
@@ -287,9 +305,9 @@ export default {
         page: this.page, 
         pageSize: this.pageSize,
         unit: (this.unitOptions[this.unitIndex] && this.unitOptions[this.unitIndex].value) || '',
-        taskType: (this.taskTypeOptions[this.typeIndex] && this.taskTypeOptions[this.typeIndex].value) || '',
-        taskFeedback: (this.statusOptions[this.statusIndex] && this.statusOptions[this.statusIndex].value) || '',
-        floor: (this.floorOptions[this.floorIndex] && this.floorOptions[this.floorIndex].value) || '',
+        taskStatus: (this.statusOptions[this.statusIndex] && this.statusOptions[this.statusIndex].value) || '',
+        startTime: this.startTime || '',
+        endTime: this.endTime || '',
         recordPerson: (this.recordPerson || '').trim(),
         keyword: (this.keyword || '').trim()
       }
@@ -335,14 +353,26 @@ export default {
       this.fetch(true, () => { this.refresherTriggered = false })
     },
     onUnitChange(e) { this.unitIndex = Number(e.detail.value); this.fetch(true) },
-    onTypeChange(e) { this.typeIndex = Number(e.detail.value); this.fetch(true) },
     onStatusChange(e) { this.statusIndex = Number(e.detail.value); this.fetch(true) },
-    onFloorChange(e) { this.floorIndex = Number(e.detail.value); this.fetch(true) },
+    onStartTimeChange(e) {
+      this.startTimeIndex = e.detail.value
+      const [year, month, day, hour, minute] = e.detail.value
+      this.startTime = `${this.startTimeRange[0][year]}-${String(this.startTimeRange[1][month]).padStart(2, '0')}-${String(this.startTimeRange[2][day]).padStart(2, '0')} ${String(this.startTimeRange[3][hour]).padStart(2, '0')}:${String(this.startTimeRange[4][minute]).padStart(2, '0')}`
+      this.fetch(true)
+    },
+    onEndTimeChange(e) {
+      this.endTimeIndex = e.detail.value
+      const [year, month, day, hour, minute] = e.detail.value
+      this.endTime = `${this.endTimeRange[0][year]}-${String(this.endTimeRange[1][month]).padStart(2, '0')}-${String(this.endTimeRange[2][day]).padStart(2, '0')} ${String(this.endTimeRange[3][hour]).padStart(2, '0')}:${String(this.endTimeRange[4][minute]).padStart(2, '0')}`
+      this.fetch(true)
+    },
     resetFilters() {
       this.unitIndex = 0
-      this.typeIndex = 0
       this.statusIndex = 0
-      this.floorIndex = 0
+      this.startTime = ''
+      this.endTime = ''
+      this.startTimeIndex = [0, 0, 0, 0, 0]
+      this.endTimeIndex = [0, 0, 0, 0, 0]
       this.recordPerson = ''
       this.keyword = ''
       this.fetch(true)
@@ -354,28 +384,25 @@ export default {
       const unit = this.unitOptions.find(item => item.value === String(unitValue))
       return unit ? unit.label : `救援单位${unitValue}`
     },
-    getTaskTypeName(typeValue) {
-      const type = this.taskTypeOptions.find(item => item.value === String(typeValue))
-      return type ? type.label : `类型${typeValue}`
-    },
     getDirectionName(directionValue) {
       const direction = this.directionOptions.find(item => item.value === Number(directionValue))
       return direction ? direction.label : `方向${directionValue}`
     },
     getTaskStatusName(statusValue) {
-      const status = this.statusOptions.find(item => item.value === String(statusValue))
-      return status ? status.label : `状态${statusValue}`
+      // 根据taskStatus显示状态名称
+      const statusMap = {
+        1: '未接收',
+        2: '已接收'
+      }
+      return statusMap[statusValue] || `状态${statusValue}`
     },
     getTaskStatusClass(statusValue) {
-      const status = this.statusOptions.find(item => item.value === String(statusValue))
-      if (!status) return 'status-unknown'
-      
-      if (status.value === 'received') {
-        return 'status-received'
-      } else if (status.value === 'unreceived') {
-        return 'status-unreceived'
+      // 根据taskStatus返回样式类
+      const classMap = {
+        1: 'status-unreceived',
+        2: 'status-received'
       }
-      return 'status-unknown'
+      return classMap[statusValue] || 'status-unknown'
     },
     formatTime(timeStr) {
       if (!timeStr) return ''
@@ -387,20 +414,132 @@ export default {
       const minutes = String(date.getMinutes()).padStart(2, '0')
       return `${year}-${month}-${day} ${hours}:${minutes}`
     },
-    getTaskExtraValue(taskType, key, value) {
-      // 火场供水 - 从消防单位静态配置读取供水目标
-      if (taskType === '5' && key === 'supplyTarget') {
-        const unit = this.unitOptions.find(item => item.value === value)
-        return unit ? unit.label : `${value}个供水点`
+    // 获取救援单位名称（所有单位）
+    getRescueUnits(assignedUnits) {
+      if (!assignedUnits || assignedUnits.length === 0) return '—'
+      return assignedUnits.map(unit => unit.unitName).join('、')
+    },
+    // 获取任务类型名称
+    getTaskTypeName(taskType) {
+      const typeMap = {
+        '1': '灭火救援',
+        '2': '断电救援', 
+        '3': '人员搜救',
+        '4': '火场供水',
+        '5': '火场供水',
+        '6': '人员搜救'
       }
+      return typeMap[taskType] || `类型${taskType}`
+    },
+    // 获取任务额外信息
+    getTaskExtraInfo(taskType, taskExtra) {
+      if (!taskExtra || Object.keys(taskExtra).length === 0) return ''
       
-      // 人员搜救 - 显示单位房间号
-      if (taskType === '6' && key === 'rescueLocation') {
-        return `单位房间号：${value}`
+      const extraInfo = []
+      for (const key in taskExtra) {
+        if (taskExtra.hasOwnProperty(key)) {
+          const value = taskExtra[key]
+          if (taskType === '1' && key === 'firePower') {
+            extraInfo.push(value)
+          } else if (taskType === '2' && key === 'blockPower') {
+            extraInfo.push(value)
+          } else if (taskType === '3' && key === 'searchRoom') {
+            extraInfo.push('房间号：' + value)
+          } else if (taskType === '4' && key === 'supplyTarget') {
+            extraInfo.push(value + '个供水点')
+          } else if (taskType === '5' && key === 'supplyTarget') {
+            extraInfo.push(value + '个供水点')
+          } else if (taskType === '6' && key === 'rescueLocation') {
+            extraInfo.push('房间号：' + value)
+          } else {
+            extraInfo.push(value)
+          }
+        }
       }
+      return extraInfo.length > 0 ? ' (' + extraInfo.join(', ') + ')' : ''
+    },
+    // 跳转到任务详情
+    goDetail(item) {
+      uni.navigateTo({ url: `/pages/data/taskDetail/index?taskId=${encodeURIComponent(item.taskId)}` })
+    },
+    // 根据任务状态获取滑动操作选项
+    getSwipeOptions(item) {
+      const status = item.status
       
-      // 其他情况直接显示值
-      return value
+      if (status === 1) {
+        // 未接收 - 显示接收任务
+        return [
+          { text: '接收任务', style: { backgroundColor: '#52c41a', color: '#fff' }, key: 'receive' }
+        ]
+      } else if (status === 2) {
+        // 已接收 - 显示删除
+        return [
+          { text: '删除', style: { backgroundColor: '#ff4d4f', color: '#fff' }, key: 'delete' }
+        ]
+      } else {
+        // 其他状态 - 默认选项
+        return [
+          { text: '查看详情', style: { backgroundColor: '#2db7f5', color: '#fff' }, key: 'detail' }
+        ]
+      }
+    },
+    // 处理滑动操作点击
+    onSwipeClick(e, item) {
+      const key = (e && e.content && e.content.key) || ''
+      if (key === 'receive') {
+        this.receiveTask(item)
+      } else if (key === 'delete') {
+        this.deleteTask(item)
+      } else if (key === 'detail') {
+        this.goDetail(item)
+      }
+    },
+    // 接收任务
+    async receiveTask(item) {
+      try {
+        await new Promise((resolve, reject) => {
+          uni.request({
+            url: this.serverUrl + `/task/receive`,
+            method: 'POST',
+            data: { taskId: item.taskId },
+            success: resolve,
+            fail: reject
+          })
+        })
+        uni.showToast({ title: '任务已接收', icon: 'success' })
+        this.fetch(true)
+      } catch(e) {
+        uni.showToast({ title: '操作失败', icon: 'none' })
+      }
+    },
+    // 删除任务
+    async deleteTask(item) {
+      try {
+        const confirmResult = await new Promise((resolve) => {
+          uni.showModal({
+            title: '确认删除',
+            content: '确定要删除这个任务吗？删除后无法恢复。',
+            success: (res) => resolve(res.confirm),
+            fail: () => resolve(false)
+          })
+        })
+        
+        if (!confirmResult) return
+        
+        await new Promise((resolve, reject) => {
+          uni.request({
+            url: this.serverUrl + `/task/delete`,
+            method: 'DELETE',
+            data: { taskId: item.taskId },
+            success: resolve,
+            fail: reject
+          })
+        })
+        uni.showToast({ title: '删除成功', icon: 'success' })
+        this.fetch(true)
+      } catch(e) {
+        uni.showToast({ title: '删除失败', icon: 'none' })
+      }
     }
   }
 }
@@ -433,25 +572,29 @@ export default {
   display: flex;
   align-items: center;
   height: 64rpx;
-  padding: 0 24rpx;
+  padding: 0 20rpx;
   border: 2rpx solid #e6f4ff;
   border-radius: 32rpx;
   background: #f8faff;
-  box-shadow: 0 2rpx 6rpx rgba(24, 144, 255, 0.06);
+  box-shadow: 0 2rpx 8rpx rgba(24, 144, 255, 0.08);
   transition: all 0.3s ease;
   flex: 1;
 }
 
 .search-input-container:focus-within {
   border-color: #1890ff;
-  box-shadow: 0 2rpx 8rpx rgba(24, 144, 255, 0.12);
+  background: #fff;
+  box-shadow: 0 4rpx 12rpx rgba(24, 144, 255, 0.15);
+  transform: translateY(-1rpx);
 }
 
 .search-icon {
-  width: 28rpx;
-  height: 28rpx;
-  margin-right: 16rpx;
+  width: 24rpx;
+  height: 24rpx;
+  margin-right: 12rpx;
   flex-shrink: 0;
+  opacity: 0.7;
+  transition: all 0.3s ease;
 }
 
 .search-input {
@@ -464,33 +607,38 @@ export default {
   color: #333;
   outline: none;
   box-shadow: none;
+  font-weight: 400;
 }
 
 /* 筛选按钮样式 */
 .filter-toggle {
   display: flex;
   align-items: center;
-  gap: 6rpx;
-  height: 48rpx;
-  padding: 0 16rpx;
-  background: #f8faff;
+  gap: 8rpx;
+  height: 64rpx;
+  padding: 0 20rpx;
+  background: linear-gradient(135deg, #f8faff, #e6f7ff);
   border: 2rpx solid #e6f4ff;
-  border-radius: 24rpx;
+  border-radius: 32rpx;
   cursor: pointer;
   transition: all 0.3s ease;
   flex-shrink: 0;
+  box-shadow: 0 2rpx 8rpx rgba(24, 144, 255, 0.08);
 }
 
 .filter-toggle:active {
-  background: #e6f7ff;
+  background: linear-gradient(135deg, #e6f7ff, #d6e4ff);
   border-color: #1890ff;
+  box-shadow: 0 4rpx 12rpx rgba(24, 144, 255, 0.15);
+  transform: translateY(-1rpx);
 }
 
 .filter-icon {
   width: 20rpx;
   height: 20rpx;
   flex-shrink: 0;
-  transition: transform 0.3s ease;
+  transition: all 0.3s ease;
+  opacity: 0.7;
 }
 
 .filter-icon.expanded {
@@ -498,7 +646,7 @@ export default {
 }
 
 .filter-text {
-  font-size: 22rpx;
+  font-size: 26rpx;
   color: #333;
   font-weight: 500;
   white-space: nowrap;
@@ -506,8 +654,10 @@ export default {
 
 /* 筛选条件区域 */
 .filters-section {
-  padding: 16rpx 20rpx;
+  padding: 20rpx 24rpx;
   border-top: 1rpx solid #e6f4ff;
+  background: linear-gradient(135deg, #fafbff, #f0f8ff);
+  border-radius: 0 0 12rpx 12rpx;
 }
 
 .filters-grid {
@@ -519,25 +669,46 @@ export default {
 .filter-item {
   display: flex;
   flex-direction: column;
-  gap: 6rpx;
+  gap: 8rpx;
+}
+
+/* 时间区间行 */
+.time-row {
+  display: flex;
+  gap: 20rpx;
+  grid-column: 1 / -1;
+  margin-bottom: 20rpx;
+}
+
+.time-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8rpx;
+}
+
+.time-label {
+  font-size: 24rpx;
+  color: #333;
+  font-weight: 500;
 }
 
 .filter-item-with-buttons {
   display: flex;
   flex-direction: column;
-  gap: 6rpx;
+  gap: 8rpx;
   grid-column: 1 / -1;
 }
 
 .input-button-group {
   display: flex;
   align-items: center;
-  gap: 12rpx;
+  gap: 16rpx;
 }
 
 .filter-label {
-  font-size: 22rpx;
-  color: #666;
+  font-size: 24rpx;
+  color: #333;
   font-weight: 500;
 }
 
@@ -548,13 +719,14 @@ export default {
 .picker-box {
   height: 56rpx;
   line-height: 56rpx;
-  border-radius: 8rpx;
+  border-radius: 12rpx;
   border: 2rpx solid #e6f4ff;
-  background: #f8faff;
-  padding: 0 12rpx;
-  font-size: 22rpx;
+  background: #fff;
+  padding: 0 16rpx;
+  font-size: 24rpx;
   color: #333;
   transition: all 0.3s ease;
+  box-shadow: 0 2rpx 4rpx rgba(24, 144, 255, 0.05);
 }
 
 .picker-box.placeholder {
@@ -563,46 +735,52 @@ export default {
 
 .picker-box:active {
   border-color: #1890ff;
-  background: #e6f7ff;
+  background: #fff;
+  box-shadow: 0 4rpx 8rpx rgba(24, 144, 255, 0.15);
+  transform: translateY(-1rpx);
 }
 
 .filter-input {
   flex: 1;
   height: 56rpx;
-  padding: 0 12rpx;
+  padding: 0 16rpx;
   border: 2rpx solid #e6f4ff;
-  border-radius: 8rpx;
-  background: #f8faff;
-  font-size: 22rpx;
+  border-radius: 12rpx;
+  background: #fff;
+  font-size: 24rpx;
   color: #333;
   box-sizing: border-box;
+  transition: all 0.3s ease;
+  box-shadow: 0 2rpx 4rpx rgba(24, 144, 255, 0.05);
 }
 
 .filter-input:focus {
   border-color: #1890ff;
-  background: #e6f7ff;
+  background: #fff;
+  box-shadow: 0 4rpx 8rpx rgba(24, 144, 255, 0.15);
+  transform: translateY(-1rpx);
 }
 
 .button-group {
   display: flex;
-  gap: 16rpx;
+  gap: 20rpx;
 }
 
 .reset-btn {
-  height: 56rpx;
-  padding: 0 40rpx;
-  border-radius: 28rpx;
+  height: 48rpx;
+  padding: 0 24rpx;
+  border-radius: 6rpx;
   background: #f5f5f5;
-  border: 2rpx solid #e0e0e0;
+  border: 1rpx solid #d9d9d9;
   color: #666;
-  font-size: 20rpx;
-  font-weight: 500;
-  transition: all 0.3s ease;
+  font-size: 26rpx;
+  font-weight: 400;
+  line-height: 48rpx;
+  min-width: 80rpx;
 }
 
 .reset-btn:active {
   background: #e8e8e8;
-  transform: scale(0.95);
 }
 
 .reset-btn::after {
@@ -610,21 +788,20 @@ export default {
 }
 
 .search-btn {
-  height: 56rpx;
-  padding: 0 40rpx;
-  border-radius: 28rpx;
-  background: linear-gradient(135deg, #1890ff, #40a9ff);
+  height: 48rpx;
+  padding: 0 24rpx;
+  border-radius: 6rpx;
+  background: #1890ff;
   border: none;
   color: #fff;
-  font-size: 20rpx;
-  font-weight: 600;
-  box-shadow: 0 2rpx 6rpx rgba(24, 144, 255, 0.25);
-  transition: all 0.3s ease;
+  font-size: 26rpx;
+  font-weight: 400;
+  line-height: 48rpx;
+  min-width: 80rpx;
 }
 
 .search-btn:active {
-  transform: scale(0.95);
-  box-shadow: 0 1rpx 4rpx rgba(24, 144, 255, 0.35);
+  background: #40a9ff;
 }
 
 .list {
@@ -632,6 +809,49 @@ export default {
   margin: 0 12rpx 12rpx;
   border-radius: 12rpx;
   box-shadow: 0 2rpx 8rpx rgba(24, 144, 255, 0.06);
+}
+
+/* 滑动操作样式 */
+.swipe-item {
+  position: relative;
+  overflow: hidden;
+}
+
+.swipe-actions {
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+}
+
+.action-btn {
+  height: 100%;
+  border: none;
+  border-radius: 0;
+  color: #fff;
+  font-size: 22rpx;
+  padding: 0 20rpx;
+}
+
+.action-btn.receive {
+  background: #52c41a;
+}
+
+.action-btn.delete {
+  background: #ff4d4f;
+}
+
+.action-btn.detail {
+  background: #2db7f5;
+}
+
+.swipe-content {
+  background: #fff;
+  will-change: transform;
+  transition: transform 0.2s ease;
 }
 
 .card {
@@ -780,6 +1000,28 @@ export default {
   background: linear-gradient(135deg, #8c8c8c, #a6a6a6);
 }
 
+.task-status.status-supporting {
+  background: linear-gradient(135deg, #fa8c16, #ffa940);
+  box-shadow: 0 4rpx 12rpx rgba(250, 140, 22, 0.4);
+  font-weight: 600;
+  font-size: 22rpx;
+  min-width: 100rpx;
+  border: 2rpx solid #fff;
+  animation: supportingPulse 2s infinite;
+}
+
+@keyframes supportingPulse {
+  0% {
+    box-shadow: 0 4rpx 12rpx rgba(250, 140, 22, 0.4);
+  }
+  50% {
+    box-shadow: 0 6rpx 16rpx rgba(250, 140, 22, 0.6);
+  }
+  100% {
+    box-shadow: 0 4rpx 12rpx rgba(250, 140, 22, 0.4);
+  }
+}
+
 .card-content {
   display: flex;
   flex-direction: column;
@@ -787,9 +1029,19 @@ export default {
 }
 
 .info-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 12rpx;
+}
+
+.info-row {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 12rpx;
+}
+
+.info-item.full-width {
+  grid-column: 1 / -1;
 }
 
 .info-item {
@@ -855,28 +1107,9 @@ export default {
 .load-more {
   text-align: center;
   color: #999;
-  padding: 24rpx 0;
-}
-
-.load-more-btn {
-  height: 64rpx;
-  line-height: 64rpx;
-  padding: 0 40rpx;
-  border-radius: 32rpx;
-  color: #999;
   font-size: 24rpx;
-  font-weight: 500;
-  transition: all 0.3s ease;
-}
-
-.load-more-btn:active {
-  transform: scale(0.95);
-}
-
-.load-more-btn:disabled {
-  color: #aaa;
-  border-color: #f0f0f0;
-  background: #f5f5f5;
+  margin: 20rpx 0;
+  padding: 8rpx;
 }
 
 /* 需要救援的卡片样式 */

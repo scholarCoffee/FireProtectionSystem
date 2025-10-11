@@ -186,7 +186,7 @@ import { directionOptions } from '@/commons/js/fireStatus.js'
 export default {
   data() {
     return {
-      serverUrl: 'http://172.17.121.104:3000',
+      serverUrl: 'http://192.168.1.4:3000',
       directionOptions: directionOptions,
       detail: {}
     }

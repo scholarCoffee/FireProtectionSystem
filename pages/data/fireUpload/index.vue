@@ -208,7 +208,7 @@ export default {
   name: 'FireUpload',
   data() {
     return {
-      serverUrl: 'http://172.17.121.104:3000',
+      serverUrl: 'http://192.168.1.4:3000',
       situationId: '', // 已有火灾情况ID
       formData: {
         addressId: '',

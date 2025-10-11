@@ -195,7 +195,7 @@ export default {
   components: { uniSwipeAction, uniSwipeActionItem },
   data() {
     return {
-      serverUrl: 'http://172.17.121.104:3000',
+      serverUrl: 'http://192.168.1.4:3000',
       keyword: '',
       recordPerson: '',
       issuePerson: '', // 新增：任务下达人员
@@ -671,25 +671,29 @@ export default {
   display: flex;
   align-items: center;
   height: 64rpx;
-  padding: 0 24rpx;
+  padding: 0 20rpx;
   border: 2rpx solid #e6f4ff;
   border-radius: 32rpx;
   background: #f8faff;
-  box-shadow: 0 2rpx 6rpx rgba(24, 144, 255, 0.06);
+  box-shadow: 0 2rpx 8rpx rgba(24, 144, 255, 0.08);
   transition: all 0.3s ease;
   flex: 1;
 }
 
 .search-input-container:focus-within {
   border-color: #1890ff;
-  box-shadow: 0 2rpx 8rpx rgba(24, 144, 255, 0.12);
+  background: #fff;
+  box-shadow: 0 4rpx 12rpx rgba(24, 144, 255, 0.15);
+  transform: translateY(-1rpx);
 }
 
 .search-icon {
-  width: 28rpx;
-  height: 28rpx;
-  margin-right: 16rpx;
+  width: 24rpx;
+  height: 24rpx;
+  margin-right: 12rpx;
   flex-shrink: 0;
+  opacity: 0.7;
+  transition: all 0.3s ease;
 }
 
 .search-input {
@@ -702,34 +706,38 @@ export default {
   color: #333;
   outline: none;
   box-shadow: none;
+  font-weight: 400;
 }
 
 /* 筛选按钮样式 */
 .filter-toggle {
   display: flex;
   align-items: center;
-  gap: 6rpx;
+  gap: 8rpx;
   height: 64rpx;
-  padding: 0 16rpx;
-  background: #f8faff;
+  padding: 0 20rpx;
+  background: linear-gradient(135deg, #f8faff, #e6f7ff);
   border: 2rpx solid #e6f4ff;
-  border-radius: 24rpx;
+  border-radius: 32rpx;
   cursor: pointer;
   transition: all 0.3s ease;
   flex-shrink: 0;
+  box-shadow: 0 2rpx 8rpx rgba(24, 144, 255, 0.08);
 }
 
 .filter-toggle:active {
-  background: #f0f0f0;
-  border-color: #d9d9d9;
+  background: linear-gradient(135deg, #e6f7ff, #d6e4ff);
+  border-color: #1890ff;
+  box-shadow: 0 4rpx 12rpx rgba(24, 144, 255, 0.15);
+  transform: translateY(-1rpx);
 }
 
 .filter-icon {
-  width: 18rpx;
-  height: 18rpx;
+  width: 20rpx;
+  height: 20rpx;
   flex-shrink: 0;
-  transition: transform 0.2s ease;
-  opacity: 0.6;
+  transition: all 0.3s ease;
+  opacity: 0.7;
 }
 
 .filter-icon.expanded {
@@ -737,94 +745,101 @@ export default {
 }
 
 .filter-text {
-  font-size: 24rpx;
-  color: #666;
-  font-weight: 400;
+  font-size: 26rpx;
+  color: #333;
+  font-weight: 500;
   white-space: nowrap;
 }
 
 /* 筛选条件区域 */
 .filters-section {
-  padding: 12rpx 16rpx;
-  border-top: 1rpx solid #f0f0f0;
+  padding: 20rpx 24rpx;
+  border-top: 1rpx solid #e6f4ff;
+  background: linear-gradient(135deg, #fafbff, #f0f8ff);
+  border-radius: 0 0 12rpx 12rpx;
 }
 
 .filters-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 12rpx;
+  gap: 16rpx;
 }
 
 .filter-item {
   display: flex;
   flex-direction: column;
-  gap: 6rpx;
+  gap: 8rpx;
 }
 
 /* 时间区间行 */
 .time-row {
   display: flex;
-  gap: 16rpx;
+  gap: 20rpx;
   grid-column: 1 / -1;
-  margin-bottom: 16rpx;
+  margin-bottom: 20rpx;
 }
 
 .time-item {
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 6rpx;
+  gap: 8rpx;
 }
 
 .time-label {
-  font-size: 22rpx;
-  color: #666;
+  font-size: 24rpx;
+  color: #333;
   font-weight: 500;
 }
 
 /* 人员信息行 */
 .personnel-row {
   display: flex;
-  gap: 16rpx;
+  gap: 20rpx;
   grid-column: 1 / -1;
-  margin-bottom: 16rpx;
+  margin-bottom: 20rpx;
 }
 
 .personnel-item {
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 6rpx;
+  gap: 8rpx;
 }
 
 .personnel-label {
-  font-size: 22rpx;
-  color: #666;
+  font-size: 24rpx;
+  color: #333;
   font-weight: 500;
 }
 
 .personnel-input {
   height: 56rpx;
-  padding: 0 12rpx;
+  padding: 0 16rpx;
   border: 2rpx solid #e6f4ff;
-  border-radius: 8rpx;
-  background: #f8faff;
-  font-size: 22rpx;
+  border-radius: 12rpx;
+  background: #fff;
+  font-size: 24rpx;
   color: #333;
   box-sizing: border-box;
+  transition: all 0.3s ease;
+  box-shadow: 0 2rpx 4rpx rgba(24, 144, 255, 0.05);
 }
 
 .personnel-input:focus {
   border-color: #1890ff;
-  background: #e6f7ff;
+  background: #fff;
+  box-shadow: 0 4rpx 8rpx rgba(24, 144, 255, 0.15);
+  transform: translateY(-1rpx);
 }
 
 /* 按钮行 */
 .button-row {
   display: flex;
   justify-content: flex-end;
-  gap: 16rpx;
+  gap: 20rpx;
   grid-column: 1 / -1;
+  margin-top: 8rpx;
 }
 
 .filter-label {
