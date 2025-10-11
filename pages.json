@@ -81,7 +81,7 @@
         {
             "path": "pages/data/fireUpload/index",
             "style": {
-                "navigationBarTitleText": "火灾情况上传"
+                "navigationBarTitleText": "救援任务情况"
             }
         },
         {
@@ -97,12 +97,6 @@
             }
         },
         {
-            "path": "pages/data/taskAssign/index",
-            "style": {
-                "navigationBarTitleText": "作战任务下达"
-            }
-        },
-        {
             "path": "pages/data/taskQuery/index",
             "style": {
                 "navigationBarTitleText": "作战任务查询"
@@ -112,12 +106,6 @@
             "path": "pages/data/fireDetail/index",
             "style": {
                 "navigationBarTitleText": "火灾详情"
-            }
-        },
-        {
-            "path": "pages/data/taskDeliver/index",
-            "style": {
-                "navigationBarTitleText": "任务下达"
             }
         }
     ],

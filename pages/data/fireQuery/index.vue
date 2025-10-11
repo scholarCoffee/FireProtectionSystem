@@ -25,22 +25,12 @@
       <!-- 筛选条件 -->
       <view class="filters-section" v-show="filtersExpanded">
         <view class="filters-grid">
-          <!-- 消防单位 -->
+          <!-- 救援单位 -->
           <view class="filter-item">
-            <text class="filter-label">消防单位</text>
+            <text class="filter-label">救援单位</text>
             <picker :value="unitIndex" :range="unitOptions" range-key="label" @change="onUnitChange" class="filter-picker">
               <view class="picker-box" :class="{ 'placeholder': unitIndex === 0 }">
-                {{ (unitOptions[unitIndex] && unitOptions[unitIndex].label) || '请选择消防单位' }}
-              </view>
-            </picker>
-          </view>
-
-          <!-- 任务类型 -->
-          <view class="filter-item">
-            <text class="filter-label">任务类型</text>
-            <picker :value="typeIndex" :range="taskTypeOptions" range-key="label" @change="onTypeChange" class="filter-picker">
-              <view class="picker-box" :class="{ 'placeholder': typeIndex === 0 }">
-                {{ (taskTypeOptions[typeIndex] && taskTypeOptions[typeIndex].label) || '请选择任务类型' }}
+                {{ (unitOptions[unitIndex] && unitOptions[unitIndex].label) || '请选择救援单位' }}
               </view>
             </picker>
           </view>
@@ -55,31 +45,52 @@
             </picker>
           </view>
 
-          <!-- 所在楼层 -->
-          <view class="filter-item">
-            <text class="filter-label">所在楼层</text>
-            <picker :value="floorIndex" :range="floorOptions" range-key="label" @change="onFloorChange" class="filter-picker">
-              <view class="picker-box" :class="{ 'placeholder': floorIndex === 0 }">
-                {{ (floorOptions[floorIndex] && floorOptions[floorIndex].label) || '请选择楼层' }}
-              </view>
-            </picker>
+          <!-- 时间区间行 -->
+          <view class="time-row">
+            <view class="time-item">
+              <text class="time-label">开始时间</text>
+              <picker mode="multiSelector" :value="startTimeIndex" :range="startTimeRange" @change="onStartTimeChange" class="filter-picker">
+                <view class="picker-box" :class="{ 'placeholder': !startTime }">
+                  {{ startTime || '请选择开始时间' }}
+                </view>
+              </picker>
+            </view>
+            <view class="time-item">
+              <text class="time-label">结束时间</text>
+              <picker mode="multiSelector" :value="endTimeIndex" :range="endTimeRange" @change="onEndTimeChange" class="filter-picker">
+                <view class="picker-box" :class="{ 'placeholder': !endTime }">
+                  {{ endTime || '请选择结束时间' }}
+                </view>
+              </picker>
+            </view>
           </view>
 
-          <!-- 记录人员和操作按钮 -->
-          <view class="filter-item-with-buttons">
-            <text class="filter-label">记录人员</text>
-            <view class="input-button-group">
+          <!-- 人员信息行 -->
+          <view class="personnel-row">
+            <view class="personnel-item">
+              <text class="personnel-label">任务下达人员</text>
               <input 
-                class="filter-input"
+                class="personnel-input"
+                v-model="issuePerson"
+                placeholder="请输入任务下达人员"
+                @input="onInput"
+              />
+            </view>
+            <view class="personnel-item">
+              <text class="personnel-label">记录人员</text>
+              <input 
+                class="personnel-input"
                 v-model="recordPerson"
                 placeholder="请输入记录人员"
                 @input="onInput"
               />
-              <view class="button-group">
-                <button class="reset-btn" @tap="resetFilters">重置</button>
-                <button class="search-btn" @tap="onSearch">查询</button>
-              </view>
             </view>
+          </view>
+
+          <!-- 操作按钮行 -->
+          <view class="button-row">
+            <button class="reset-btn" @tap="resetFilters">重置</button>
+            <button class="search-btn" @tap="onSearch">查询</button>
           </view>
         </view>
       </view>
@@ -88,15 +99,12 @@
     <!-- 列表 -->
     <scroll-view class="list" :style="{ height: listHeight }" scroll-y :lower-threshold="100" @scrolltolower="loadMore" refresher-enabled :refresher-triggered="refresherTriggered" @refresherrefresh="onRefresh">
       <uni-swipe-action>
-        <uni-swipe-action-item v-for="(item, idx) in list" :key="idx" :right-options="swipeOptions" @click="onSwipeClick($event, item)">
-          <view class="card" :class="(item.taskStatus == 3 ? 'rescue-card' : '')">
+        <uni-swipe-action-item v-for="(item, idx) in list" :key="idx" :right-options="getSwipeOptions(item)" @click="onSwipeClick($event, item)">
+          <view class="card" :class="(item.taskStatus == 3 ? 'rescue-card' : '') || (item.taskStatus == 4 ? 'supporting-card' : '')" @tap="goDetail(item)">
             <view class="card-header">
-              <view class="address-info" @tap="goDetail(item)">
+              <view class="address-info">
                 <text class="address-name">{{ item.addressName }}</text>
-                <text class="floor-info" v-if="item.locationType === 1 && firstUnitFloor(item)">{{ firstUnitFloor(item) }}层</text>
-                <text class="direction-info" v-if="item.locationType !== 1 && firstUnitDirection(item)">{{ getDirectionName(firstUnitDirection(item)) }}</text>
               </view>
-              
             </view>
             <!-- 状态进度条 -->
             <view class="status-route">
@@ -109,22 +117,35 @@
                 </view>
                 
                 <!-- 第一段连接线 -->
-                <view class="route-line">
+                <view class="route-line" v-if="item.taskStatus == 3">
                   <view class="line-base"></view>
                   <view class="line-progress" :class="getProgressClass(item.taskStatus, 1)" :style="{ width: getProgressWidth(item.taskStatus, 1) }"></view>
                 </view>
                 
-                <!-- 需要支援标签 -->
-                <view class="status-tag support-tag" :class="{ 'active': item.taskStatus == 3 }">
+                <!-- 需要支援标签 - 只有状态为3时显示 -->
+                <view class="status-tag support-tag" :class="{ 'active': item.taskStatus == 3 }" v-if="item.taskStatus == 3">
                   <view class="tag-dot"></view>
                   <text class="tag-label">需要支援</text>
                   <view class="ripple" v-if="item.taskStatus == 3"></view>
                 </view>
                 
-                <!-- 第二段连接线 -->
-                <view class="route-line">
+                <!-- 第二段连接线 - 只有状态为3或4时显示 -->
+                <view class="route-line" v-if="item.taskStatus == 3 || item.taskStatus == 4">
                   <view class="line-base"></view>
                   <view class="line-progress" :class="getProgressClass(item.taskStatus, 2)" :style="{ width: getProgressWidth(item.taskStatus, 2) }"></view>
+                </view>
+                
+                <!-- 正在支援标签 - 只有状态为4时显示 -->
+                <view class="status-tag supporting-tag" :class="{ 'active': item.taskStatus == 4 }" v-if="item.taskStatus == 4">
+                  <view class="tag-dot"></view>
+                  <text class="tag-label">正在支援</text>
+                  <view class="ripple" v-if="item.taskStatus == 4"></view>
+                </view>
+                
+                <!-- 第三段连接线 - 只有状态为4时显示 -->
+                <view class="route-line" v-if="item.taskStatus == 4">
+                  <view class="line-base"></view>
+                  <view class="line-progress" :class="getProgressClass(item.taskStatus, 3)" :style="{ width: getProgressWidth(item.taskStatus, 3) }"></view>
                 </view>
                 
                 <!-- 已完成标签 -->
@@ -157,9 +178,9 @@
       </uni-swipe-action>
 
       <view class="load-more">
-        <button class="load-more-btn" :disabled="finished || isLoading" @tap="manualLoadMore">
+        <view class="load-more-btn" :disabled="finished || isLoading" @tap="manualLoadMore">
           {{ isLoading ? '加载中...' : (finished ? '没有更多了' : '点击加载更多') }}
-        </button>
+        </view>
       </view>
     </scroll-view>
   </view>
@@ -174,22 +195,25 @@ export default {
   components: { uniSwipeAction, uniSwipeActionItem },
   data() {
     return {
-      serverUrl: 'http://192.168.1.4:3000',
+      serverUrl: 'http://172.17.121.104:3000',
       keyword: '',
       recordPerson: '',
+      issuePerson: '', // 新增：任务下达人员
+      startTime: '', // 新增：开始时间
+      endTime: '', // 新增：结束时间
+      startTimeIndex: [0, 0, 0, 0, 0], // 新增：开始时间选择器索引
+      endTimeIndex: [0, 0, 0, 0, 0], // 新增：结束时间选择器索引
+      startTimeRange: [[], [], [], [], []], // 新增：开始时间选择器数据
+      endTimeRange: [[], [], [], [], []], // 新增：结束时间选择器数据
       debounceTimer: null,
       filtersExpanded: false, // 新增：筛选条件展开状态
       unitOptions: [],
-      taskTypeOptions: [],
       statusOptions: [],
       fireCarOptions: [],
-      floorOptions: [],
       locationTypeOptions: locationTypeOptions,
       directionOptions: directionOptions,
       unitIndex: 0, 
-      typeIndex: 0, 
       statusIndex: 0,
-      floorIndex: 0,
       list: [],
       page: 1, 
       pageSize: 10, 
@@ -197,20 +221,19 @@ export default {
       loadingText: '向下拉取更多',
       listHeight: '60vh',
       isLoading: false,
-      refresherTriggered: false,
-      swipeOptions: [
-        { text: '查看详情', style: { backgroundColor: '#2db7f5', color: '#fff' }, key: 'detail' },
-        { text: '完成救援', style: { backgroundColor: '#52c41a', color: '#fff' }, key: 'finish' },
-        { text: '任务下达', style: { backgroundColor: '#fa8c16', color: '#fff' }, key: 'deliver' }
-      ]
+      refresherTriggered: false
     }
   },
   async onLoad() {
     await this.loadStatic()
-    this.initFloorOptions()
+    this.initDateTimePickers()
     this.fetch(true)
   },
   onReachBottom() { this.loadMore() },
+  onShow() {
+    // 页面显示时重新加载数据
+    this.fetch(true)
+  },
   onReady() {
     this.computeListHeight()
     if (uni.onWindowResize) {
@@ -226,16 +249,43 @@ export default {
     goDetail(item) {
       uni.navigateTo({ url: `/pages/data/fireDetail/index?situationId=${encodeURIComponent(item.situationId)}` })
     },
-    initFloorOptions() {
-      // 生成1-100层的选项
-      this.floorOptions = [
-        { label: '请选择楼层', value: '', index: 0 },
-        ...Array.from({ length: 100 }, (_, i) => ({
-          label: `${i + 1}层`,
-          value: String(i + 1),
-          index: i + 1
-        }))
-      ]
+    initDateTimePickers() {
+      // 初始化时间选择器数据
+      const now = new Date()
+      const currentYear = now.getFullYear()
+      
+      // 生成年份 (当前年份前后5年)
+      const years = []
+      for (let i = currentYear - 5; i <= currentYear + 5; i++) {
+        years.push(i)
+      }
+      
+      // 生成月份
+      const months = []
+      for (let i = 1; i <= 12; i++) {
+        months.push(i)
+      }
+      
+      // 生成日期 (1-31)
+      const days = []
+      for (let i = 1; i <= 31; i++) {
+        days.push(i)
+      }
+      
+      // 生成小时 (0-23)
+      const hours = []
+      for (let i = 0; i < 24; i++) {
+        hours.push(i)
+      }
+      
+      // 生成分钟 (0-59)
+      const minutes = []
+      for (let i = 0; i < 60; i++) {
+        minutes.push(i)
+      }
+      
+      this.startTimeRange = [years, months, days, hours, minutes]
+      this.endTimeRange = [years, months, days, hours, minutes]
     },
     computeListHeight() {
       try {
@@ -258,19 +308,14 @@ export default {
     async loadStatic() {
       // 先检查本地存储是否有数据
       const cachedUnits = uni.getStorageSync('static_fireUnits')
-      const cachedTypes = uni.getStorageSync('static_taskTypes')
       const cachedStatuses = uni.getStorageSync('static_taskStatuses')
       const cachedCars = uni.getStorageSync('static_fireCars')
       
       // 如果本地有数据，直接使用
-      if (cachedUnits && cachedTypes && cachedStatuses && cachedCars) {
+      if (cachedUnits && cachedStatuses && cachedCars) {
         this.unitOptions = [
-          { label: '请选择消防单位', value: '', index: 0 },
+          { label: '请选择救援单位', value: '', index: 0 },
           ...cachedUnits
-        ]
-        this.taskTypeOptions = [
-          { label: '请选择任务类型', value: '', index: 0 },
-          ...cachedTypes
         ]
         this.statusOptions = [
           { label: '请选择任务状态', value: '', index: 0 },
@@ -288,32 +333,25 @@ export default {
         uni.request({ url: this.serverUrl + '/static/data', method: 'GET', data: { type: 'fireUnits', key }, success: resolve, fail: reject })
       })
       try {
-        const [units, types, statuses, cars] = await Promise.all([
+        const [units, statuses, cars] = await Promise.all([
           req('unitList'), 
-          req('taskList'), 
           req('statusList'),
           req('carList')
         ])
         
         // 处理数据并缓存到本地存储
         const unitList = ((units && units.data && units.data.data) ? units.data.data : []).map((it, i) => ({ label: it.data1, value: String(it.data2), index: i + 1 }))
-        const typeList = ((types && types.data && types.data.data) ? types.data.data : []).map((it, i) => ({ label: it.data1, value: String(it.data2), index: i + 1 }))
         const statusList = ((statuses && statuses.data && statuses.data.data) ? statuses.data.data : []).map((it, i) => ({ label: it.data1, value: String(it.data2), index: i + 1 }))
         const carList = ((cars && cars.data && cars.data.data) ? cars.data.data : []).map((it, i) => ({ label: it.data1, value: String(it.data2), index: i + 1 }))
         
         // 缓存到本地存储
         uni.setStorageSync('static_fireUnits', unitList)
-        uni.setStorageSync('static_taskTypes', typeList)
         uni.setStorageSync('static_taskStatuses', statusList)
         uni.setStorageSync('static_fireCars', carList)
         
         this.unitOptions = [
-          { label: '请选择消防单位', value: '', index: 0 },
+          { label: '请选择救援单位', value: '', index: 0 },
           ...unitList
-        ]
-        this.taskTypeOptions = [
-          { label: '请选择任务类型', value: '', index: 0 },
-          ...typeList
         ]
         this.statusOptions = [
           { label: '请选择任务状态', value: '', index: 0 },
@@ -334,9 +372,10 @@ export default {
         page: this.page, 
         pageSize: this.pageSize,
         unit: (this.unitOptions[this.unitIndex] && this.unitOptions[this.unitIndex].value) || '',
-        taskType: (this.taskTypeOptions[this.typeIndex] && this.taskTypeOptions[this.typeIndex].value) || '',
         taskStatus: (this.statusOptions[this.statusIndex] && this.statusOptions[this.statusIndex].value) || '',
-        floor: (this.floorOptions[this.floorIndex] && this.floorOptions[this.floorIndex].value) || '',
+        issuePerson: (this.issuePerson || '').trim(),
+        startTime: this.startTime || '',
+        endTime: this.endTime || '',
         recordPerson: (this.recordPerson || '').trim(),
         keyword: (this.keyword || '').trim()
       }
@@ -374,14 +413,27 @@ export default {
       this.fetch(true, () => { this.refresherTriggered = false })
     },
     onUnitChange(e) { this.unitIndex = Number(e.detail.value); this.fetch(true) },
-    onTypeChange(e) { this.typeIndex = Number(e.detail.value); this.fetch(true) },
     onStatusChange(e) { this.statusIndex = Number(e.detail.value); this.fetch(true) },
-    onFloorChange(e) { this.floorIndex = Number(e.detail.value); this.fetch(true) },
+    onStartTimeChange(e) {
+      this.startTimeIndex = e.detail.value
+      const [year, month, day, hour, minute] = e.detail.value
+      this.startTime = `${this.startTimeRange[0][year]}-${String(this.startTimeRange[1][month]).padStart(2, '0')}-${String(this.startTimeRange[2][day]).padStart(2, '0')} ${String(this.startTimeRange[3][hour]).padStart(2, '0')}:${String(this.startTimeRange[4][minute]).padStart(2, '0')}`
+      this.fetch(true)
+    },
+    onEndTimeChange(e) {
+      this.endTimeIndex = e.detail.value
+      const [year, month, day, hour, minute] = e.detail.value
+      this.endTime = `${this.endTimeRange[0][year]}-${String(this.endTimeRange[1][month]).padStart(2, '0')}-${String(this.endTimeRange[2][day]).padStart(2, '0')} ${String(this.endTimeRange[3][hour]).padStart(2, '0')}:${String(this.endTimeRange[4][minute]).padStart(2, '0')}`
+      this.fetch(true)
+    },
     resetFilters() {
       this.unitIndex = 0
-      this.typeIndex = 0
       this.statusIndex = 0
-      this.floorIndex = 0
+      this.issuePerson = ''
+      this.startTime = ''
+      this.endTime = ''
+      this.startTimeIndex = [0, 0, 0, 0, 0]
+      this.endTimeIndex = [0, 0, 0, 0, 0]
       this.recordPerson = ''
       this.keyword = ''
       this.fetch(true)
@@ -389,22 +441,6 @@ export default {
     // 新增：切换筛选条件展开状态
     toggleFilters() {
       this.filtersExpanded = !this.filtersExpanded
-    },
-    // 从 assignedUnits 中取首个单位信息
-    firstUnit(item) {
-      return (item.assignedUnits && item.assignedUnits[0]) || null
-    },
-    firstUnitName(item) {
-      const u = this.firstUnit(item)
-      return u ? u.unitName : '—'
-    },
-    firstUnitFloor(item) {
-      const u = this.firstUnit(item)
-      return u ? (u.rescueFloor || '') : ''
-    },
-    firstUnitDirection(item) {
-      const u = this.firstUnit(item)
-      return u ? (u.direction || '') : ''
     },
     // 获取任务类型名称
     getTaskTypeName(typeValue) {
@@ -462,13 +498,18 @@ export default {
     getProgressClass(taskStatus, segment) {
       if (taskStatus == 1) return 'success'  // 已完成 - 绿色
       if (taskStatus == 3) return 'warn'     // 需要支援 - 红色
+      if (taskStatus == 4) return 'supporting' // 正在支援 - 橙色
       if (taskStatus == 2) return 'progress' // 救援中 - 蓝色
       return ''
     },
     // 获取进度条宽度
     getProgressWidth(taskStatus, segment) {
       if (taskStatus == 1) {
-        // 已完成 - 两段都填满
+        // 已完成 - 所有段都填满
+        return '100%'
+      }
+      if (taskStatus == 4) {
+        // 正在支援 - 前两段填满，第三段填满
         return '100%'
       }
       if (taskStatus == 3) {
@@ -486,6 +527,43 @@ export default {
       if (!item.assignedUnits || item.assignedUnits.length === 0) return '—'
       return item.assignedUnits.map(unit => unit.unitName).join('、')
     },
+    // 根据任务状态获取滑动操作选项
+    getSwipeOptions(item) {
+      const taskStatus = item.taskStatus
+      
+      if (taskStatus == 1) {
+        // 已完成 - 查看详情、删除
+        return [
+          { text: '查看详情', style: { backgroundColor: '#2db7f5', color: '#fff' }, key: 'detail' },
+          { text: '删除', style: { backgroundColor: '#ff4d4f', color: '#fff' }, key: 'delete' }
+        ]
+      } else if (taskStatus == 2) {
+        // 救援中 - 查看详情、完成救援、需要支援
+        return [
+          { text: '查看详情', style: { backgroundColor: '#2db7f5', color: '#fff' }, key: 'detail' },
+          { text: '完成救援', style: { backgroundColor: '#52c41a', color: '#fff' }, key: 'finish' },
+          { text: '需要支援', style: { backgroundColor: '#ff4d4f', color: '#fff' }, key: 'support' }
+        ]
+      } else if (taskStatus == 3) {
+        // 需要支援 - 查看详情、任务下达
+        return [
+          { text: '查看详情', style: { backgroundColor: '#2db7f5', color: '#fff' }, key: 'detail' },
+          { text: '任务下达', style: { backgroundColor: '#fa8c16', color: '#fff' }, key: 'deliver' }
+        ]
+      } else if (taskStatus == 4) {
+        // 正在支援 - 查看详情、完成救援
+        return [
+          { text: '查看详情', style: { backgroundColor: '#2db7f5', color: '#fff' }, key: 'detail' },
+          { text: '完成救援', style: { backgroundColor: '#52c41a', color: '#fff' }, key: 'finish' },
+          { text: '任务下达', style: { backgroundColor: '#fa8c16', color: '#fff' }, key: 'deliver' }
+        ]
+      } else {
+        // 其他状态 - 默认选项
+        return [
+          { text: '查看详情', style: { backgroundColor: '#2db7f5', color: '#fff' }, key: 'detail' }
+        ]
+      }
+    },
     onSwipeClick(e, item) {
       const key = (e && e.content && e.content.key) || ''
       if (key === 'detail') {
@@ -493,16 +571,20 @@ export default {
       } else if (key === 'finish') {
         this.finishRescue(item)
       } else if (key === 'deliver') {
-        uni.navigateTo({ url: `/pages/data/taskDeliver/index?situationId=${encodeURIComponent(item.situationId)}` })
+        uni.navigateTo({ url: `/pages/data/taskQuery/index?situationId=${encodeURIComponent(item.situationId)}` })
+      } else if (key === 'support') {
+        this.requestSupport(item)
+      } else if (key === 'delete') {
+        this.deleteFireSituation(item)
       }
     },
     async finishRescue(item) {
       try {
         await new Promise((resolve, reject) => {
           uni.request({
-            url: this.serverUrl + '/fire/updateStatus',
-            method: 'POST',
-            data: { situationId: item.situationId, taskStatus: 1 },
+            url: this.serverUrl + `/fire/situations/${item.situationId}`,
+            method: 'PUT',
+            data: { taskStatus: 1 },
             success: resolve,
             fail: reject
           })
@@ -511,6 +593,51 @@ export default {
         this.fetch(true)
       } catch(e) {
         uni.showToast({ title: '操作失败', icon: 'none' })
+      }
+    },
+    async requestSupport(item) {
+      try {
+        await new Promise((resolve, reject) => {
+          uni.request({
+            url: this.serverUrl + `/fire/situations/${item.situationId}`,
+            method: 'PUT',
+            data: { taskStatus: 3 },
+            success: resolve,
+            fail: reject
+          })
+        })
+        uni.showToast({ title: '已申请支援', icon: 'success' })
+        this.fetch(true)
+      } catch(e) {
+        uni.showToast({ title: '操作失败', icon: 'none' })
+      }
+    },
+    // 删除火灾情况
+    async deleteFireSituation(item) {
+      try {
+        const confirmResult = await new Promise((resolve) => {
+          uni.showModal({
+            title: '确认删除',
+            content: '确定要删除这个火灾情况吗？删除后无法恢复。',
+            success: (res) => resolve(res.confirm),
+            fail: () => resolve(false)
+          })
+        })
+        
+        if (!confirmResult) return
+        
+        await new Promise((resolve, reject) => {
+          uni.request({
+            url: this.serverUrl + `/fire/situations/${item.situationId}`,
+            method: 'DELETE',
+            success: resolve,
+            fail: reject
+          })
+        })
+        uni.showToast({ title: '删除成功', icon: 'success' })
+        this.fetch(true)
+      } catch(e) {
+        uni.showToast({ title: '删除失败', icon: 'none' })
       }
     }
   }
@@ -582,7 +709,7 @@ export default {
   display: flex;
   align-items: center;
   gap: 6rpx;
-  height: 48rpx;
+  height: 64rpx;
   padding: 0 16rpx;
   background: #f8faff;
   border: 2rpx solid #e6f4ff;
@@ -593,15 +720,16 @@ export default {
 }
 
 .filter-toggle:active {
-  background: #e6f7ff;
-  border-color: #1890ff;
+  background: #f0f0f0;
+  border-color: #d9d9d9;
 }
 
 .filter-icon {
-  width: 20rpx;
-  height: 20rpx;
+  width: 18rpx;
+  height: 18rpx;
   flex-shrink: 0;
-  transition: transform 0.3s ease;
+  transition: transform 0.2s ease;
+  opacity: 0.6;
 }
 
 .filter-icon.expanded {
@@ -609,22 +737,22 @@ export default {
 }
 
 .filter-text {
-  font-size: 22rpx;
-  color: #333;
-  font-weight: 500;
+  font-size: 24rpx;
+  color: #666;
+  font-weight: 400;
   white-space: nowrap;
 }
 
 /* 筛选条件区域 */
 .filters-section {
-  padding: 16rpx 20rpx;
-  border-top: 1rpx solid #e6f4ff;
+  padding: 12rpx 16rpx;
+  border-top: 1rpx solid #f0f0f0;
 }
 
 .filters-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 16rpx;
+  gap: 12rpx;
 }
 
 .filter-item {
@@ -633,23 +761,76 @@ export default {
   gap: 6rpx;
 }
 
-.filter-item-with-buttons {
+/* 时间区间行 */
+.time-row {
+  display: flex;
+  gap: 16rpx;
+  grid-column: 1 / -1;
+  margin-bottom: 16rpx;
+}
+
+.time-item {
+  flex: 1;
   display: flex;
   flex-direction: column;
   gap: 6rpx;
-  grid-column: 1 / -1;
 }
 
-.input-button-group {
-  display: flex;
-  align-items: center;
-  gap: 12rpx;
-}
-
-.filter-label {
+.time-label {
   font-size: 22rpx;
   color: #666;
   font-weight: 500;
+}
+
+/* 人员信息行 */
+.personnel-row {
+  display: flex;
+  gap: 16rpx;
+  grid-column: 1 / -1;
+  margin-bottom: 16rpx;
+}
+
+.personnel-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6rpx;
+}
+
+.personnel-label {
+  font-size: 22rpx;
+  color: #666;
+  font-weight: 500;
+}
+
+.personnel-input {
+  height: 56rpx;
+  padding: 0 12rpx;
+  border: 2rpx solid #e6f4ff;
+  border-radius: 8rpx;
+  background: #f8faff;
+  font-size: 22rpx;
+  color: #333;
+  box-sizing: border-box;
+}
+
+.personnel-input:focus {
+  border-color: #1890ff;
+  background: #e6f7ff;
+}
+
+/* 按钮行 */
+.button-row {
+  display: flex;
+  justify-content: flex-end;
+  gap: 16rpx;
+  grid-column: 1 / -1;
+}
+
+.filter-label {
+  font-size: 24rpx;
+  color: #333;
+  font-weight: 400;
 }
 
 .filter-picker {
@@ -657,15 +838,15 @@ export default {
 }
 
 .picker-box {
-  height: 56rpx;
-  line-height: 56rpx;
-  border-radius: 8rpx;
-  border: 2rpx solid #e6f4ff;
-  background: #f8faff;
+  height: 48rpx;
+  line-height: 48rpx;
+  border-radius: 6rpx;
+  border: 1rpx solid #e0e0e0;
+  background: #fafafa;
   padding: 0 12rpx;
-  font-size: 22rpx;
+  font-size: 24rpx;
   color: #333;
-  transition: all 0.3s ease;
+  transition: all 0.2s ease;
 }
 
 .picker-box.placeholder {
@@ -673,8 +854,8 @@ export default {
 }
 
 .picker-box:active {
-  border-color: #1890ff;
-  background: #e6f7ff;
+  border-color: #1677ff;
+  background: #fff;
 }
 
 .filter-input {
@@ -700,20 +881,20 @@ export default {
 }
 
 .reset-btn {
-  height: 56rpx;
-  padding: 0 40rpx;
-  border-radius: 28rpx;
+  height: 48rpx;
+  padding: 0 24rpx;
+  border-radius: 6rpx;
   background: #f5f5f5;
-  border: 2rpx solid #e0e0e0;
+  border: 1rpx solid #d9d9d9;
   color: #666;
-  font-size: 20rpx;
-  font-weight: 500;
-  transition: all 0.3s ease;
+  font-size: 26rpx;
+  font-weight: 400;
+  line-height: 48rpx;
+  min-width: 80rpx;
 }
 
 .reset-btn:active {
   background: #e8e8e8;
-  transform: scale(0.95);
 }
 
 .reset-btn::after {
@@ -721,21 +902,20 @@ export default {
 }
 
 .search-btn {
-  height: 56rpx;
-  padding: 0 40rpx;
-  border-radius: 28rpx;
-  background: linear-gradient(135deg, #1890ff, #40a9ff);
+  height: 48rpx;
+  padding: 0 24rpx;
+  border-radius: 6rpx;
+  background: #1890ff;
   border: none;
   color: #fff;
-  font-size: 20rpx;
-  font-weight: 600;
-  box-shadow: 0 2rpx 6rpx rgba(24, 144, 255, 0.25);
-  transition: all 0.3s ease;
+  font-size: 26rpx;
+  font-weight: 400;
+  line-height: 48rpx;
+  min-width: 80rpx;
 }
 
 .search-btn:active {
-  transform: scale(0.95);
-  box-shadow: 0 1rpx 4rpx rgba(24, 144, 255, 0.35);
+  background: #40a9ff;
 }
 
 .list {
@@ -819,6 +999,10 @@ export default {
   border-color: rgba(255, 77, 79, 0.6);
 }
 
+.status-tag.supporting-tag .ripple {
+  border-color: rgba(250, 140, 22, 0.6);
+}
+
 @keyframes rippleAnim {
   0% {
     transform: scale(0.8);
@@ -873,6 +1057,17 @@ export default {
   font-weight: 600;
 }
 
+/* 正在支援状态样式 */
+.status-tag.supporting-tag.active .tag-dot {
+  background: #fa8c16;
+  box-shadow: 0 2rpx 8rpx rgba(250, 140, 22, 0.3);
+}
+
+.status-tag.supporting-tag.active .tag-label {
+  color: #fa8c16;
+  font-weight: 600;
+}
+
 /* 已完成状态样式 */
 .status-tag.complete-tag.active .tag-dot {
   background: #52c41a;
@@ -919,6 +1114,10 @@ export default {
   background: #ff4d4f;  /* 需要支援 - 红色 */
 }
 
+.line-progress.supporting {
+  background: #fa8c16;  /* 正在支援 - 橙色 */
+}
+
 .line-progress.success {
   background: #52c41a;  /* 已完成 - 绿色 */
 }
@@ -936,25 +1135,6 @@ export default {
   color: #333;
 }
 
-.floor-info {
-  font-size: 20rpx;
-  color: #666;
-  background: #f0f8ff;
-  padding: 4rpx 8rpx;
-  border-radius: 6rpx;
-  border: 1rpx solid #d6e4ff;
-  flex-shrink: 0;
-}
-
-.direction-info {
-  font-size: 20rpx;
-  color: #666;
-  background: #fff7e6;
-  padding: 4rpx 8rpx;
-  border-radius: 6rpx;
-  border: 1rpx solid #ffd591;
-  flex-shrink: 0;
-}
 
 .task-status {
   padding: 6rpx 12rpx;
@@ -1045,33 +1225,12 @@ export default {
   white-space: nowrap;
 }
 
-/* 去掉备注与额外信息展示（根据新需求隐藏） */
-
 .load-more {
   text-align: center;
   color: #999;
-  padding: 24rpx 0;
-}
-
-.load-more-btn {
-  height: 64rpx;
-  line-height: 64rpx;
-  padding: 0 40rpx;
-  border-radius: 32rpx;
-  color: #999;
   font-size: 24rpx;
-  font-weight: 500;
-  transition: all 0.3s ease;
-}
-
-.load-more-btn:active {
-  transform: scale(0.95);
-}
-
-.load-more-btn:disabled {
-  color: #aaa;
-  border-color: #f0f0f0;
-  background: #f5f5f5;
+  margin: 20rpx 0;
+  padding: 8rpx;
 }
 
 /* 需要救援的卡片样式 */
@@ -1080,6 +1239,14 @@ export default {
   background: linear-gradient(135deg, #fff5f5, #ffe6e6) !important;
   box-shadow: 0 4rpx 16rpx rgba(255, 77, 79, 0.2) !important;
   animation: rescuePulse 3s infinite;
+}
+
+/* 正在支援的卡片样式 */
+.supporting-card {
+  border: 2rpx solid #fa8c16 !important;
+  background: linear-gradient(135deg, #fff7e6, #ffecc7) !important;
+  box-shadow: 0 4rpx 16rpx rgba(250, 140, 22, 0.2) !important;
+  animation: supportingCardPulse 3s infinite;
 }
 
 @keyframes rescuePulse {
@@ -1093,4 +1260,17 @@ export default {
     box-shadow: 0 4rpx 16rpx rgba(255, 77, 79, 0.2);
   }
 }
+
+@keyframes supportingCardPulse {
+  0% {
+    box-shadow: 0 4rpx 16rpx rgba(250, 140, 22, 0.2);
+  }
+  50% {
+    box-shadow: 0 6rpx 20rpx rgba(250, 140, 22, 0.4);
+  }
+  100% {
+    box-shadow: 0 4rpx 16rpx rgba(250, 140, 22, 0.2);
+  }
+}
+
 </style>

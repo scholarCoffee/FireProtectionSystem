@@ -30,8 +30,7 @@ export default {
                 { title: '户主反馈查询', desc: '查询住户信息', icon: 'analysis', url: '' },
                 { title: '火灾情况上传', desc: '上报现场火灾情况', icon: 'report', url: '' },
                 { title: '火灾情况查询', desc: '查看火灾信息记录', icon: 'device', url: '' },
-                { title: '作战任务查询', desc: '查看当前/历史任务', icon: 'analysis', url: '' },
-                { title: '作战任务下达', desc: '创建并下发任务', icon: 'report', url: '' }
+                { title: '作战任务查询', desc: '查看当前/历史任务', icon: 'analysis', url: '' }
             ]
         }
     },
@@ -111,10 +110,6 @@ export default {
             }
             if (title === '火灾情况查询') {
                 uni.navigateTo({ url: '/pages/data/fireQuery/index' })
-                return
-            }
-            if (title === '作战任务下达') {
-                uni.navigateTo({ url: '/pages/data/taskAssign/index' })
                 return
             }
             if (title === '作战任务查询') {
