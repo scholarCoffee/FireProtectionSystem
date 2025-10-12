@@ -74,7 +74,7 @@
                   <input v-model="unit.rescueFloor" class="form-input" type="number" maxlength="3" placeholder="请输入搜救楼层(1-100，正整数)" @input="onRescueFloorInput(unit, $event)" />
                 </view>
                 <view v-else class="form-picker-row">
-                  <picker :value="unit.directionIndex" :range="directionOptions" range-key="label" @change="onDirectionChange($event, unit)" class="form-picker">
+                  <picker :value="unit.directionIndex" :range="directionOptions" range-key="label" @change="onDirectionChange($event, unit)" @bindchange="onDirectionChange($event, unit)" class="form-picker">
                     <view class="picker-display">
                       <text class="picker-text" :class="{'placeholder':!unit.direction}">{{ getDirectionText(unit) }}</text>
                       <image :src="serverUrl + '/static/icons/common/down.png'" class="picker-arrow" />
@@ -86,7 +86,7 @@
               <!-- 任务类型 -->
               <view class="config-section">
                 <text class="config-label">任务类型 <text class="required">*</text></text>
-                <picker :value="unit.taskTypeIndex" :range="taskTypeOptions" range-key="label" @change="onTaskTypeChange($event, unit)" class="form-picker">
+                <picker :value="unit.taskTypeIndex" :range="taskTypeOptions" range-key="label" @change="onTaskTypeChange($event, unit)" @bindchange="onTaskTypeChange($event, unit)" class="form-picker">
                   <view class="picker-display">
                     <text class="picker-text" :class="{'placeholder':!unit.taskType}">{{ getTaskTypeText(unit) }}</text>
                     <image :src="serverUrl + '/static/icons/common/down.png'" class="picker-arrow" />
@@ -99,18 +99,18 @@
                 <text class="config-label">{{ getTaskContentTitle(unit) }}</text>
                 <view v-if="unit.taskConfig && unit.taskConfig.uiType === 'select'" class="form-picker-section">
                   <view class="force-options">
-                    <view v-for="(opt, idx) in (unit.taskConfig && unit.taskConfig.options ? unit.taskConfig.options : [])" :key="idx" class="force-option" :class="{ active: (unit.taskExtra && unit.taskConfig && unit.taskExtra[unit.taskConfig.actionKey]) === opt }" @tap="selectTaskOption($event, opt, unit)">
+                    <view v-for="opt in unit.taskConfig.options" :key="opt" class="force-option" :class="{ active: unit.taskExtra[unit.taskConfig.actionKey] === opt }" @tap="selectTaskOption($event, opt, unit)">
                       <text class="force-label">{{ opt }}</text>
                     </view>
                   </view>
                 </view>
                 <view v-else-if="unit.taskConfig && unit.taskConfig.uiType === 'input'" class="input-container">
-                  <input v-model="unit.taskExtra[unit.taskConfig.actionKey]" class="form-input" :placeholder="(unit.taskConfig && unit.taskConfig.placeholder) || '请输入'" v-if="unit.taskExtra && unit.taskConfig" />
+                  <input v-model="unit.taskExtra[unit.taskConfig.actionKey]" class="form-input" :placeholder="unit.taskConfig.placeholder || '请输入'" v-if="unit.taskExtra && unit.taskConfig" />
                 </view>
                 <view v-else-if="unit.taskConfig && unit.taskConfig.uiType === 'select-collection'" class="form-picker-section">
-                  <picker :value="unit.dynamicSelectIndex" :range="assignedUnitOptions" range-key="label" @change="onDynamicSelectChange($event, unit)" class="form-picker">
+                  <picker :value="unit.dynamicSelectIndex" :range="assignedUnitOptions" range-key="label" @change="onDynamicSelectChange($event, unit)" @bindchange="onDynamicSelectChange($event, unit)" class="form-picker">
                     <view class="picker-display">
-                      <text class="picker-text" :class="{'placeholder':!(unit.taskExtra && unit.taskConfig && unit.taskExtra[unit.taskConfig.actionKey])}">{{ getDynamicSelectText(unit) }}</text>
+                      <text class="picker-text" :class="{'placeholder':!unit.taskExtra[unit.taskConfig.actionKey]}">{{ getDynamicSelectText(unit) }}</text>
                       <image :src="serverUrl + '/static/icons/common/down.png'" class="picker-arrow" />
                     </view>
                   </picker>
@@ -438,7 +438,7 @@ export default {
           directionIndex: 0,
           taskType: '',
           taskTypeIndex: 0,
-          taskConfig: null,
+          taskConfig: {},
           taskExtra: {},
           dynamicSelectIndex: 0,
           unitStatus: this.situationId ? 'support' : 'rescue', // 新添加的单位默认为支援单位
@@ -537,8 +537,18 @@ export default {
     },
     // 方向选择
     onDirectionChange(e, unit) {
-      unit.directionIndex = Number(e.detail.value)
-      unit.direction = this.directionOptions[unit.directionIndex]?.value || ''
+      try {
+        const value = e.detail ? e.detail.value : e.value
+        unit.directionIndex = Number(value)
+        
+        // 使用 $set 确保响应式更新
+        this.$set(unit, 'direction', this.directionOptions[unit.directionIndex]?.value || '')
+        
+        // 强制更新视图
+        this.$forceUpdate()
+      } catch (error) {
+        console.error('onDirectionChange error:', error)
+      }
     },
     onRescueFloorInput(unit, e) {
       let val = String(e.detail.value || '').replace(/\D/g, '')
@@ -553,15 +563,26 @@ export default {
     },
     // 任务类型选择
     onTaskTypeChange(e, unit) {
-      unit.taskTypeIndex = Number(e.detail.value)
-      const picked = this.taskTypeOptions[unit.taskTypeIndex] || {}
-      unit.taskType = picked.value || ''
-      unit.taskConfig = picked.config || null
-      unit.taskExtra = {}
-      unit.dynamicSelectIndex = 0
-      if (unit.taskConfig && unit.taskConfig.actionKey) {
+      try {
+        const value = e.detail ? e.detail.value : e.value
+        unit.taskTypeIndex = Number(value)
+        const picked = this.taskTypeOptions[unit.taskTypeIndex] || {}
+        
+        // 使用 $set 确保响应式更新
+        this.$set(unit, 'taskType', picked.value || '')
+        this.$set(unit, 'taskConfig', picked.config || null)
         this.$set(unit, 'taskExtra', {})
-        this.$set(unit.taskExtra, unit.taskConfig.actionKey, '')
+        this.$set(unit, 'dynamicSelectIndex', 0)
+        
+        // 如果 taskConfig 存在且有 actionKey，初始化 taskExtra
+        if (unit.taskConfig && unit.taskConfig.actionKey) {
+          this.$set(unit.taskExtra, unit.taskConfig.actionKey, '')
+        }
+        
+        // 强制更新视图
+        this.$forceUpdate()
+      } catch (error) {
+        console.error('onTaskTypeChange error:', error)
       }
     },
     getTaskTypeText(unit) {
@@ -646,8 +667,10 @@ export default {
     // 动态选择变化
     onDynamicSelectChange(e, unit) {
       try {
-        unit.dynamicSelectIndex = Number(e.detail.value)
+        const value = e.detail ? e.detail.value : e.value
+        unit.dynamicSelectIndex = Number(value)
         const picked = this.assignedUnitOptions[unit.dynamicSelectIndex]
+        
         if (unit.taskConfig) {
           // 确保 taskExtra 对象存在
           if (!unit.taskExtra) {
@@ -666,10 +689,8 @@ export default {
           
           this.$set(unit.taskExtra, unit.taskConfig.actionKey, safeValue)
           
-          // 使用 nextTick 而不是 forceUpdate
-          this.$nextTick(() => {
-            // 视图更新完成
-          })
+          // 强制更新视图
+          this.$forceUpdate()
         }
       } catch (e) {
         console.error('onDynamicSelectChange error:', e)

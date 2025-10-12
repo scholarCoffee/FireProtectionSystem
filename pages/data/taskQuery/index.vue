@@ -28,7 +28,7 @@
           <!-- 救援单位 -->
           <view class="filter-item">
             <text class="filter-label">救援单位</text>
-            <picker :value="unitIndex" :range="unitOptions" range-key="label" @change="onUnitChange" class="filter-picker">
+            <picker :value="unitIndex" :range="unitOptions" range-key="label" @change="onUnitChange" @bindchange="onUnitChange" class="filter-picker">
               <view class="picker-box" :class="{ 'placeholder': unitIndex === 0 }">
                 {{ (unitOptions[unitIndex] && unitOptions[unitIndex].label) || '请选择救援单位' }}
               </view>
@@ -38,7 +38,7 @@
           <!-- 任务状态 -->
           <view class="filter-item">
             <text class="filter-label">任务状态</text>
-            <picker :value="statusIndex" :range="statusOptions" range-key="label" @change="onStatusChange" class="filter-picker">
+            <picker :value="statusIndex" :range="statusOptions" range-key="label" @change="onStatusChange" @bindchange="onStatusChange" class="filter-picker">
               <view class="picker-box" :class="{ 'placeholder': statusIndex === 0 }">
                 {{ statusOptions[statusIndex] ? statusOptions[statusIndex].label : '请选择任务状态' }}
               </view>
@@ -49,7 +49,7 @@
           <view class="time-row">
             <view class="time-item">
               <text class="time-label">开始时间</text>
-              <picker mode="multiSelector" :value="startTimeIndex" :range="startTimeRange" @change="onStartTimeChange" class="filter-picker">
+              <picker mode="multiSelector" :value="startTimeIndex" :range="startTimeRange" @change="onStartTimeChange" @bindchange="onStartTimeChange" class="filter-picker">
                 <view class="picker-box" :class="{ 'placeholder': !startTime }">
                   {{ startTime || '请选择开始时间' }}
                 </view>
@@ -57,7 +57,7 @@
             </view>
             <view class="time-item">
               <text class="time-label">结束时间</text>
-              <picker mode="multiSelector" :value="endTimeIndex" :range="endTimeRange" @change="onEndTimeChange" class="filter-picker">
+              <picker mode="multiSelector" :value="endTimeIndex" :range="endTimeRange" @change="onEndTimeChange" @bindchange="onEndTimeChange" class="filter-picker">
                 <view class="picker-box" :class="{ 'placeholder': !endTime }">
                   {{ endTime || '请选择结束时间' }}
                 </view>
@@ -88,7 +88,7 @@
     <!-- 列表 -->
     <scroll-view class="list" :style="{ height: listHeight }" scroll-y :lower-threshold="100" @scrolltolower="loadMore" refresher-enabled :refresher-triggered="refresherTriggered" @refresherrefresh="onRefresh">
       <uni-swipe-action>
-        <uni-swipe-action-item v-for="(item, idx) in list" :key="idx" :right-options="getSwipeOptions(item)" @click="onSwipeClick($event, item)">
+        <uni-swipe-action-item v-for="(item, idx) in list" :key="idx" :right-options="getSwipeOptions(item)" @click="onSwipeClick($event, item)" @change="onSwipeClick($event, item)">
           <view class="card" :class="item.cardClass" @tap="goDetail(item)">
             <view class="card-header">
               <view class="address-info">
@@ -104,24 +104,24 @@
                 <!-- 救援单位信息 -->
                 <view class="info-item full-width">
                   <image :src="serverUrl + '/static/icons/location/factory.png'" class="info-icon" />
-                  <text class="info-text">{{ getRescueUnits(item.fireSituation.assignedUnits) }}</text>
+                  <text class="info-text">{{ getRescueUnits(item.fireSituation && item.fireSituation.assignedUnits) }}</text>
                 </view>
                 
                 <!-- 任务下达信息 -->
                 <view class="info-row">
                   <view class="info-item">
                     <image :src="serverUrl + '/static/icons/common/issuePerson.png'" class="info-icon" />
-                    <text class="info-text">{{ item.fireSituation.issuePersonName || '—' }}</text>
+                    <text class="info-text">{{ (item.fireSituation && item.fireSituation.issuePersonName) || '—' }}</text>
                   </view>
                   <view class="info-item">
                     <image :src="serverUrl + '/static/icons/common/time.png'" class="info-icon" />
-                    <text class="info-text">{{ formatTime(item.fireSituation.issueTime) }}</text>
+                    <text class="info-text">{{ formatTime(item.fireSituation && item.fireSituation.issueTime) }}</text>
                   </view>
                 </view>
               </view>
               
               <!-- 任务详情信息 -->
-              <view class="extra-info" v-if="item.fireSituation.assignedUnits && item.fireSituation.assignedUnits.length > 0">
+              <view class="extra-info" v-if="item.fireSituation && item.fireSituation.assignedUnits && item.fireSituation.assignedUnits.length > 0">
                 <view class="extra-item" v-for="(unit, index) in item.fireSituation.assignedUnits" :key="index">
                   <view class="unit-info-row">
                     <image :src="serverUrl + '/static/icons/common/power.png'" class="info-icon" />
@@ -358,19 +358,45 @@ export default {
       this.refresherTriggered = true
       this.fetch(true, () => { this.refresherTriggered = false })
     },
-    onUnitChange(e) { this.unitIndex = Number(e.detail.value); this.fetch(true) },
-    onStatusChange(e) { this.statusIndex = Number(e.detail.value); this.fetch(true) },
+    onUnitChange(e) { 
+      try {
+        const value = e.detail ? e.detail.value : e.value
+        this.unitIndex = Number(value)
+        this.fetch(true)
+      } catch (error) {
+        console.error('onUnitChange error:', error)
+      }
+    },
+    onStatusChange(e) { 
+      try {
+        const value = e.detail ? e.detail.value : e.value
+        this.statusIndex = Number(value)
+        this.fetch(true)
+      } catch (error) {
+        console.error('onStatusChange error:', error)
+      }
+    },
     onStartTimeChange(e) {
-      this.startTimeIndex = e.detail.value
-      const [year, month, day, hour, minute] = e.detail.value
-      this.startTime = `${this.startTimeRange[0][year]}-${String(this.startTimeRange[1][month]).padStart(2, '0')}-${String(this.startTimeRange[2][day]).padStart(2, '0')} ${String(this.startTimeRange[3][hour]).padStart(2, '0')}:${String(this.startTimeRange[4][minute]).padStart(2, '0')}`
-      this.fetch(true)
+      try {
+        const value = e.detail ? e.detail.value : e.value
+        this.startTimeIndex = value
+        const [year, month, day, hour, minute] = value
+        this.startTime = `${this.startTimeRange[0][year]}-${String(this.startTimeRange[1][month]).padStart(2, '0')}-${String(this.startTimeRange[2][day]).padStart(2, '0')} ${String(this.startTimeRange[3][hour]).padStart(2, '0')}:${String(this.startTimeRange[4][minute]).padStart(2, '0')}`
+        this.fetch(true)
+      } catch (error) {
+        console.error('onStartTimeChange error:', error)
+      }
     },
     onEndTimeChange(e) {
-      this.endTimeIndex = e.detail.value
-      const [year, month, day, hour, minute] = e.detail.value
-      this.endTime = `${this.endTimeRange[0][year]}-${String(this.endTimeRange[1][month]).padStart(2, '0')}-${String(this.endTimeRange[2][day]).padStart(2, '0')} ${String(this.endTimeRange[3][hour]).padStart(2, '0')}:${String(this.endTimeRange[4][minute]).padStart(2, '0')}`
-      this.fetch(true)
+      try {
+        const value = e.detail ? e.detail.value : e.value
+        this.endTimeIndex = value
+        const [year, month, day, hour, minute] = value
+        this.endTime = `${this.endTimeRange[0][year]}-${String(this.endTimeRange[1][month]).padStart(2, '0')}-${String(this.endTimeRange[2][day]).padStart(2, '0')} ${String(this.endTimeRange[3][hour]).padStart(2, '0')}:${String(this.endTimeRange[4][minute]).padStart(2, '0')}`
+        this.fetch(true)
+      } catch (error) {
+        console.error('onEndTimeChange error:', error)
+      }
     },
     resetFilters() {
       this.unitIndex = 0
@@ -422,7 +448,7 @@ export default {
     },
     // 获取救援单位名称（所有单位）
     getRescueUnits(assignedUnits) {
-      if (!assignedUnits || assignedUnits.length === 0) return '—'
+      if (!assignedUnits || !Array.isArray(assignedUnits) || assignedUnits.length === 0) return '—'
       return assignedUnits.map(unit => unit.unitName).join('、')
     },
     // 获取任务类型名称
@@ -505,15 +531,34 @@ export default {
     },
     // 处理滑动操作点击
     onSwipeClick(e, item) {
-      const key = (e && e.content && e.content.key) || ''
-      if (key === 'receive') {
-        this.receiveTask(item)
-      } else if (key === 'reject') {
-        this.rejectTask(item)
-      } else if (key === 'delete') {
-        this.deleteTask(item)
-      } else if (key === 'detail') {
-        this.goDetail(item)
+      try {
+        // 微信小程序中事件参数可能不同，需要兼容处理
+        let key = ''
+        
+        // 尝试不同的参数结构
+        if (e && e.content && e.content.key) {
+          key = e.content.key
+        } else if (e && e.detail && e.detail.key) {
+          key = e.detail.key
+        } else if (e && e.key) {
+          key = e.key
+        } else if (e && typeof e === 'string') {
+          key = e
+        }
+        
+        console.log('Swipe click event:', e, 'key:', key)
+        
+        if (key === 'receive') {
+          this.receiveTask(item)
+        } else if (key === 'reject') {
+          this.rejectTask(item)
+        } else if (key === 'delete') {
+          this.deleteTask(item)
+        } else if (key === 'detail') {
+          this.goDetail(item)
+        }
+      } catch (error) {
+        console.error('onSwipeClick error:', error)
       }
     },
     // 接收任务
