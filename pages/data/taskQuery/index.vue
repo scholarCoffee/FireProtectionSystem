@@ -94,7 +94,7 @@
               <view class="address-info">
                 <text class="address-name">{{ item.fireSituation.addressName }}</text>
               </view>
-              <view class="task-status" :class="getTaskStatusClass(item.status)">
+              <view class="task-status" :class="item.status === 1 ? 'status-unreceived' : (item.status === 2 ? 'status-received' : 'status-unknown')">
                 {{ getTaskStatusName(item.status) }}
               </view>
             </view>
@@ -123,8 +123,14 @@
               <!-- 任务详情信息 -->
               <view class="extra-info" v-if="item.fireSituation.assignedUnits && item.fireSituation.assignedUnits.length > 0">
                 <view class="extra-item" v-for="(unit, index) in item.fireSituation.assignedUnits" :key="index">
-                  <image :src="serverUrl + '/static/icons/common/power.png'" class="info-icon" />
-                  <text class="info-text">{{ unit.unitName }} - {{ getTaskTypeName(unit.taskType) }}{{ getTaskExtraInfo(unit.taskType, unit.taskExtra) }}</text>
+                  <view class="unit-info-row">
+                    <image :src="serverUrl + '/static/icons/common/power.png'" class="info-icon" />
+                    <text class="info-text">{{ unit.unitName }} - {{ getTaskTypeName(unit.taskType) }}{{ getTaskExtraInfo(unit.taskType, unit.taskExtra) }}</text>
+                  </view>
+                  <!-- 车辆信息显示在对应单位后面 -->
+                  <view class="unit-car-info" v-if="getUnitCarInfo(unit)">
+                    <text class="car-text">{{ getUnitCarInfo(unit) }}</text>
+                  </view>
                 </view>
               </view>
             </view>
@@ -305,10 +311,10 @@ export default {
         page: this.page, 
         pageSize: this.pageSize,
         unit: (this.unitOptions[this.unitIndex] && this.unitOptions[this.unitIndex].value) || '',
-        taskStatus: (this.statusOptions[this.statusIndex] && this.statusOptions[this.statusIndex].value) || '',
+        status: (this.statusOptions[this.statusIndex] && this.statusOptions[this.statusIndex].value) || '',
         startTime: this.startTime || '',
         endTime: this.endTime || '',
-        recordPerson: (this.recordPerson || '').trim(),
+        feedbackPersonName: (this.feedbackPersonName || '').trim(),
         keyword: (this.keyword || '').trim()
       }
       this.isLoading = true
@@ -458,6 +464,19 @@ export default {
       }
       return extraInfo.length > 0 ? ' (' + extraInfo.join(', ') + ')' : ''
     },
+    // 获取单个单位的车辆信息
+    getUnitCarInfo(unit) {
+      if (!unit || !unit.carInfo || unit.carInfo.length === 0) return ''
+      
+      const cars = []
+      unit.carInfo.forEach(car => {
+        if (car.label) {
+          cars.push(car.label)
+        }
+      })
+      
+      return cars.length > 0 ? cars.join('、') : ''
+    },
     // 跳转到任务详情
     goDetail(item) {
       uni.navigateTo({ url: `/pages/data/taskDetail/index?taskId=${encodeURIComponent(item.taskId)}` })
@@ -467,9 +486,10 @@ export default {
       const status = item.status
       
       if (status === 1) {
-        // 未接收 - 显示接收任务
+        // 未接收 - 显示接收任务和拒绝接受
         return [
-          { text: '接收任务', style: { backgroundColor: '#52c41a', color: '#fff' }, key: 'receive' }
+          { text: '接收任务', style: { backgroundColor: '#52c41a', color: '#fff' }, key: 'receive' },
+          { text: '拒绝接受', style: { backgroundColor: '#fa8c16', color: '#fff' }, key: 'reject' }
         ]
       } else if (status === 2) {
         // 已接收 - 显示删除
@@ -488,6 +508,8 @@ export default {
       const key = (e && e.content && e.content.key) || ''
       if (key === 'receive') {
         this.receiveTask(item)
+      } else if (key === 'reject') {
+        this.rejectTask(item)
       } else if (key === 'delete') {
         this.deleteTask(item)
       } else if (key === 'detail') {
@@ -499,14 +521,41 @@ export default {
       try {
         await new Promise((resolve, reject) => {
           uni.request({
-            url: this.serverUrl + `/task/receive`,
-            method: 'POST',
-            data: { taskId: item.taskId },
+            url: this.serverUrl + `/task/feedback/${item.taskId}`,
+            method: 'PUT',
             success: resolve,
             fail: reject
           })
         })
         uni.showToast({ title: '任务已接收', icon: 'success' })
+        this.fetch(true)
+      } catch(e) {
+        uni.showToast({ title: '操作失败', icon: 'none' })
+      }
+    },
+    // 拒绝任务
+    async rejectTask(item) {
+      try {
+        const confirmResult = await new Promise((resolve) => {
+          uni.showModal({
+            title: '确认拒绝',
+            content: '确定要拒绝接受这个任务吗？',
+            success: (res) => resolve(res.confirm),
+            fail: () => resolve(false)
+          })
+        })
+        
+        if (!confirmResult) return
+        
+        await new Promise((resolve, reject) => {
+          uni.request({
+            url: this.serverUrl + `/task/delete/${item.taskId}`,
+            method: 'DELETE',
+            success: resolve,
+            fail: reject
+          })
+        })
+        uni.showToast({ title: '已拒绝任务', icon: 'success' })
         this.fetch(true)
       } catch(e) {
         uni.showToast({ title: '操作失败', icon: 'none' })
@@ -528,9 +577,8 @@ export default {
         
         await new Promise((resolve, reject) => {
           uni.request({
-            url: this.serverUrl + `/task/delete`,
+            url: this.serverUrl + `/task/delete/${item.taskId}`,
             method: 'DELETE',
-            data: { taskId: item.taskId },
             success: resolve,
             fail: reject
           })
@@ -1068,17 +1116,53 @@ export default {
 
 /* 额外信息样式 - 简洁风格 */
 .extra-info {
-  margin-top: 8rpx;
-  padding: 12rpx;
-  background: #f0f8ff;
-  border-radius: 8rpx;
-  border-left: 3rpx solid #52c41a;
+  margin-top: 12rpx;
+  padding: 16rpx;
+  background: linear-gradient(135deg, #f0f8ff, #e6f7ff);
+  border-radius: 12rpx;
+  border: 1rpx solid #d6e4ff;
+  box-shadow: 0 2rpx 8rpx rgba(24, 144, 255, 0.08);
 }
 
 .extra-item {
   display: flex;
+  flex-direction: column;
+  gap: 8rpx;
+  margin-bottom: 16rpx;
+  padding: 8rpx 0;
+  border-bottom: 1rpx solid rgba(24, 144, 255, 0.1);
+}
+
+.unit-info-row {
+  display: flex;
   align-items: center;
   gap: 8rpx;
+}
+
+.extra-item:last-child {
+  margin-bottom: 0;
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+/* 单位内车辆信息样式 */
+.unit-car-info {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+  margin-left: 32rpx;
+  margin-top: 6rpx;
+  padding: 8rpx 12rpx;
+  background: linear-gradient(135deg, #fff7e6, #ffecc7);
+  border-radius: 8rpx;
+  border: 1rpx solid #ffd591;
+  box-shadow: 0 1rpx 4rpx rgba(250, 140, 22, 0.1);
+}
+
+.car-text {
+  font-size: 20rpx;
+  color: #d46b08;
+  font-weight: 500;
 }
 
 /* 备注样式 - 卡片风格 */

@@ -95,22 +95,22 @@
               </view>
 
               <!-- 动态内容 -->
-              <view class="config-section" v-if="unit.taskType && unit.taskConfig">
+              <view class="config-section" v-if="unit && unit.taskType && unit.taskConfig">
                 <text class="config-label">{{ getTaskContentTitle(unit) }}</text>
-                <view v-if="unit.taskConfig.uiType === 'select'" class="form-picker-section">
+                <view v-if="unit.taskConfig && unit.taskConfig.uiType === 'select'" class="form-picker-section">
                   <view class="force-options">
-                    <view v-for="(opt, idx) in (unit.taskConfig.options || [])" :key="idx" class="force-option" :class="{ active: unit.taskExtra[unit.taskConfig.actionKey] === opt }" @tap="selectTaskOption(opt, unit)">
+                    <view v-for="(opt, idx) in (unit.taskConfig && unit.taskConfig.options ? unit.taskConfig.options : [])" :key="idx" class="force-option" :class="{ active: (unit.taskExtra && unit.taskConfig && unit.taskExtra[unit.taskConfig.actionKey]) === opt }" @tap="selectTaskOption($event, opt, unit)">
                       <text class="force-label">{{ opt }}</text>
                     </view>
                   </view>
                 </view>
-                <view v-else-if="unit.taskConfig.uiType === 'input'" class="input-container">
-                  <input v-model="unit.taskExtra[unit.taskConfig.actionKey]" class="form-input" :placeholder="unit.taskConfig.placeholder || '请输入'" />
+                <view v-else-if="unit.taskConfig && unit.taskConfig.uiType === 'input'" class="input-container">
+                  <input v-model="unit.taskExtra[unit.taskConfig.actionKey]" class="form-input" :placeholder="(unit.taskConfig && unit.taskConfig.placeholder) || '请输入'" v-if="unit.taskExtra && unit.taskConfig" />
                 </view>
-                <view v-else-if="unit.taskConfig.uiType === 'select-collection'" class="form-picker-section">
+                <view v-else-if="unit.taskConfig && unit.taskConfig.uiType === 'select-collection'" class="form-picker-section">
                   <picker :value="unit.dynamicSelectIndex" :range="assignedUnitOptions" range-key="label" @change="onDynamicSelectChange($event, unit)" class="form-picker">
                     <view class="picker-display">
-                      <text class="picker-text" :class="{'placeholder':!unit.taskExtra[unit.taskConfig.actionKey]}">{{ getDynamicSelectText(unit) }}</text>
+                      <text class="picker-text" :class="{'placeholder':!(unit.taskExtra && unit.taskConfig && unit.taskExtra[unit.taskConfig.actionKey])}">{{ getDynamicSelectText(unit) }}</text>
                       <image :src="serverUrl + '/static/icons/common/down.png'" class="picker-arrow" />
                     </view>
                   </picker>
@@ -164,7 +164,7 @@
             <view class="drawer-item-info">
               <text class="unit-label">{{ car.label }}</text>
             </view>
-            <text class="status-badge" :class="getCarStatusClass(car)">{{ getCarStatusText(car) }}</text>
+            <text class="status-badge" :class="isCarRescuing(car) ? 'rescuing' : 'idle'">{{ getCarStatusText(car) }}</text>
           </view>
         </view>
         <view class="drawer-footer">
@@ -190,7 +190,7 @@
             <view class="drawer-item-info">
               <text class="unit-label">{{ unit.label }}</text>
             </view>
-            <text class="status-badge" :class="getUnitStatusClass(unit)">{{ getDrawerUnitStatusText(unit) }}</text>
+            <text class="status-badge" :class="isAlreadyAssigned(unit) || isUnitRescuing(unit) ? 'disabled' : (rescuingUnits.some(rescuingUnit => rescuingUnit.unitId === unit.value) ? 'rescuing' : 'idle')">{{ getDrawerUnitStatusText(unit) }}</text>
           </view>
         </view>
         <view class="drawer-footer">
@@ -568,6 +568,7 @@ export default {
       return (this.taskTypeOptions[unit.taskTypeIndex] && this.taskTypeOptions[unit.taskTypeIndex].label) || '请选择任务类型'
     },
     getTaskContentTitle(unit) {
+      if (!unit || !unit.taskType) return '任务内容'
       const map = this.taskTypeOptions.find(it => it.value === unit.taskType)
       return map ? map.label : '任务内容'
     },
@@ -606,20 +607,72 @@ export default {
       return extraDetails.join('，')
     },
     getDynamicSelectText(unit) {
+      if (!unit) return '请选择供水对象'
       const idx = unit.dynamicSelectIndex
       return (this.assignedUnitOptions[idx] && this.assignedUnitOptions[idx].label) || '请选择供水对象'
     },
     // 任务选项选择
-    selectTaskOption(val, unit) {
-      if (!unit.taskConfig) return
-      this.$set(unit.taskExtra, unit.taskConfig.actionKey, val)
+    selectTaskOption(event, val, unit) {
+      try {
+        // 阻止事件冒泡
+        if (event && event.stopPropagation) {
+          event.stopPropagation()
+        }
+        
+        if (!unit || !unit.taskConfig) return
+        
+        // 确保 taskExtra 对象存在
+        if (!unit.taskExtra) {
+          this.$set(unit, 'taskExtra', {})
+        }
+        
+        // 确保 val 是基本类型，避免循环引用
+        let safeVal = val
+        if (typeof val === 'object' && val !== null) {
+          // 如果是对象，转换为字符串或提取基本值
+          safeVal = JSON.stringify(val)
+        }
+        
+        this.$set(unit.taskExtra, unit.taskConfig.actionKey, safeVal)
+        
+        // 使用 nextTick 而不是 forceUpdate，避免循环引用问题
+        this.$nextTick(() => {
+          // 视图更新完成
+        })
+      } catch (e) {
+        console.error('selectTaskOption error:', e)
+      }
     },
     // 动态选择变化
     onDynamicSelectChange(e, unit) {
-      unit.dynamicSelectIndex = Number(e.detail.value)
-      const picked = this.assignedUnitOptions[unit.dynamicSelectIndex]
-      if (unit.taskConfig) {
-        this.$set(unit.taskExtra, unit.taskConfig.actionKey, picked ? picked.value : '')
+      try {
+        unit.dynamicSelectIndex = Number(e.detail.value)
+        const picked = this.assignedUnitOptions[unit.dynamicSelectIndex]
+        if (unit.taskConfig) {
+          // 确保 taskExtra 对象存在
+          if (!unit.taskExtra) {
+            this.$set(unit, 'taskExtra', {})
+          }
+          
+          // 确保值是基本类型，避免循环引用
+          let safeValue = ''
+          if (picked && picked.value) {
+            if (typeof picked.value === 'object' && picked.value !== null) {
+              safeValue = JSON.stringify(picked.value)
+            } else {
+              safeValue = String(picked.value)
+            }
+          }
+          
+          this.$set(unit.taskExtra, unit.taskConfig.actionKey, safeValue)
+          
+          // 使用 nextTick 而不是 forceUpdate
+          this.$nextTick(() => {
+            // 视图更新完成
+          })
+        }
+      } catch (e) {
+        console.error('onDynamicSelectChange error:', e)
       }
     },
     // 更新表单数据
@@ -727,13 +780,15 @@ export default {
         })
         if (res?.data?.code === 200) {
           uni.showToast({ title: '提交成功', icon: 'success' })
-          // 如果有situationId，跳转到查询页面；否则返回上一页
+          // 如果有situationId，跳转到火灾查询页面；否则跳转到任务查询页面
           if (this.situationId) {
+            setTimeout(() => {
+              uni.redirectTo({ url: '/pages/data/taskQuery/index' })
+            }, 1200)
+          } else {
             setTimeout(() => {
               uni.redirectTo({ url: '/pages/data/fireQuery/index' })
             }, 1200)
-          } else {
-            setTimeout(() => uni.navigateBack(), 1200)
           }
         } else {
           throw new Error(res?.data?.msg || '提交失败')

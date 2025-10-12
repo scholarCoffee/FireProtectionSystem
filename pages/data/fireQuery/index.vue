@@ -68,10 +68,10 @@
           <!-- 人员信息行 -->
           <view class="personnel-row">
             <view class="personnel-item">
-              <text class="personnel-label">任务下达人员</text>
+              <text class="personnel-label">指派人员</text>
               <input 
                 class="personnel-input"
-                v-model="issuePerson"
+                v-model="feedbackPersonName"
                 placeholder="请输入任务下达人员"
                 @input="onInput"
               />
@@ -80,7 +80,7 @@
               <text class="personnel-label">记录人员</text>
               <input 
                 class="personnel-input"
-                v-model="recordPerson"
+                v-model="issuePersonName"
                 placeholder="请输入记录人员"
                 @input="onInput"
               />
@@ -117,9 +117,9 @@
                 </view>
                 
                 <!-- 第一段连接线 -->
-                <view class="route-line" v-if="item.taskStatus == 3">
+                <view class="route-line" v-if="item.taskStatus != 4">
                   <view class="line-base"></view>
-                  <view class="line-progress" :class="getProgressClass(item.taskStatus, 1)" :style="{ width: getProgressWidth(item.taskStatus, 1) }"></view>
+                  <view class="line-progress" :class="item.taskStatus == 1 ? 'success' : (item.taskStatus == 3 ? 'warn' : (item.taskStatus == 4 ? 'supporting' : (item.taskStatus == 2 ? 'progress' : '')))" :style="{ width: getProgressWidth(item.taskStatus, 1) }"></view>
                 </view>
                 
                 <!-- 需要支援标签 - 只有状态为3时显示 -->
@@ -132,7 +132,7 @@
                 <!-- 第二段连接线 - 只有状态为3或4时显示 -->
                 <view class="route-line" v-if="item.taskStatus == 3 || item.taskStatus == 4">
                   <view class="line-base"></view>
-                  <view class="line-progress" :class="getProgressClass(item.taskStatus, 2)" :style="{ width: getProgressWidth(item.taskStatus, 2) }"></view>
+                  <view class="line-progress" :class="item.taskStatus == 1 ? 'success' : (item.taskStatus == 3 ? 'warn' : (item.taskStatus == 4 ? 'supporting' : (item.taskStatus == 2 ? 'progress' : '')))" :style="{ width: getProgressWidth(item.taskStatus, 2) }"></view>
                 </view>
                 
                 <!-- 正在支援标签 - 只有状态为4时显示 -->
@@ -145,7 +145,7 @@
                 <!-- 第三段连接线 - 只有状态为4时显示 -->
                 <view class="route-line" v-if="item.taskStatus == 4">
                   <view class="line-base"></view>
-                  <view class="line-progress" :class="getProgressClass(item.taskStatus, 3)" :style="{ width: getProgressWidth(item.taskStatus, 3) }"></view>
+                  <view class="line-progress" :class="item.taskStatus == 1 ? 'success' : (item.taskStatus == 3 ? 'warn' : (item.taskStatus == 4 ? 'supporting' : (item.taskStatus == 2 ? 'progress' : '')))" :style="{ width: getProgressWidth(item.taskStatus, 3) }"></view>
                 </view>
                 
                 <!-- 已完成标签 -->
@@ -197,8 +197,8 @@ export default {
     return {
       serverUrl: 'http://192.168.1.4:3000',
       keyword: '',
-      recordPerson: '',
-      issuePerson: '', // 新增：任务下达人员
+      issuePersonName: '',
+      feedbackPersonName: '', // 新增：任务下达人员
       startTime: '', // 新增：开始时间
       endTime: '', // 新增：结束时间
       startTimeIndex: [0, 0, 0, 0, 0], // 新增：开始时间选择器索引
@@ -231,8 +231,10 @@ export default {
   },
   onReachBottom() { this.loadMore() },
   onShow() {
-    // 页面显示时重新加载数据
-    this.fetch(true)
+    // 页面显示时重新加载数据（避免与onLoad重复调用）
+    if (this.list.length > 0) {
+      this.fetch(true)
+    }
   },
   onReady() {
     this.computeListHeight()
@@ -373,10 +375,10 @@ export default {
         pageSize: this.pageSize,
         unit: (this.unitOptions[this.unitIndex] && this.unitOptions[this.unitIndex].value) || '',
         taskStatus: (this.statusOptions[this.statusIndex] && this.statusOptions[this.statusIndex].value) || '',
-        issuePerson: (this.issuePerson || '').trim(),
+        feedbackPersonName: (this.feedbackPersonName || '').trim(),
         startTime: this.startTime || '',
         endTime: this.endTime || '',
-        recordPerson: (this.recordPerson || '').trim(),
+        issuePersonName: (this.issuePersonName || '').trim(),
         keyword: (this.keyword || '').trim()
       }
       this.isLoading = true
@@ -429,12 +431,12 @@ export default {
     resetFilters() {
       this.unitIndex = 0
       this.statusIndex = 0
-      this.issuePerson = ''
+      this.feedbackPersonName = ''
       this.startTime = ''
       this.endTime = ''
       this.startTimeIndex = [0, 0, 0, 0, 0]
       this.endTimeIndex = [0, 0, 0, 0, 0]
-      this.recordPerson = ''
+      this.issuePersonName = ''
       this.keyword = ''
       this.fetch(true)
     },
@@ -571,7 +573,7 @@ export default {
       } else if (key === 'finish') {
         this.finishRescue(item)
       } else if (key === 'deliver') {
-        uni.navigateTo({ url: `/pages/data/taskQuery/index?situationId=${encodeURIComponent(item.situationId)}` })
+        uni.navigateTo({ url: `/pages/data/fireUpload/index?situationId=${encodeURIComponent(item.situationId)}` })
       } else if (key === 'support') {
         this.requestSupport(item)
       } else if (key === 'delete') {

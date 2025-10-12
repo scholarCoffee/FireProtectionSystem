@@ -7,7 +7,7 @@
           <view class="title-section">
             <text class="title" @tap="goToLocationDetail">{{ detail.addressName || '—' }}</text>
           </view>
-          <view class="status-badge" :class="getStatusClass(detail.taskStatus)">
+          <view class="status-badge" :class="detail.taskStatus == 1 ? 'status-completed' : (detail.taskStatus == 2 ? 'status-progress' : (detail.taskStatus == 3 ? 'status-rescue' : (detail.taskStatus == 4 ? 'status-supporting' : 'status-unknown')))">
             <view class="status-dot"></view>
             {{ getStatusText(detail.taskStatus) }}
             <view class="ripple" v-if="detail.taskStatus == 2 || detail.taskStatus == 3 || detail.taskStatus == 4"></view>
