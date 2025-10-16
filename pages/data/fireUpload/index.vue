@@ -208,7 +208,7 @@ export default {
   name: 'FireUpload',
   data() {
     return {
-      serverUrl: 'http://192.168.1.4:3000',
+      serverUrl: 'https://www.xiaobei.space',
       situationId: '', // 已有火灾情况ID
       formData: {
         addressId: '',

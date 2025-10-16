@@ -161,7 +161,7 @@ export default {
   components: { uniSwipeAction, uniSwipeActionItem },
   data() {
     return {
-      serverUrl: 'http://192.168.1.4:3000',
+      serverUrl: 'https://www.xiaobei.space',
       keyword: '',
       recordPerson: '',
       startTime: '', // 新增：开始时间
@@ -642,14 +642,15 @@ export default {
 .task-query-page {
   min-height: 100vh;
   background: #f5f9ff;
+  padding: 21rpx;
 }
 
 .search-filters-container {
   background: #fff;
-  margin: 12rpx;
   border-radius: 12rpx;
   box-shadow: 0 2rpx 8rpx rgba(24, 144, 255, 0.06);
   overflow: hidden;
+  margin-bottom: 20rpx;
 }
 
 /* 搜索和筛选按钮行 */
@@ -899,7 +900,8 @@ export default {
 
 .list {
   background: #fff;
-  margin: 0 12rpx 12rpx;
+  padding: 22rpx;
+  box-sizing: border-box;
   border-radius: 12rpx;
   box-shadow: 0 2rpx 8rpx rgba(24, 144, 255, 0.06);
 }
@@ -948,10 +950,10 @@ export default {
 }
 
 .card {
-  margin: 20rpx;
+  margin-bottom: 20rpx;
   border-radius: 12rpx;
   border: 1rpx solid #f0f0f0;
-  padding: 20rpx;
+  padding: 26rpx;
   box-shadow: 0 2rpx 6rpx rgba(0, 0, 0, 0.04);
   background: #fff;
   transition: all 0.3s ease;

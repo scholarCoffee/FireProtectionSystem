@@ -1,7 +1,6 @@
 <template>
     <view class="content">
         <view class="page-content">
-            
             <!-- 功能按钮（从本地存储动态渲染） -->
             <view class="command-grid">
                 <view 
@@ -140,7 +139,6 @@ export default {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 30rpx;
-    padding: 20rpx 0;
 }
 
 .command-item {
