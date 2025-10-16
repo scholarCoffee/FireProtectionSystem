@@ -80,7 +80,10 @@
         "permission" : {},
         "optimization" : {
             "subPackages" : true
-        }
+        },
+        "requiredPrivateInfos" : [
+            "chooseLocation"
+        ]
     },
     "mp-alipay" : {
         "usingComponents" : true

@@ -17,7 +17,7 @@
           </view>
           
           <!-- 地址详情 -->
-          <view class="address-detail">
+          <view class="address-detail" @tap="openTencentMap">
             <view class="address-detail-left">
               <image :src="serverUrl + '/static/icons/location/showLocation.png'" class="location-icon" />
               <text class="address-name-text address-ext">{{ locationObj.addressExt }}</text>
@@ -474,6 +474,138 @@ export default {
         url: `/pages/personal/userDetail/OwnerInfo?mode=location&addressId=${encodeURIComponent(this.addressId)}`
       });
     },
+    // 打开腾讯地图
+    openTencentMap() {
+      if (!this.locationObj.addressExt) {
+        uni.showToast({ title: '暂无地址信息', icon: 'none' });
+        return;
+      }
+      
+      // 获取完整地址
+      const fullAddress = this.locationObj.addressName + this.locationObj.addressExt;
+      
+      // 检查是否有经纬度信息
+      if (this.locationObj.latitude && this.locationObj.longitude) {
+        // 有经纬度，使用坐标导航
+        this.openMapWithCoordinates(this.locationObj.latitude, this.locationObj.longitude, fullAddress);
+      } else {
+        // 没有经纬度，使用地址导航
+        this.openMapWithAddress(fullAddress);
+      }
+    },
+    // 使用坐标打开地图
+    openMapWithCoordinates(latitude, longitude, address) {
+      // #ifdef APP-PLUS
+      // App端使用腾讯地图
+      plus.maps.openMap({
+        latitude: latitude,
+        longitude: longitude,
+        name: address,
+        complete: (e) => {
+          console.log('地图打开完成', e);
+        }
+      });
+      // #endif
+      
+      // #ifdef H5
+      // H5端打开腾讯地图网页版
+      const mapUrl = `https://apis.map.qq.com/uri/v1/marker?marker=coord:${latitude},${longitude};title:${encodeURIComponent(address)}&referer=myapp`;
+      window.open(mapUrl, '_blank');
+      // #endif
+      
+      // #ifdef MP-WEIXIN
+      // 微信小程序使用腾讯地图
+      uni.openLocation({
+        latitude: latitude,
+        longitude: longitude,
+        name: address,
+        address: address,
+        success: () => {
+          console.log('地图打开成功');
+        },
+        fail: (err) => {
+          console.error('地图打开失败', err);
+          uni.showToast({ title: '地图打开失败', icon: 'none' });
+        }
+      });
+      // #endif
+    },
+    // 使用地址打开地图
+    openMapWithAddress(address) {
+      // #ifdef APP-PLUS
+      // App端使用系统地图
+      plus.maps.openMap({
+        name: address,
+        complete: (e) => {
+          console.log('地图打开完成', e);
+        }
+      });
+      // #endif
+      
+      // #ifdef H5
+      // H5端打开腾讯地图搜索
+      const mapUrl = `https://apis.map.qq.com/uri/v1/search?keyword=${encodeURIComponent(address)}&referer=myapp`;
+      window.open(mapUrl, '_blank');
+      // #endif
+      
+      // #ifdef MP-WEIXIN
+      // 微信小程序使用地址搜索
+      uni.chooseLocation({
+        success: (res) => {
+          // 这里可以处理选择位置后的逻辑
+          console.log('选择位置', res);
+        },
+        fail: (err) => {
+          console.error('选择位置失败', err);
+          // 如果选择位置失败，显示提示并尝试其他方案
+          uni.showModal({
+            title: '提示',
+            content: '无法打开位置选择，是否尝试使用腾讯地图搜索该地址？',
+            success: (modalRes) => {
+              if (modalRes.confirm) {
+                this.searchAddressInMap(address);
+              }
+            }
+          });
+        }
+      });
+      // #endif
+    },
+    // 在微信小程序中搜索地址
+    searchAddressInMap(address) {
+      // #ifdef MP-WEIXIN
+      // 使用微信小程序的地址搜索
+      try {
+        // 尝试使用微信小程序的地址搜索
+        uni.navigateTo({
+          url: `/pages/map/map?address=${encodeURIComponent(address)}`
+        });
+      } catch (error) {
+        console.error('地址搜索失败', error);
+        // 如果地址搜索也失败，显示地址信息让用户手动搜索
+        uni.showModal({
+          title: '地址信息',
+          content: `地址：${address}\n\n请复制此地址到地图应用中进行搜索`,
+          showCancel: true,
+          cancelText: '取消',
+          confirmText: '复制地址',
+          success: (res) => {
+            if (res.confirm) {
+              uni.setClipboardData({
+                data: address,
+                success: () => {
+                  uni.showToast({
+                    title: '地址已复制',
+                    icon: 'success'
+                  });
+                }
+              });
+            }
+          }
+        });
+      }
+      // #endif
+    },
   }
 };
 </script>
@@ -550,10 +682,19 @@ export default {
 .address-detail {
   display: flex;
   align-items: center;
-  padding: 0 15px 0 15px;
+  padding: 8px 15px;
   font-size: 12px;
   color: #666;
   justify-content: space-between;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  border-radius: 6px;
+  margin: 0 15px;
+}
+
+.address-detail:active {
+  background-color: #f0f8ff;
+  transform: scale(0.98);
 }
 
 .address-detail-left {
