@@ -77,13 +77,24 @@
             "minified" : true
         },
         "usingComponents" : true,
-        "permission" : {},
+        "permission" : {
+            "scope.userLocation" : {
+                "desc" : "您的位置信息将用于小程序位置接口的效果展示"
+            }
+        },
         "optimization" : {
             "subPackages" : true
         },
         "requiredPrivateInfos" : [
-            "chooseLocation"
-        ]
+            "chooseLocation",
+            "getLocation"
+        ],
+        "plugins" : {
+            "mapPlugin" : {
+                "version" : "1.0.0",
+                "provider" : "wx76a9a06e5b4e693e"
+            }
+        }
     },
     "mp-alipay" : {
         "usingComponents" : true

@@ -138,6 +138,13 @@
                         "navigationStyle": "default",
                         "navigationBarTitleText": "安全详情"
                     }
+                },
+                {
+                    "path": "mapView/index",
+                    "style": {
+                        "navigationStyle": "default",
+                        "navigationBarTitleText": "位置地图"
+                    }
                 }
             ]
         },

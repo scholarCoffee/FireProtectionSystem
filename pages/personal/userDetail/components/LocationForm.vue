@@ -33,23 +33,31 @@
       </view>
       <view class="form-item">
         <text class="form-label">地址名称 <text class="required">*</text></text>
-        <input 
-          v-model="formData.addressName" 
-          class="form-input" 
-          placeholder="请输入地址名称"
-          maxlength="50"
-          @input="onAddressNameInput"
-        />
+        <view class="address-input-container">
+          <input 
+            v-model="formData.addressName" 
+            class="form-input readonly-input" 
+            placeholder="请先选择地址"
+            maxlength="50"
+            readonly
+            disabled
+          />
+          <view class="address-selector" @tap="openMapSelector">
+            <image :src="serverUrl + '/static/icons/location/showLocation.png'" class="map-icon" />
+            <text class="address-selector-text">选择地址</text>
+          </view>
+        </view>
       </view>
       
       <view class="form-item">
         <text class="form-label">详细地址 <text class="required">*</text></text>
         <input 
           v-model="formData.addressExt" 
-          class="form-input" 
-          placeholder="请输入详细地址"
+          class="form-input readonly-input" 
+          placeholder="请先选择地址"
           maxlength="200"
-          @input="onAddressExtInput"
+          readonly
+          disabled
         />
       </view>
         
@@ -62,6 +70,21 @@
           maxlength="20"
           @input="onAddressIdInput"
         />
+      </view>
+      
+      <!-- 经纬度显示 -->
+      <view class="form-item coordinates-display" v-if="formData.latitude && formData.longitude">
+        <text class="form-label">位置坐标</text>
+        <view class="coordinates-info">
+          <view class="coordinate-item">
+            <text class="coordinate-label">经度:</text>
+            <text class="coordinate-value">{{ formData.longitude }}</text>
+          </view>
+          <view class="coordinate-item">
+            <text class="coordinate-label">纬度:</text>
+            <text class="coordinate-value">{{ formData.latitude }}</text>
+          </view>
+        </view>
       </view>
         
       <view class="form-item">
@@ -99,6 +122,7 @@
           show-confirm-bar="false"
         />
       </view>
+      
     </view>
 
     <!-- 安全信息区域 -->
@@ -587,7 +611,14 @@
         return false
       },
 
-      getFormData() { return { ...this.formData } },
+      getFormData() { 
+        return { 
+          ...this.formData,
+          // 确保经纬度信息被包含在提交数据中
+          latitude: this.formData.latitude || null,
+          longitude: this.formData.longitude || null
+        } 
+      },
       setFormData(data = {}) {
         if (Object.keys(data).length > 0) {
           this.formData = { ...this.formData, ...data }
@@ -615,8 +646,16 @@
         this.errors = {}
         const fd = this.formData
         const must = v => v && String(v).trim()
-        if (!must(fd.addressName)) this.errors.addressName = '请输入地址名称'
-        if (!must(fd.addressExt)) this.errors.addressExt = '请输入详细地址'
+        
+        // 检查是否选择了地址（必须有经纬度）
+        if (!fd.latitude || !fd.longitude) {
+          this.errors.addressName = '请先选择地址'
+          uni.showToast({ title: '请先选择地址', icon: 'none' })
+          return false
+        }
+        
+        if (!must(fd.addressName)) this.errors.addressName = '请先选择地址'
+        if (!must(fd.addressExt)) this.errors.addressExt = '请先选择地址'
         if (!must(fd.addressId)) this.errors.addressId = '请输入地址编号'
         if (!must(fd.allSenceLink)) this.errors.allSenceLink = '请输入全云景地址'
         if (!fd.type) this.errors.type = '请输入位置类型'
@@ -1218,6 +1257,111 @@
       // 编辑安全评分
       editSafetyScore() {
         this.$emit('edit-safety-score');
+      },
+      
+      // 打开地图选择器
+      openMapSelector() {
+        // #ifdef MP-WEIXIN
+        // 微信小程序使用 chooseLocation
+        uni.chooseLocation({
+          success: (res) => {
+            console.log('选择位置成功:', res);
+            this.handleLocationResult(res);
+          },
+          fail: (err) => {
+            console.error('选择位置失败:', err);
+          }
+        });
+        // #endif
+        
+        // #ifdef H5
+        // H5端使用浏览器定位
+        this.getCurrentLocation();
+        // #endif
+      },
+      
+      // 处理位置选择结果
+      handleLocationResult(locationData) {
+        if (locationData && locationData.name) {
+          // 回填地址信息
+          this.formData.addressName = locationData.name || '';
+          this.formData.addressExt = locationData.address || '';
+          
+          // 如果有经纬度，保存到表单数据中
+          if (locationData.latitude && locationData.longitude) {
+            this.formData.latitude = locationData.latitude;
+            this.formData.longitude = locationData.longitude;
+          }
+          
+          // 强制更新视图
+          this.$forceUpdate();
+          
+          uni.showToast({
+            title: '地址信息已更新',
+            icon: 'success'
+          });
+        } else {
+          uni.showToast({
+            title: '您未选择地址，请点击地址选择器重新选择',
+            icon: 'none'
+          });
+        }
+      },
+      
+      // 获取当前位置（H5端）
+      getCurrentLocation() {
+        uni.getLocation({
+          type: 'gcj02',
+          success: (res) => {
+            console.log('获取位置成功:', res);
+            // 保存经纬度信息
+            this.formData.latitude = res.latitude;
+            this.formData.longitude = res.longitude;
+            
+            uni.showToast({
+              title: '位置信息已获取',
+              icon: 'success'
+            });
+          },
+          fail: (err) => {
+            console.error('获取位置失败:', err);
+            // 检查是否是权限问题
+            if (err.errMsg && err.errMsg.includes('auth deny')) {
+              this.showLocationAuthModal();
+            } else {
+              uni.showToast({
+                title: '获取位置失败',
+                icon: 'none'
+              });
+            }
+          }
+        });
+      },
+      
+      // 显示定位授权提示
+      showLocationAuthModal() {
+        uni.showModal({
+          title: '需要定位权限',
+          content: '为了获取您的位置信息，请在设置中开启定位权限',
+          showCancel: true,
+          cancelText: '取消',
+          confirmText: '去设置',
+          success: (res) => {
+            if (res.confirm) {
+              // 打开设置页面
+              uni.openSetting({
+                success: (settingRes) => {
+                  if (settingRes.authSetting['scope.userLocation']) {
+                    uni.showToast({
+                      title: '定位权限已开启',
+                      icon: 'success'
+                    });
+                  }
+                }
+              });
+            }
+          }
+        });
       }
     }
   }
@@ -1932,6 +2076,116 @@
     display: block;
     width: 100%;
     background: #ffffff;
+  }
+}
+
+/* 地址输入容器样式 */
+.address-input-container {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  flex: 1;
+}
+
+.address-input-container .form-input {
+  flex: 1;
+  margin-right: 0;
+}
+
+/* 地址选择器样式 */
+.address-selector {
+  height: 64rpx;
+  padding: 0 16rpx;
+  border: none;
+  border-radius: 12rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #f8faff 0%, #ffffff 100%);
+  border: 2rpx solid #e8f1ff;
+  box-shadow: 0 2rpx 8rpx rgba(24, 144, 255, 0.06);
+  transition: all 0.3s ease;
+  cursor: pointer;
+  min-width: 140rpx;
+  flex-shrink: 0;
+  
+  &:active {
+    background: linear-gradient(135deg, #e6f7ff 0%, #f0f8ff 100%);
+    border-color: #1890ff;
+    box-shadow: 0 4rpx 12rpx rgba(24, 144, 255, 0.15);
+    transform: translateY(-1rpx);
+  }
+}
+
+.address-selector-text {
+  font-size: 24rpx;
+  color: #333333;
+  font-weight: 500;
+  letter-spacing: 0.3rpx;
+  margin-left: 8rpx;
+}
+
+.address-selector .map-icon {
+  width: 28rpx;
+  height: 28rpx;
+  opacity: 0.7;
+}
+
+/* 经纬度显示样式 */
+.coordinates-display {
+  border-radius: 12rpx;
+  padding: 16rpx 20rpx;
+}
+
+.coordinates-info {
+  display: flex;
+  gap: 32rpx;
+  margin-top: 8rpx;
+}
+
+.coordinate-item {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+  padding: 8rpx 12rpx;
+  background: linear-gradient(135deg, #e6f7ff 0%, #f0f8ff 100%);
+  border-radius: 8rpx;
+  border: 1rpx solid #bae7ff;
+}
+
+.coordinate-label {
+  font-size: 24rpx;
+  color: #333333;
+  font-weight: 600;
+  letter-spacing: 0.3rpx;
+}
+
+.coordinate-value {
+  font-size: 24rpx;
+  color: #1890ff;
+  font-weight: 700;
+  font-family: 'Courier New', monospace;
+  background: linear-gradient(135deg, #1890ff 0%, #096dd9 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* 只读输入框样式 */
+.readonly-input {
+  background: #f5f5f5 !important;
+  color: #666666 !important;
+  cursor: not-allowed !important;
+  border-color: #d9d9d9 !important;
+  
+  &::placeholder {
+    color: #999999 !important;
+  }
+  
+  &:focus {
+    background: #f5f5f5 !important;
+    box-shadow: none !important;
+    outline: none !important;
   }
 }
 

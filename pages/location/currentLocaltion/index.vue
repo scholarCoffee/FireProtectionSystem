@@ -54,8 +54,13 @@
               <view class="card-info">
                 <view class="card-title">
                   <text @click="goToDetail(item)" class="title-text">{{ item.addressName.length > 10 ? item.addressName.slice(0, 11) + '…' : item.addressName }}</text>
-                  <view class="phone-icon-wrapper" @click="onClickShowPhone(item)">
-                    <image :src="serverUrl + '/static/icons/common/phone.png'" class="phone-icon" />
+                  <view class="title-actions">
+                    <view class="map-icon-wrapper" @click="goToMap(item)">
+                      <image :src="serverUrl + '/static/icons/location/showLocation.png'" class="map-icon" />
+                    </view>
+                    <view class="phone-icon-wrapper" @click="onClickShowPhone(item)">
+                      <image :src="serverUrl + '/static/icons/common/phone.png'" class="phone-icon" />
+                    </view>
                   </view>
                 </view>
                 <view class="card-desc">
@@ -223,6 +228,9 @@ export default {
     },
     goToDetail(item) {
       uni.navigateTo({ url: '/subPackages/locationInfo/locationDetail/index?addressId=' + item.addressId });
+    },
+    goToMap(item) {
+      uni.navigateTo({ url: '/subPackages/locationInfo/mapView/index?addressId=' + item.addressId });
     },
     goToExternalLink(link) {
       this.showWebview = true;
@@ -470,6 +478,28 @@ body, html {
   margin-right: 1px;
 }
 
+.title-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.map-icon-wrapper {
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.map-icon {
+  width: 14px;
+  height: 14px;
+  opacity: 0.8;
+  flex-shrink: 0;
+}
+
 .phone-icon-wrapper {
   width: 20px;
   height: 20px;
@@ -477,7 +507,6 @@ body, html {
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  margin-left: 8px;
   border-radius: 50%;
   padding: 2px;
 }

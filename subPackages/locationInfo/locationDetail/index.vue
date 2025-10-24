@@ -13,11 +13,14 @@
           <!-- 地址名称 -->
           <view class="address-name">
             <text class="address-name-text">{{ locationObj.addressName }}</text>
-            <image :src="serverUrl + '/static/icons/location/copy.png'" class="location-icon" @tap="copyAddressName" />
+            <view class="address-actions">
+              <image :src="serverUrl + '/static/icons/location/copy.png'" class="location-icon" @tap="copyAddressName" />
+              <image :src="serverUrl + '/static/icons/location/map.png'" class="location-icon map-icon" @tap="goToMapPage" />
+            </view>
           </view>
           
           <!-- 地址详情 -->
-          <view class="address-detail" @tap="openTencentMap">
+          <view class="address-detail">
             <view class="address-detail-left">
               <image :src="serverUrl + '/static/icons/location/showLocation.png'" class="location-icon" />
               <text class="address-name-text address-ext">{{ locationObj.addressExt }}</text>
@@ -98,13 +101,13 @@
             <view class="owner-info-content">
               <view class="owner-count-display">
                 <view class="count-section">
-                  <text class="count-label">当前住户总数</text>
+                  <text class="count-label">共计住户数</text>
                   <view class="owner-badge">
                     <text class="badge-num">{{ (locationObj.ownerInfo && locationObj.ownerInfo.total) || (locationObj.ownerInfo && locationObj.ownerInfo.count) || 0 }}</text>
-                    <text class="badge-suffix">人</text>
                   </view>
+                  <text class="count-label">户</text>
                 </view>
-                <text class="query-btn" @tap="goToOwnerInfo">一键查询</text>
+                <image :src="serverUrl + '/static/icons/common/right.png'" class="query-icon" @tap="goToOwnerInfo" />
               </view>
             </view>
           </view>
@@ -255,7 +258,7 @@ export default {
       currentImageIndex: 0, // 当前图片索引
       showCustomModal: false, // 控制自定义弹窗显示
       modalContent: '', // 弹窗内容
-      serverUrl: 'https://www.xiaobei.space',
+      serverUrl: 'http://172.17.121.104:3000',
       isShowHeaderImage: true,
       scrollTop: 0, // 滚动位置
       isAnyVideoFullscreen: false,
@@ -557,16 +560,6 @@ export default {
         },
         fail: (err) => {
           console.error('选择位置失败', err);
-          // 如果选择位置失败，显示提示并尝试其他方案
-          uni.showModal({
-            title: '提示',
-            content: '无法打开位置选择，是否尝试使用腾讯地图搜索该地址？',
-            success: (modalRes) => {
-              if (modalRes.confirm) {
-                this.searchAddressInMap(address);
-              }
-            }
-          });
         }
       });
       // #endif
@@ -606,6 +599,26 @@ export default {
       }
       // #endif
     },
+    
+    // 地图相关方法
+    goToMapPage() {
+      if (!this.addressId) {
+        uni.showToast({ title: '缺少地址ID', icon: 'none' });
+        return;
+      }
+      console.log('跳转到地图页面，addressId:', this.addressId);
+      uni.navigateTo({
+        url: `../mapView/index?addressId=${this.addressId}`,
+        success: () => {
+          console.log('跳转成功');
+        },
+        fail: (err) => {
+          console.error('跳转失败:', err);
+          uni.showToast({ title: '跳转失败', icon: 'none' });
+        }
+      });
+    },
+    
   }
 };
 </script>
@@ -660,6 +673,16 @@ export default {
   align-items: center;
 }
 
+.address-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.map-icon {
+  margin-left: 8px;
+}
+
 .address-ext {
   font-size: 12px;
   max-width: 240px;
@@ -682,7 +705,6 @@ export default {
 .address-detail {
   display: flex;
   align-items: center;
-  padding: 8px 15px;
   font-size: 12px;
   color: #666;
   justify-content: space-between;
@@ -690,6 +712,8 @@ export default {
   transition: all 0.3s ease;
   border-radius: 6px;
   margin: 0 15px;
+  min-height: 32px;
+  line-height: 1.2;
 }
 
 .address-detail:active {
@@ -717,6 +741,10 @@ export default {
   background: #40a9ff;
   color: #ffffff;
   font-size: 12px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 120px;
 }
 
 .location-icon {
@@ -727,7 +755,6 @@ export default {
 
 .address-name .location-icon {
   margin-right: 0;
-  padding: 8px;
   border-radius: 4px;
   transition: background-color 0.2s ease;
 }
@@ -951,7 +978,6 @@ export default {
   padding: 4px 16px;
   border-radius: 12px;
   background: rgba(255, 255, 255, 0.25);
-  margin-right: 8px;
 }
 
 .safety-tag.safety-excellent { background: linear-gradient(135deg, #4CAF50, #45a049); } /* 优秀-绿色 */
@@ -1014,7 +1040,6 @@ export default {
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
-  margin-top: 8px;
 }
 
 .gate-item {
@@ -1091,20 +1116,16 @@ export default {
   opacity: 0.8;
 }
 
-.query-btn {
-  font-size: 12px;
-  color: #1890ff;
-  background: #e6f7ff;
-  border: 1px solid #bae7ff;
-  border-radius: 8px;
-  padding: 4px 12px;
-  font-weight: 500;
+.query-icon {
+  width: 20px;
+  height: 20px;
+  opacity: 0.7;
   transition: all 0.2s ease;
   flex-shrink: 0;
 }
 
-.query-btn:active {
-  background: #bae7ff;
+.query-icon:active {
+  opacity: 1;
   transform: scale(0.95);
 }
 
@@ -1405,4 +1426,5 @@ export default {
   font-weight: 500;
   color: inherit;
 }
+
 </style>
