@@ -31,7 +31,7 @@ import { locationTabList } from '@/commons/mock/index.js';
 export default {
   data() {
     return {
-      serverUrl: 'http://172.17.121.104:3000',
+      serverUrl: 'https://www.xiaobei.space',
       addressId: null,
       mapCenter: {
         latitude: 39.9042, // 北京天安门坐标作为默认中心点
