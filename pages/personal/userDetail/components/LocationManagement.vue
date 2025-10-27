@@ -58,15 +58,15 @@
               <text class="label">类型：</text>
               <text class="value">{{ getLocationTypeName(item.type) }}</text>
             </view>
-            <view class="content-row">
+            <view class="content-row" v-if="item.type !== 3">
               <text class="label">安全等级：</text>
               <text class="value">{{ item.fireSafetyScore ? item.fireSafetyScore.safeLevelName : '未设置' }}</text>
             </view>
-            <view class="content-row">
+            <view class="content-row" v-if="item.type !== 3">
               <text class="label">安全评分：</text>
               <text class="value">{{ item.fireSafetyScore ? item.fireSafetyScore.totalScore + '分' : '未设置' }}</text>
             </view>
-            <view class="content-row">
+            <view class="content-row" v-if="item.type !== 3">
               <text class="label">描述：</text>
               <text class="value">{{ item.description || '暂无描述' }}</text>
             </view>

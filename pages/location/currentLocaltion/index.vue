@@ -27,8 +27,14 @@
             <text :style="{ color: activeTab === index ? '#1296db' : '#707070' }">{{ tab.name }}</text>
           </view>
         </view>
-        <!-- 内容展示 -->
+        <!-- 队站辖区显示地图 -->
+        <view v-if="activeTab === 2" class="map-container">
+          <map-view :address-id="mapAddressId" />
+        </view>
+        
+        <!-- 其他tab显示列表 -->
         <scroll-view 
+          v-else
           class="content" 
           scroll-y 
           :lower-threshold="30"
@@ -38,10 +44,10 @@
             <view 
               v-for="(item, index) in showList" 
               :key="index" 
-              :class="['card', activeTab === 2 ? 'street-shop-card' : '']"
+              class="card"
             >
-              <!-- 沿街商铺不显示左侧图片区域 -->
-              <view v-if="activeTab !== 2" class="card-left">
+              <!-- 左侧图片区域 -->
+              <view class="card-left">
                 <view class="img-container">
                   <image :src= "serverUrl + item.defaultImg" class="card-img" @click="goToDetail(item)"/>
                   <!-- 安全等级标签 -->
@@ -51,27 +57,24 @@
                 </view>
               </view>
               <!-- 右侧信息区域 -->
-              <view :class="['card-info', activeTab === 2 ? 'street-shop-info' : '']">
+              <view class="card-info">
                 <view class="card-title">
-                  <text @click="activeTab === 2 ? goToMap(item) : goToDetail(item)" :class="['title-text', activeTab === 2 ? 'title-text-full' : '']">{{ activeTab === 2 ? item.addressName : (item.addressName.length > 10 ? item.addressName.slice(0, 11) + '…' : item.addressName) }}</text>
+                  <text @click="goToDetail(item)" class="title-text">{{ item.addressName.length > 10 ? item.addressName.slice(0, 11) + '…' : item.addressName }}</text>
                   <view class="title-actions">
                     <view class="map-icon-wrapper" @click="goToMap(item)">
                       <image :src="serverUrl + '/static/icons/location/showLocation.png'" class="map-icon" />
                     </view>
-                    <!-- 沿街商铺不显示电话图标 -->
-                    <view v-if="activeTab !== 2" class="phone-icon-wrapper" @click="onClickShowPhone(item)">
+                    <view class="phone-icon-wrapper" @click="onClickShowPhone(item)">
                       <image :src="serverUrl + '/static/icons/common/phone.png'" class="phone-icon" />
                     </view>
                   </view>
                 </view>
-                <!-- 沿街商铺不显示安全评分 -->
-                <view v-if="activeTab !== 2" class="card-desc">
+                <view class="card-desc">
                   <text class="card-desc-score">{{ item.fireSafetyScore ? item.fireSafetyScore.totalScore : ''  }}</text>
                   <text v-if="item.fireSafetyScore">分</text>
                   <text v-else>未设置</text>
                 </view>
-                <!-- 沿街商铺不显示一键查看按钮 -->
-                <button v-if="activeTab !== 2" class="card-btn" @click="goToExternalLink(item.allSenceLink)">一键查看</button>
+                <button class="card-btn" @click="goToExternalLink(item.allSenceLink)">一键查看</button>
               </view>
             </view>
             <view class="load-more">{{ loadingText }}</view>
@@ -128,7 +131,12 @@
 
 <script>
 import { locationTabList } from '@/commons/mock/index.js';
+import MapView from '@/componets/mapView/index.vue';
+
 export default {
+  components: {
+    MapView
+  },
   data() {
     return {
       showBack: false, // 是否显示返回按钮，适配小程序
@@ -146,7 +154,8 @@ export default {
       serverUrl: 'https://www.xiaobei.space',
       webviewUrl: '',
       currentPhoneList: [], // 当前电话列表
-      showCustomPhoneSelector: false // 控制自定义电话选择器显示
+      showCustomPhoneSelector: false, // 控制自定义电话选择器显示
+      mapAddressId: null // 地图页面传递的addressId
     };
   },
   onShow() {
@@ -156,8 +165,21 @@ export default {
     // #endif
     uni.stopPullDownRefresh();
   },
+  onLoad(options) {
+    // 检查是否有showMap参数，如果有则直接显示地图
+    if (options.showMap === 'true') {
+      this.activeTab = 2; // 队站辖区tab
+      // 如果有addressId参数，传递给地图组件
+      if (options.addressId) {
+        this.mapAddressId = options.addressId;
+      }
+    }
+  },
   mounted() {
-    this.changeTab(0); 
+    // 如果activeTab不是2（地图），则调用changeTab加载数据
+    if (this.activeTab !== 2) {
+      this.changeTab(0); 
+    }
   },
   methods: {
     goBack() {
@@ -221,7 +243,14 @@ export default {
       this.page = 1;
       this.finished = false;
       this.searchKeyword = '';
-      this.fetchLocationList({ page: 1, pageSize: this.pageSize, type: index + 1 });
+      
+      if (index === 2) {
+        // 队站辖区显示地图，不需要加载列表数据
+        return;
+      } else {
+        // 其他tab显示列表
+        this.fetchLocationList({ page: 1, pageSize: this.pageSize, type: index + 1 });
+      }
     },
 
     callPhone(phone) {
@@ -233,7 +262,8 @@ export default {
       uni.navigateTo({ url: '/subPackages/locationInfo/locationDetail/index?addressId=' + item.addressId });
     },
     goToMap(item) {
-      uni.navigateTo({ url: '/subPackages/locationInfo/mapView/index?addressId=' + item.addressId });
+      // 跳转到子包中的地图页面
+      uni.navigateTo({ url: `/subPackages/locationInfo/mapView/index?addressId=${item.addressId}` });
     },
     goToExternalLink(link) {
       this.showWebview = true;
@@ -707,23 +737,9 @@ body, html {
   flex-shrink: 0;
 }
 
-/* 沿街商铺卡片样式 */
-.street-shop-card {
-  min-height: 100px;
-}
-
-.street-shop-info {
-  padding: 12px 16px;
-  justify-content: center;
-}
-
-/* 沿街商铺标题样式 - 支持换行 */
-.title-text-full {
-  white-space: normal !important;
-  word-wrap: break-word;
-  word-break: break-all;
-  line-height: 1.4;
-  display: block;
+/* 地图容器样式 */
+.map-container {
+  height: calc(100vh - 80px);
   width: 100%;
 }
 </style>

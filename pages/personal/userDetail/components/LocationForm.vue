@@ -1,6 +1,6 @@
 <template>
   <view class="location-form">
-    <!-- 默认图片配置（沿街商铺不显示） -->
+    <!-- 默认图片配置（队站辖区不显示） -->
     <view class="location-info-section" v-if="formData.type !== 3">
       <view class="section-header">
         <text class="section-title">展示图片<text class="required">*</text></text>
@@ -32,7 +32,7 @@
         <text class="section-title">位置信息</text>
       </view>
       
-      <!-- 沿街商铺时，位置类型放在地址名称上面 -->
+      <!-- 队站辖区时，位置类型放在地址名称上面 -->
       <view class="form-item" v-if="formData.type === 3">
         <text class="form-label">位置类型 <text class="required">*</text></text>
         <picker 
@@ -113,7 +113,7 @@
         </view>
       </view>
       
-      <!-- 非沿街商铺时，位置类型显示在原来的位置 -->
+      <!-- 非队站辖区时，位置类型显示在原来的位置 -->
       <view class="form-item" v-if="formData.type !== 3">
         <text class="form-label">位置类型 <text class="required">*</text></text>
         <picker 
@@ -130,7 +130,7 @@
         </picker>
       </view>
       
-      <!-- 描述字段（沿街商铺不显示） -->
+      <!-- 描述字段（队站辖区不显示） -->
       <view class="form-item description-item" v-if="formData.type !== 3">
         <text class="form-label">描述</text>
         <textarea 
@@ -145,7 +145,7 @@
       
     </view>
 
-    <!-- 安全信息区域（沿街商铺不显示） -->
+    <!-- 安全信息区域（队站辖区不显示） -->
     <view class="safety-section" v-if="formData.type !== 3">
       <view class="section-header">
         <text class="section-title">安全信息</text>
@@ -206,7 +206,7 @@
       </view>
     </view>
       
-    <!-- 户主信息（仅：高层小区 type === 1，沿街商铺不显示） -->
+    <!-- 户主信息（仅：高层小区 type === 1，队站辖区不显示） -->
     <view class="config-section" v-if="formData.type === 1 && formData.type !== 3">
       <view class="section-header">
         <text class="section-title">户主信息</text>
@@ -229,7 +229,7 @@
       </view>
     </view>
 
-    <!-- 可出行大门配置（沿街商铺不显示） -->
+    <!-- 可出行大门配置（队站辖区不显示） -->
     <view class="config-section" v-if="formData.type !== 3">
       <view class="section-header">
         <text class="section-title">可出行大门配置</text>
@@ -253,7 +253,7 @@
       </view>
     </view>
       
-    <!-- 联系人配置（沿街商铺不显示） -->
+    <!-- 联系人配置（队站辖区不显示） -->
     <view class="config-section" v-if="formData.type !== 3">
       <view class="section-header">
         <text class="section-title">联系人配置</text>
@@ -381,7 +381,7 @@
       </view>
     </view>
       
-    <!-- 消防地图配置（沿街商铺不显示） -->
+    <!-- 消防地图配置（队站辖区不显示） -->
     <view class="config-section" v-if="formData.type !== 3">
       <view class="section-header">
         <text class="section-title">消防地图</text>
@@ -408,7 +408,7 @@
       </view>
     </view>
 
-    <!-- 作战实景部署（仅：重点单位 type === 2，沿街商铺不显示） -->
+    <!-- 作战实景部署（仅：重点单位 type === 2，队站辖区不显示） -->
     <view class="config-section" v-if="formData.type === 2 && formData.type !== 3">
       <view class="section-header">
         <text class="section-title">作战实景部署</text>
@@ -680,7 +680,7 @@
         if (!must(fd.allSenceLink)) this.errors.allSenceLink = '请输入全云景地址'
         if (!fd.type) this.errors.type = '请输入位置类型'
         
-        // 沿街商铺不需要验证以下字段
+        // 队站辖区不需要验证以下字段
         if (fd.type !== 3) {
           if (!must(fd.defaultImg)) this.errors.defaultImg = '必须配置一张默认图片'
           if (!Array.isArray(fd.enterGateList) || fd.enterGateList.length === 0) this.errors.enterGateList = '至少需要选择一个可出行大门'
