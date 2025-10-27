@@ -112,40 +112,8 @@
             </view>
           </view>
 
-          <!-- 作战实景部署（仅重点单位；统一使用 battleDeploymentMaterials） -->
-          <view class="deployment-card" v-if="locationObj.type === 2 && locationObj.battleDeploymentMaterials && locationObj.battleDeploymentMaterials.length">
-            <view class="card-header">
-              <text class="card-title">作战实景部署</text>
-            </view>
-            <view class="deployment-section">
-              <view class="material-list">
-                <view class="material-item" v-for="(m, mi) in locationObj.battleDeploymentMaterials" :key="mi" v-if="m">
-                  <template v-if="isVideoPath(m)">
-                    <video
-                      :src="resolveMediaUrl(m)"
-                      class="deploy-video"
-                      controls
-                      preload="metadata"
-                      webkit-playsinline
-                      playsinline
-                      x5-video-player-type="h5"
-                      x5-video-player-fullscreen="true"
-                      @fullscreenchange="onVideoFullscreenChange"
-                      @error="handleVideoError(m)"
-                    ></video>
-                  </template>
-                  <template v-else>
-                    <image :src="resolveMediaUrl(m)" class="anim-thumb" mode="aspectFill" />
-                  </template>
-                </view>
-              </view>
-            </view>
-          </view>
-
-          
-          
-          <!-- 作战实景部署（仅重点单位且有配置时显示） -->
-          <view class="deployment-card" v-if="locationObj.type === 2 && locationObj.fireUnitDeploymentMap && locationObj.fireUnitDeploymentMap.length > 0">
+          <!-- 作战实景部署（仅重点单位；根据消防队选择显示对应视频） -->
+          <view class="deployment-card" v-if="locationObj.type === 2">
             <view class="card-header">
               <text class="card-title">作战实景部署</text>
               <view class="deployment-selector">
@@ -164,7 +132,8 @@
               </view>
             </view>
             <view class="deployment-section">
-              <view class="material-list">
+              <!-- 有视频时显示视频 -->
+              <view class="material-list" v-if="currentDeploymentMaterials && currentDeploymentMaterials.length">
                 <view class="material-item" v-for="(m, mi) in currentDeploymentMaterials" :key="mi" v-if="m">
                   <template v-if="isVideoPath(m)">
                     <video
@@ -185,8 +154,14 @@
                   </template>
                 </view>
               </view>
+              <!-- 没有视频时显示空状态 -->
+              <view class="empty-deployment" v-else>
+                <image :src="serverUrl + '/static/icons/common/no-data.png'" class="empty-logo" />
+                <text class="empty-text">{{ getCurrentFireUnitText() }}暂无作战实景部署</text>
+              </view>
             </view>
           </view>
+
 
           <!-- 出行大门 -->
           <view class="info-row gate-list">
@@ -214,7 +189,7 @@
         <view class="gallery-body">
           <swiper class="gallery-swiper" :current="currentImageIndex" @change="onSwiperChange">
             <swiper-item v-for="(img, index) in locationObj.imgList" :key="index">
-              <image :src="img ? `${serverUrl}${img}` : ''" class="gallery-img" mode="aspectFit" />
+              <image :src="img ? `${serverUrl}${img}` : ''" class="gallery-img" mode="aspectFit" @click="zoomImage(img)" />
             </swiper-item>
           </swiper>
           <view class="gallery-indicator">
@@ -244,6 +219,14 @@
         </view>
       </view>
     </view>
+    
+    <!-- 全屏图片查看 -->
+    <view class="fullscreen-image-modal" v-if="showImageZoom" @click="hideImageZoom">
+      <image :src="zoomedImageUrl" class="fullscreen-image" mode="aspectFit" @click.stop />
+      <view class="fullscreen-close" @click="hideImageZoom">
+        <text class="close-text">×</text>
+      </view>
+    </view>
   </scroll-view>
 </template>
 <script>
@@ -265,6 +248,9 @@ export default {
       // 消防单位相关
       fireUnitOptions: [],
       selectedFireUnitIndex: 0,
+      // 图片放大相关
+      showImageZoom: false, // 控制图片放大弹窗显示
+      zoomedImageUrl: '', // 放大的图片URL
     };
   },
   onLoad(data) {
@@ -467,6 +453,19 @@ export default {
     hideCustomModal() {
       this.showCustomModal = false;
       this.modalContent = '';
+    },
+    
+    // 图片放大相关方法
+    zoomImage(img) {
+      if (img) {
+        this.zoomedImageUrl = `${this.serverUrl}${img}`;
+        this.showImageZoom = true;
+      }
+    },
+    
+    hideImageZoom() {
+      this.showImageZoom = false;
+      this.zoomedImageUrl = '';
     },
     goToOwnerInfo() {
       if (!this.addressId) {
@@ -1215,6 +1214,31 @@ export default {
   object-fit: cover;
 }
 
+/* 空状态样式 */
+.empty-deployment {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+  background: #f8f9fa;
+  border-radius: 8px;
+  border: 2px dashed #d9d9d9;
+}
+
+.empty-logo {
+  width: 60px;
+  height: 60px;
+  opacity: 0.4;
+  margin-bottom: 12px;
+}
+
+.empty-text {
+  font-size: 14px;
+  color: #999;
+  font-weight: 500;
+}
+
 .page-content {
   padding-top: 0;
   padding-bottom: 20px;
@@ -1248,7 +1272,7 @@ export default {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 16px 20px;
+  padding: 5px 10px;
   border-bottom: 1px solid #f0f0f0;
 }
 
@@ -1278,6 +1302,17 @@ export default {
 .gallery-img {
   width: 100%;
   height: 100%;
+  cursor: pointer;
+  transition: transform 0.2s ease, opacity 0.2s ease;
+}
+
+.gallery-img:hover {
+  transform: scale(1.05);
+  opacity: 0.9;
+}
+
+.gallery-img:active {
+  transform: scale(0.98);
 }
 
 .gallery-indicator {
@@ -1295,7 +1330,7 @@ export default {
 .gallery-controls {
   display: flex;
   justify-content: space-between;
-  padding: 16px 20px;
+  padding: 10px 20px;
   background: #f8f9fa;
 }
 
@@ -1356,7 +1391,7 @@ export default {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 10px 20px;
+  padding: 5px 20px;
   border-bottom: 1px solid #f0f0f0;
   background: #f8f9fa;
 }
@@ -1425,6 +1460,54 @@ export default {
   font-size: 11px;
   font-weight: 500;
   color: inherit;
+}
+
+/* 全屏图片查看样式 */
+.fullscreen-image-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.95);
+  z-index: 1002;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.fullscreen-image {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.fullscreen-close {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  width: 40px;
+  height: 40px;
+  background: rgba(0, 0, 0, 0.6);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  z-index: 1003;
+}
+
+.fullscreen-close:hover {
+  background: rgba(0, 0, 0, 0.8);
+  transform: scale(1.1);
+}
+
+.close-text {
+  color: #fff;
+  font-size: 24px;
+  font-weight: bold;
+  line-height: 1;
 }
 
 </style>

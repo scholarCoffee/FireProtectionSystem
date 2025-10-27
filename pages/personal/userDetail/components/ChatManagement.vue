@@ -223,6 +223,7 @@ export default {
 .data-list {
   flex: 1;
   padding: 20rpx;
+  box-sizing: border-box;
 }
 
 .loading-container, .empty-container {

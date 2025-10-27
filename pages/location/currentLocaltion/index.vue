@@ -8,7 +8,7 @@
             <image :src="serverUrl + '/static/icons/location/search.png'" class="search-icon" />
             <input 
               type="text" 
-              placeholder="输入地址名称查询" 
+              placeholder="输入地址名称/地址编号查询" 
               class="search-input" 
               @input="handleInput" 
               v-model="searchKeyword"
@@ -38,10 +38,10 @@
             <view 
               v-for="(item, index) in showList" 
               :key="index" 
-              class="card"
+              :class="['card', activeTab === 2 ? 'street-shop-card' : '']"
             >
-              <!-- 左侧图片 + 标签区域 -->
-              <view class="card-left">
+              <!-- 沿街商铺不显示左侧图片区域 -->
+              <view v-if="activeTab !== 2" class="card-left">
                 <view class="img-container">
                   <image :src= "serverUrl + item.defaultImg" class="card-img" @click="goToDetail(item)"/>
                   <!-- 安全等级标签 -->
@@ -51,24 +51,27 @@
                 </view>
               </view>
               <!-- 右侧信息区域 -->
-              <view class="card-info">
+              <view :class="['card-info', activeTab === 2 ? 'street-shop-info' : '']">
                 <view class="card-title">
-                  <text @click="goToDetail(item)" class="title-text">{{ item.addressName.length > 10 ? item.addressName.slice(0, 11) + '…' : item.addressName }}</text>
+                  <text @click="activeTab === 2 ? goToMap(item) : goToDetail(item)" :class="['title-text', activeTab === 2 ? 'title-text-full' : '']">{{ activeTab === 2 ? item.addressName : (item.addressName.length > 10 ? item.addressName.slice(0, 11) + '…' : item.addressName) }}</text>
                   <view class="title-actions">
                     <view class="map-icon-wrapper" @click="goToMap(item)">
                       <image :src="serverUrl + '/static/icons/location/showLocation.png'" class="map-icon" />
                     </view>
-                    <view class="phone-icon-wrapper" @click="onClickShowPhone(item)">
+                    <!-- 沿街商铺不显示电话图标 -->
+                    <view v-if="activeTab !== 2" class="phone-icon-wrapper" @click="onClickShowPhone(item)">
                       <image :src="serverUrl + '/static/icons/common/phone.png'" class="phone-icon" />
                     </view>
                   </view>
                 </view>
-                <view class="card-desc">
+                <!-- 沿街商铺不显示安全评分 -->
+                <view v-if="activeTab !== 2" class="card-desc">
                   <text class="card-desc-score">{{ item.fireSafetyScore ? item.fireSafetyScore.totalScore : ''  }}</text>
                   <text v-if="item.fireSafetyScore">分</text>
                   <text v-else>未设置</text>
                 </view>
-                <button class="card-btn" @click="goToExternalLink(item.allSenceLink)">一键查看</button>
+                <!-- 沿街商铺不显示一键查看按钮 -->
+                <button v-if="activeTab !== 2" class="card-btn" @click="goToExternalLink(item.allSenceLink)">一键查看</button>
               </view>
             </view>
             <view class="load-more">{{ loadingText }}</view>
@@ -312,11 +315,11 @@ export default {
   align-items: center;
   width: 90%;
   height: 36px;
+  margin: 6px 0;
   padding: 0 15px;
-  border: 1px solid #E0E0E0;
   border-radius: 18px;
   background-color: #FFFFFF;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 2px 8px 2px rgba(0, 0, 0, 0.08);
   transition: all 0.3s ease;
 }
 .search-icon {
@@ -346,9 +349,7 @@ export default {
   justify-content: space-around;
   align-items: center;
   background-color: #FFFFFF;
-  padding: 4px 0;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-  border-bottom: 1px solid #f0f0f0;
+  padding: 0;
 }
 .tab-item {
   display: flex;
@@ -387,7 +388,6 @@ body, html {
   overflow: hidden;
   min-width: 0;
   min-height: 140px;
-  border: 1px solid #f0f0f0;
 }
 
 /* 左侧图片区域（包含左上角标签） */
@@ -705,5 +705,25 @@ body, html {
   height: 18px;
   opacity: 0.7;
   flex-shrink: 0;
+}
+
+/* 沿街商铺卡片样式 */
+.street-shop-card {
+  min-height: 100px;
+}
+
+.street-shop-info {
+  padding: 12px 16px;
+  justify-content: center;
+}
+
+/* 沿街商铺标题样式 - 支持换行 */
+.title-text-full {
+  white-space: normal !important;
+  word-wrap: break-word;
+  word-break: break-all;
+  line-height: 1.4;
+  display: block;
+  width: 100%;
 }
 </style>
