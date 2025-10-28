@@ -111,8 +111,8 @@
         {
             "path": "pages/ai-chat/index",
             "style": {
-                "navigationStyle": "custom",
-                "navigationBarTitleText": "小贝AI助手"
+                "navigationStyle": "default",
+                "navigationBarTitleText": "AI助手"
             }
         }
     ],

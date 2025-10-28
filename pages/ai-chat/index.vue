@@ -5,7 +5,13 @@
       <image :src="serverUrl + '/static/icons/ai/fireSystemClick.png'" class="header-avatar" mode="widthFix" />
       <view class="header-info">
         <text class="robot-name">小贝</text>
-        <text class="robot-status">在线</text>
+        <view class="status-row">
+          <text class="robot-status">在线</text>
+        </view>
+      </view>
+      <view class="deepseek-logo">
+        <image src="https://cdn.deepseek.com/logo.png?x-image-process=image%2Fresize%2Cw_828" class="logo-img" mode="widthFix" />
+        <text class="logo-text">已接入DeepSeek</text>
       </view>
     </view>
 
@@ -15,7 +21,7 @@
         <!-- 欢迎消息 -->
         <view class="message-item robot-message" v-if="messages.length === 0">
           <view class="message-avatar">
-            <image :src="serverUrl + '/static/icons/common/person.png'" class="avatar-img" mode="widthFix" />
+            <image :src="serverUrl + '/static/icons/ai/fireSystemClick.png'" class="avatar-img" mode="widthFix" />
           </view>
           <view class="message-content">
             <view class="message-bubble">
@@ -33,7 +39,7 @@
           :class="message.type === 'user' ? 'user-message' : 'robot-message'"
         >
           <view class="message-avatar" v-if="message.type === 'robot'">
-            <image :src="serverUrl + '/static/icons/common/person.png'" class="avatar-img" mode="widthFix" />
+            <image :src="serverUrl + '/static/icons/ai/fireSystemClick.png'" class="avatar-img" mode="widthFix" />
           </view>
           <view class="message-content">
             <view class="message-bubble">
@@ -42,14 +48,14 @@
             <text class="message-time">{{ message.time }}</text>
           </view>
           <view class="message-avatar" v-if="message.type === 'user'">
-            <image :src="serverUrl + '/static/icons/common/person.png'" class="avatar-img" mode="widthFix" />
+            <image :src="serverUrl + userInfo.avatarUrl" class="avatar-img" mode="widthFix" />
           </view>
         </view>
 
         <!-- 正在输入提示 -->
         <view class="message-item robot-message" v-if="isTyping">
           <view class="message-avatar">
-            <image :src="serverUrl + '/static/icons/common/person.png'" class="avatar-img" mode="widthFix" />
+            <image :src="serverUrl + '/static/icons/ai/fireSystemClick.png'" class="avatar-img" mode="widthFix" />
           </view>
           <view class="message-content">
             <view class="message-bubble typing-bubble">
@@ -89,10 +95,19 @@ export default {
     return {
       serverUrl: 'https://www.xiaobei.space',
       messages: [],
+      userInfo: {
+            nickName: '', 
+            avatarUrl: '',
+            permissionStatus: 2,
+            id: ''
+        },
       inputMessage: '',
       isTyping: false,
       scrollTop: 0,
     };
+  },
+  mounted() {
+    this.userInfo = uni.getStorageSync('userInfo');
   },
   methods: {
     async sendMessage() {
@@ -182,11 +197,12 @@ export default {
 .chat-header {
   display: flex;
   align-items: center;
-  justify-content: flex-start;
-  padding: 20rpx 30rpx;
+  justify-content: space-between;
+  padding: 16rpx 30rpx;
   background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
   color: #1e40af;
-  box-shadow: 0 4rpx 12rpx rgba(59, 130, 246, 0.1);
+  box-shadow: 0 2rpx 8rpx rgba(59, 130, 246, 0.1);
+  margin-top: -2rpx;
 }
 
 .header-info {
@@ -198,31 +214,60 @@ export default {
 }
 
 .header-avatar {
-  width: 60rpx !important;
-  height: 76rpx !important;
+  width: 50rpx;
+  height: 50rpx;
   border-radius: 50%;
-  margin-right: 20rpx;
+  margin-right: 16rpx;
   border: 2rpx solid rgba(30, 64, 175, 0.2);
-  box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.1);
+  box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.1);
   flex-shrink: 0;
 }
 
 .robot-name {
-  font-size: 28rpx;
+  font-size: 24rpx;
   font-weight: 700;
-  margin-bottom: 6rpx;
+  margin-bottom: 4rpx;
   color: #1e40af;
   text-shadow: none;
 }
 
 .robot-status {
-  font-size: 18rpx;
+  font-size: 16rpx;
   background: #10b981;
   color: #ffffff;
-  padding: 3rpx 6rpx;
+  padding: 2rpx 6rpx;
   border-radius: 6rpx;
   font-weight: 500;
   display: inline-block;
+  margin-right: 8rpx;
+}
+
+.status-row {
+  display: flex;
+  align-items: center;
+}
+
+.deepseek-logo {
+  display: flex;
+  flex-direction: column;
+  background: #ffffff;
+  align-items: center;
+  padding: 6rpx 10rpx;
+  border-radius: 10rpx;
+  font-weight: 500;
+}
+
+.logo-img {
+  width: 140rpx;
+  height: 140rpx;
+  margin-bottom: 2rpx;
+}
+
+.logo-text {
+  font-size: 18rpx;
+  color: #1e40afc7;
+  font-weight: 500;
+  text-align: center;
 }
 
 .chat-messages {
@@ -245,7 +290,11 @@ export default {
 }
 
 .user-message {
-  flex-direction: row-reverse;
+  flex-direction: row;
+  justify-content: flex-end;
+  align-self: flex-end;
+  max-width: 80%;
+  margin-left: auto;
 }
 
 .message-avatar {
@@ -254,6 +303,12 @@ export default {
   border-radius: 50%;
   overflow: hidden;
   flex-shrink: 0;
+}
+
+.avatar-img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
 }
 
 .message-bubble {
@@ -297,7 +352,7 @@ export default {
 }
 
 .user-message .message-time {
-  align-self: flex-start;
+  align-self: flex-end;
   color: rgba(30, 64, 175, 0.7);
 }
 
