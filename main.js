@@ -1,8 +1,13 @@
 import App from './App'
 import Vue from 'vue'
 import io from './commons/js/weapp.socket.io.js'
+import AIRobot from './componets/ai-robot/index.vue'
+
 Vue.config.productionTip = false
-Vue.prototype.serverUrl = 'https://www.xiaobei.space' 
+Vue.prototype.serverUrl = 'https://www.xiaobei.space'
+
+// 全局注册AI机器人组件
+Vue.component('ai-robot', AIRobot) 
 
 // 明确指定socket.io路径，与Nginx配置匹配，并加强重连与鉴权
 Vue.prototype.socket = io('wss://www.xiaobei.space', {

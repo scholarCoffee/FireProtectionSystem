@@ -1,5 +1,12 @@
 <template>
   <view class="map-page">
+    <!-- 地图控制按钮 -->
+    <view class="map-controls">
+      <view class="control-btn" @click="toggleSatellite">
+        <text class="control-text">{{ enableSatellite ? '普通' : '卫星' }}</text>
+      </view>
+    </view>
+    
     <!-- 地图容器 -->
     <view class="map-container">
       <map 
@@ -14,7 +21,7 @@
         :enable-scroll="true"
         :enable-rotate="false"
         :enable-overlooking="false"
-        :enable-satellite="false"
+        :enable-satellite="enableSatellite"
         :enable-traffic="false"
         class="map-view"
         @markertap="onMarkerTap"
@@ -45,7 +52,8 @@ export default {
       mapMarkers: [],
       allLocations: [],
       currentLocation: null, // 目标地址详情
-      userLocation: null // 用户当前位置
+      userLocation: null, // 用户当前位置
+      enableSatellite: false // 是否启用卫星地图
     };
   },
   mounted() {
@@ -229,6 +237,17 @@ export default {
     
     getLocationTypeName(type) {
       return locationTabList.find(item => item.type === type)?.name || '未知类型';
+    },
+    
+    // 切换卫星地图
+    toggleSatellite() {
+      this.enableSatellite = !this.enableSatellite;
+      
+      uni.showToast({ 
+        title: this.enableSatellite ? '已切换到卫星地图' : '已切换到普通地图', 
+        icon: 'none',
+        duration: 1500
+      });
     }
   }
 };
@@ -240,6 +259,29 @@ export default {
   display: flex;
   flex-direction: column;
   background-color: #f5f5f5;
+}
+
+.map-controls {
+  position: absolute;
+  top: 20rpx;
+  right: 20rpx;
+  z-index: 1000;
+}
+
+.control-btn {
+  background: linear-gradient(135deg, #4a90e2 0%, #5ba0f2 100%);
+  border-radius: 25rpx;
+  padding: 20rpx 40rpx;
+  box-shadow: 0 6rpx 16rpx rgba(74, 144, 226, 0.2);
+  backdrop-filter: blur(10rpx);
+  border: 1rpx solid rgba(255, 255, 255, 0.3);
+}
+
+.control-text {
+  font-size: 30rpx;
+  font-weight: 700;
+  color: #fff;
+  text-shadow: 0 1rpx 3rpx rgba(0, 0, 0, 0.15);
 }
 
 .map-container {

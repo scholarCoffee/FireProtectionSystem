@@ -125,6 +125,9 @@
                 </view>
             </view>
         </view>
+        
+        <!-- AI机器人组件 -->
+        <ai-robot />
     </view>
 </template>
 

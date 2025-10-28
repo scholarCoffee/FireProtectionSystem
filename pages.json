@@ -107,6 +107,13 @@
             "style": {
                 "navigationBarTitleText": "火灾详情"
             }
+        },
+        {
+            "path": "pages/ai-chat/index",
+            "style": {
+                "navigationStyle": "custom",
+                "navigationBarTitleText": "小贝AI助手"
+            }
         }
     ],
     "subPackages": [
