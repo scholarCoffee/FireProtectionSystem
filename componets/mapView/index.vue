@@ -2,8 +2,8 @@
   <view class="map-page">
     <!-- 地图控制按钮 -->
     <view class="map-controls">
-      <view class="control-btn" @click="toggleSatellite">
-        <text class="control-text">{{ enableSatellite ? '普通' : '卫星' }}</text>
+      <view class="control-btn" @click="toggleSidebar">
+        <text class="control-text">菜单</text>
       </view>
     </view>
     
@@ -28,6 +28,76 @@
         @regionchange="onRegionChange"
       ></map>
     </view>
+
+    <!-- 遮罩层 -->
+    <view class="sidebar-mask" v-if="showSidebar" @click="hideSidebar"></view>
+
+    <!-- 右侧抽屉 -->
+    <view class="sidebar" :class="{ active: showSidebar }">
+      <view class="sidebar-content">
+        <scroll-view class="sidebar-body" scroll-y>
+          <!-- 卫星地图切换 -->
+          <view class="menu-section">
+            <text class="menu-label">地图类型</text>
+            <view class="menu-item" @click="toggleSatellite">
+              <text class="menu-item-text">{{ enableSatellite ? '普通地图' : '卫星地图' }}</text>
+              <view class="switch-wrapper">
+                <switch :checked="enableSatellite" color="#1890ff" />
+              </view>
+            </view>
+          </view>
+
+          <!-- 位置类型选择 -->
+          <view class="menu-section">
+            <text class="menu-label">位置类型</text>
+            <view class="menu-options">
+              <view 
+                v-for="(type, index) in locationTypeOptions" 
+                :key="index"
+                class="menu-option"
+                :class="{ active: selectedType === type.value }"
+                @click="selectLocationType(type.value)"
+              >
+                <view class="checkbox">
+                  <view class="checkbox-inner" v-if="selectedType === type.value"></view>
+                </view>
+                <text class="option-label">{{ type.label }}</text>
+              </view>
+              <!-- 全部选项 -->
+              <view 
+                class="menu-option"
+                :class="{ active: selectedType === null }"
+                @click="selectLocationType(null)"
+              >
+                <view class="checkbox">
+                  <view class="checkbox-inner" v-if="selectedType === null"></view>
+                </view>
+                <text class="option-label">全部</text>
+              </view>
+            </view>
+          </view>
+
+          <!-- 关键字选择（仅队站辖区显示） -->
+          <view class="menu-section" v-if="selectedType === 3">
+            <text class="menu-label">关键字</text>
+            <view class="menu-options">
+              <view 
+                v-for="(keyword, index) in keywordOptions" 
+                :key="index"
+                class="menu-option"
+                :class="{ active: selectedKeyword === keyword.value }"
+                @click="selectKeyword(keyword.value)"
+              >
+                <view class="checkbox">
+                  <view class="checkbox-inner" v-if="selectedKeyword === keyword.value"></view>
+                </view>
+                <text class="option-label">{{ keyword.label }}</text>
+              </view>
+            </view>
+          </view>
+        </scroll-view>
+      </view>
+    </view>
   </view>
 </template>
 
@@ -50,15 +120,25 @@ export default {
       },
       mapScale: 16,
       mapMarkers: [],
-      allLocations: [],
+      allLocations: [], // 所有地址数据
+      filteredLocations: [], // 筛选后的地址数据
       currentLocation: null, // 目标地址详情
       userLocation: null, // 用户当前位置
-      enableSatellite: false // 是否启用卫星地图
+      enableSatellite: false, // 是否启用卫星地图
+      showSidebar: false, // 是否显示左侧抽屉
+      locationTypeOptions: [], // 位置类型选项
+      keywordOptions: [], // 关键字选项（队站辖区）
+      selectedType: null, // 选中的位置类型
+      selectedKeyword: null // 选中的关键字（队站辖区）
     };
   },
   mounted() {
+    // 初始化位置类型选项
+    this.locationTypeOptions = locationTabList.map(item => ({
+      label: item.name,
+      value: item.type
+    }));
     this.loadAllLocations();
-    this.getUserLocation();
   },
   methods: {
     // 获取用户当前位置
@@ -111,6 +191,8 @@ export default {
             console.log('目标地址:', this.currentLocation);
           }
           
+          // 初始化为全部数据
+          this.filteredLocations = [...this.allLocations];
           this.updateMapMarkers();
         } else {
           console.log('API返回错误:', res.data);
@@ -153,8 +235,8 @@ export default {
         });
       }
       
-      // 显示所有位置（包括目标地址和其他位置）
-      this.allLocations.forEach((location, index) => {
+      // 显示筛选后的位置（包括目标地址和其他位置）
+      this.filteredLocations.forEach((location, index) => {
         if (location.latitude && location.longitude) {
           // 判断是否是目标地址
           const isTarget = this.currentLocation && location.addressId == this.currentLocation.addressId;
@@ -208,9 +290,9 @@ export default {
       } else if (markerId === 'target') {
         // 点击目标地址，跳转到720全景
         this.goTo720View(this.currentLocation);
-      } else if (typeof markerId === 'number' && this.allLocations[markerId]) {
+      } else if (typeof markerId === 'number' && this.filteredLocations[markerId]) {
         // 点击其他位置，跳转到720全景
-        this.goTo720View(this.allLocations[markerId]);
+        this.goTo720View(this.filteredLocations[markerId]);
       }
     },
     
@@ -239,6 +321,21 @@ export default {
       return locationTabList.find(item => item.type === type)?.name || '未知类型';
     },
     
+    // 切换左侧抽屉
+    toggleSidebar() {
+      this.showSidebar = !this.showSidebar;
+    },
+
+    // 显示左侧抽屉
+    showSidebarMenu() {
+      this.showSidebar = true;
+    },
+
+    // 隐藏左侧抽屉
+    hideSidebar() {
+      this.showSidebar = false;
+    },
+
     // 切换卫星地图
     toggleSatellite() {
       this.enableSatellite = !this.enableSatellite;
@@ -248,6 +345,51 @@ export default {
         icon: 'none',
         duration: 1500
       });
+    },
+
+    // 选择位置类型（立即触发筛选）
+    selectLocationType(type) {
+      this.selectedType = type;
+      // 如果选择队站辖区，初始化关键字选项
+      if (type === 3) {
+        const district = locationTabList.find(item => item.type === 3);
+        this.keywordOptions = district && Array.isArray(district.keywordOptions) 
+          ? district.keywordOptions 
+          : [{ label: '全部', value: 'all' }, { label: '森林', value: 'forest' }];
+        // 默认选择第一个关键字
+        if (!this.selectedKeyword) {
+          this.selectedKeyword = this.keywordOptions[0]?.value || 'all';
+        }
+      } else {
+        // 非队站辖区，清空关键字
+        this.selectedKeyword = null;
+        this.keywordOptions = [];
+      }
+      // 立即触发筛选
+      this.applyFilter();
+    },
+
+    // 选择关键字（队站辖区，立即触发筛选）
+    selectKeyword(keyword) {
+      this.selectedKeyword = keyword;
+      // 立即触发筛选
+      this.applyFilter();
+    },
+
+    // 应用筛选
+    applyFilter() {
+      // 根据筛选条件过滤地址
+      this.filteredLocations = this.allLocations.filter(location => {
+        // 如果选择了位置类型，进行类型过滤
+        if (this.selectedType !== null) {
+          if (this.selectedType !== 3) {
+            return location.type === this.selectedType;
+          } else {
+            return location.keywordType === this.selectedKeyword;
+          }
+        }
+      });
+      this.updateMapMarkers();
     }
   }
 };
@@ -263,8 +405,8 @@ export default {
 
 .map-controls {
   position: absolute;
-  top: 20rpx;
-  right: 20rpx;
+  top: 40rpx;
+  left: 20rpx;
   z-index: 1000;
 }
 
@@ -293,5 +435,152 @@ export default {
 .map-view {
   width: 100%;
   height: 100%;
+}
+
+/* 遮罩层 */
+.sidebar-mask {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 1999;
+  animation: fadeIn 0.3s ease;
+}
+
+/* 右侧抽屉 */
+.sidebar {
+  position: fixed;
+  top: 0;
+  right: 0;
+  width: 70%;
+  max-width: 600rpx;
+  height: 100%;
+  background: #ffffff;
+  z-index: 2000;
+  transform: translateX(100%);
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: -4rpx 0 16rpx rgba(0, 0, 0, 0.1);
+}
+
+.sidebar.active {
+  transform: translateX(0);
+}
+
+.sidebar-content {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.sidebar-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 32rpx 32rpx;
+}
+
+.menu-section {
+  margin-bottom: 40rpx;
+}
+
+.menu-label {
+  display: block;
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 20rpx;
+  padding-left: 8rpx;
+}
+
+.menu-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 24rpx;
+  background: #f8f9fa;
+  border-radius: 12rpx;
+  margin-bottom: 12rpx;
+  transition: all 0.3s ease;
+}
+
+.menu-item:active {
+  background: #e9ecef;
+}
+
+.menu-item-text {
+  font-size: 28rpx;
+  color: #333;
+  font-weight: 500;
+}
+
+.switch-wrapper {
+  transform: scale(0.9);
+}
+
+.menu-options {
+  display: flex;
+  flex-direction: column;
+  gap: 12rpx;
+}
+
+.menu-option {
+  display: flex;
+  align-items: center;
+  padding: 20rpx;
+  border: 2rpx solid #e1e8ed;
+  border-radius: 12rpx;
+  background: #ffffff;
+  transition: all 0.3s ease;
+}
+
+.menu-option.active {
+  border-color: #1890ff;
+  background: linear-gradient(135deg, rgba(24, 144, 255, 0.08) 0%, rgba(24, 144, 255, 0.03) 100%);
+}
+
+.checkbox {
+  width: 32rpx;
+  height: 32rpx;
+  border: 2rpx solid #cbd5e0;
+  border-radius: 6rpx;
+  margin-right: 16rpx;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  transition: all 0.3s ease;
+  background: #ffffff;
+  flex-shrink: 0;
+}
+
+.menu-option.active .checkbox {
+  border-color: #1890ff;
+  background: #1890ff;
+}
+
+.checkbox-inner {
+  width: 20rpx;
+  height: 20rpx;
+  background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="white"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>');
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+}
+
+.option-label {
+  font-size: 28rpx;
+  color: #333;
+  font-weight: 500;
+  flex: 1;
+}
+
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 </style>

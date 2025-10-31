@@ -33,7 +33,7 @@
       </view>
       
       <!-- 队站辖区时，位置类型放在地址名称上面 -->
-      <view class="form-item" v-if="formData.type === 3">
+      <view class="form-item">
         <text class="form-label">位置类型 <text class="required">*</text></text>
         <picker 
           :value="formData.type" 
@@ -48,17 +48,33 @@
           </view>
         </picker>
       </view>
+
+      <!-- 队站辖区时，新增关键字下拉选择（默认：全部） -->
+      <view class="form-item" v-if="formData.type === 3">
+        <text class="form-label">关键字</text>
+        <picker 
+          :value="keywordPickerIndex"
+          :range="keywordOptions"
+          range-key="label"
+          @change="onKeywordChange"
+          class="form-picker"
+        >
+          <view class="picker-display">
+            <text class="picker-text">{{ getKeywordLabel }}</text>
+            <image :src="serverUrl + '/static/icons/common/down.png'" class="picker-arrow" />
+          </view>
+        </picker>
+      </view>
       
       <view class="form-item">
         <text class="form-label">地址名称 <text class="required">*</text></text>
         <view class="address-input-container">
           <input 
             v-model="formData.addressName" 
-            class="form-input readonly-input" 
-            placeholder="请先选择地址"
+            :class="['form-input', (!formData.latitude || !formData.longitude) ? 'readonly-input' : '']"
+            :placeholder="(!formData.latitude || !formData.longitude) ? '请先选择地址' : '可编辑地址名称'"
             maxlength="50"
-            readonly
-            disabled
+            :readonly="!formData.latitude || !formData.longitude"
           />
           <view class="address-selector" @tap="openMapSelector">
             <image :src="serverUrl + '/static/icons/location/showLocation.png'" class="map-icon" />
@@ -71,11 +87,10 @@
         <text class="form-label">详细地址 <text class="required">*</text></text>
         <input 
           v-model="formData.addressExt" 
-          class="form-input readonly-input" 
-          placeholder="请先选择地址"
+          :class="['form-input', (!formData.latitude || !formData.longitude) ? 'readonly-input' : '']"
+          :placeholder="(!formData.latitude || !formData.longitude) ? '请先选择地址' : '可编辑详细地址'"
           maxlength="200"
-          readonly
-          disabled
+          :readonly="!formData.latitude || !formData.longitude"
         />
       </view>
         
@@ -111,23 +126,6 @@
           <text class="url-display-text">{{ (urlBase || '') + (allSenceLinkSuffix || '') }}</text>
           <image :src="serverUrl + '/static/icons/common/edit-white.png'" class="edit-inline-icon" />
         </view>
-      </view>
-      
-      <!-- 非队站辖区时，位置类型显示在原来的位置 -->
-      <view class="form-item" v-if="formData.type !== 3">
-        <text class="form-label">位置类型 <text class="required">*</text></text>
-        <picker 
-          :value="formData.type" 
-          :range="locationTypeOptions" 
-          range-key="label"
-          @change="onLocationTypeChange"
-          class="form-picker"
-        >
-          <view class="picker-display">
-            <text class="picker-text">{{ getLocationTypeText }}</text>
-            <image :src="serverUrl + '/static/icons/common/down.png'" class="picker-arrow" />
-          </view>
-        </picker>
       </view>
       
       <!-- 描述字段（队站辖区不显示） -->
@@ -519,6 +517,7 @@
           addressId: '',
           allSenceLink: '',
           type: 1,
+          keywordType: '',
           description: '',
           ownerInfo: {
             total: 0,
@@ -536,6 +535,9 @@
         allSenceLinkSuffix: '',
         urlBase: 'https://71ez3e7oi8u.720yun.com/',
         locationTypeOptions: [], // 位置类型选项
+        // 队站辖区关键字选项
+        keywordOptions: [],
+        keywordPickerIndex: 0,
         // 消防单位相关
         fireUnitOptions: [],
         selectedFireUnit: null,
@@ -575,13 +577,21 @@
         value: item.type,
         label: item.name
       }));
+      // 初始化“队站辖区”的关键字选项
+      const district = locationTabList.find(item => item.type === 3)
+      this.keywordOptions = (district && Array.isArray(district.keywordOptions) && district.keywordOptions.length > 0)
+        ? district.keywordOptions
+        : [{ label: '全部', value: 'all' }, { label: '森林', value: 'forest' }]
+      // 默认关键字（保存 value）
+      if (!this.formData.keywordType) {
+        this.formData.keywordType = this.keywordOptions[0]?.value || 'all'
+      }
       this.setFormData(this.initialData)
       // 重点单位下拉：预加载消防单位
       this.fetchFireUnits()
       // 防抖：地址编号唯一性校验
       this.debouncedCheckAddressId = debounce(this.checkAddressIdRaw, 600)
     },
-    watch: {},
     computed: {
       contactTypeLimits() {
         const unitContacts = this.formData?.phoneList?.filter(contact => contact.type === 1);
@@ -619,6 +629,12 @@
         const list = this._ensureDeploymentArray(this.formData.fireUnitDeploymentMap)
         const found = list.find(it => String(it.key) === String(this.selectedFireUnit))
         return found ? found.data || '' : ''
+      },
+      // 关键字当前显示的 label（根据 value 反查）
+      getKeywordLabel() {
+        if (!Array.isArray(this.keywordOptions) || this.keywordOptions.length === 0) return ''
+        const found = this.keywordOptions.find(o => String(o.value) === String(this.formData.keywordType))
+        return found ? found.label : (this.keywordOptions[0]?.label || '')
       }
     },
     methods: {      
@@ -636,7 +652,8 @@
           ...this.formData,
           // 确保经纬度信息被包含在提交数据中
           latitude: this.formData.latitude || null,
-          longitude: this.formData.longitude || null
+          longitude: this.formData.longitude || null,
+          keywordType: this.formData.keywordType || 'all'
         } 
       },
       setFormData(data = {}) {
@@ -648,6 +665,18 @@
             this.allSenceLinkSuffix = link.slice(this.urlBase.length)
           } else {
             this.allSenceLinkSuffix = link
+          }
+          // 队站辖区：同步关键字默认值与索引（按 value 匹配）
+          if (this.formData.type === 3) {
+            const incomingKeyword = data.keywordType || this.formData.keywordType
+            const idx = this.keywordOptions.findIndex(o => String(o.value) === String(incomingKeyword))
+            if (idx >= 0) {
+              this.formData.keywordType = this.keywordOptions[idx].value
+              this.keywordPickerIndex = idx
+            } else {
+              this.formData.keywordType = this.keywordOptions[0]?.value || 'all'
+              this.keywordPickerIndex = 0
+            }
           }
           // 从 location/detail 返回的 ownerInfo 节点回填住户总数
           const ownerInfo = data && data.ownerInfo
@@ -694,10 +723,7 @@
         }
         return ok
       },
-      // 输入事件处理
-      onAddressNameInput(e) {},
-      
-      onAddressExtInput(e) {},
+      // 输入事件处理（已移除未使用的空方法）
       
       async onAddressIdInput(e) {
         this.debouncedCheckAddressId(e?.detail?.value || '')
@@ -751,6 +777,13 @@
         if (this.errors.allSenceLink) this.errors.allSenceLink = ''
         this.closeLinkModal()
       },
+      // 关键字选择处理（队站辖区）
+      onKeywordChange(e) {
+        const idx = Number(e?.detail?.value || 0)
+        this.keywordPickerIndex = idx
+        const opt = this.keywordOptions[idx] || this.keywordOptions[0]
+        this.formData.keywordType = opt ? opt.value : ''
+      },
       // 住户数量从 location/detail 接口的 ownerInfo 节点回填
       // 跳转户主编辑页
       goOwnerInfoEdit() {
@@ -777,6 +810,14 @@
           // 如果切换到重点单位（type=2），反填作战实景部署
           if (newType === 2 && originalList.length > 0) {
             this.formData.fireUnitDeploymentMap = [...originalList]
+          }
+          // 切换到队站辖区（type=3）时，确保关键字有默认值与索引（按 value 匹配）
+          if (newType === 3) {
+            if (!this.formData.keywordType) {
+              this.formData.keywordType = this.keywordOptions[0]?.value || 'all'
+            }
+            const idx = this.keywordOptions.findIndex(o => String(o.value) === String(this.formData.keywordType))
+            this.keywordPickerIndex = idx >= 0 ? idx : 0
           }
         }
         this.$set(this.formData, 'type', newType)
@@ -1919,7 +1960,6 @@
 }
 
 .owner-inline { display: flex; align-items: center; gap: 16rpx; margin-left: auto; }
-.owner-count { font-size: 26rpx; color: #1f2d3d; font-weight: 600; }
 .owner-badge {
   display: inline-flex;
   align-items: baseline;
@@ -1941,7 +1981,7 @@
   color: #1890ff;
   opacity: 0.8;
 }
-.owner-edit-btn { height: 56rpx; line-height: 56rpx; padding: 0 20rpx; border-radius: 12rpx; background: #1890ff; color: #fff; font-size: 24rpx; }
+
 
 /* 链接展示区（点击唤起弹窗） */
 .url-display {

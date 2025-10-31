@@ -3,7 +3,7 @@
     <view class="page-content">
       <view v-if="!showWebview">
         <!-- 搜索栏 -->
-        <view class="search-bar">
+        <view class="search-bar" v-if="activeTab !== 2">
           <view class="search-input-container">
             <image :src="serverUrl + '/static/icons/location/search.png'" class="search-icon" />
             <input 
@@ -29,7 +29,7 @@
         </view>
         <!-- 队站辖区显示地图 -->
         <view v-if="activeTab === 2" class="map-container">
-          <map-view :address-id="mapAddressId" />
+          <map-view ref="mapViewRef" :address-id="mapAddressId" />
         </view>
         
         <!-- 其他tab显示列表 -->
@@ -164,6 +164,10 @@ export default {
     this.showBack = pages.length > 1;
     // #endif
     uni.stopPullDownRefresh();
+    // 如果是地图 tab，更新用户位置
+    if (this.activeTab === 2 && this.$refs.mapViewRef && typeof this.$refs.mapViewRef.getUserLocation === 'function') {
+      this.$refs.mapViewRef.getUserLocation();
+    }
   },
   onLoad(options) {
     // 检查是否有showMap参数，如果有则直接显示地图

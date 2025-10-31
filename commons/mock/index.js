@@ -1,7 +1,16 @@
 export const locationTabList = [
     { name: '高层小区', type: 1, icon: '/static/icons/location/community.png', activeIcon: '/static/icons/location/community-active.png' },
     { name: '重点单位', type: 2, icon: '/static/icons/location/factory.png', activeIcon: '/static/icons/location/factory-active.png' },
-    { name: '队站辖区', type: 3, icon: '/static/icons/location/shop.png', activeIcon: '/static/icons/location/shop-active.png' }
+    { 
+        name: '队站辖区', 
+        type: 3, 
+        icon: '/static/icons/location/shop.png', 
+        activeIcon: '/static/icons/location/shop-active.png', 
+        keywordOptions: [
+            { label: '全部', value: 'all' },
+            { label: '森林', value: 'forest' }
+        ]
+    }
 ]
 
 // export const chatSubmitList = [{
