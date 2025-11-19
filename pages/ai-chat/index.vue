@@ -138,29 +138,39 @@ export default {
     },
 
     async simulateAIResponse(userInput) {
-      await new Promise(resolve => setTimeout(resolve, 1000 + Math.random() * 2000));
-      const responses = this.getAIResponses(userInput);
-      this.addRobotMessage(responses);
-    },
+      // 调用 AI 聊天接口
+      const res = await new Promise((resolve, reject) => {
+        uni.request({
+          url: this.serverUrl + '/ai/chat',
+          method: 'POST',
+          data: {
+            message: userInput,
+            userId: this.userInfo?.id || '',
+            // 可选：传递对话历史上下文
+            history: this.messages.slice(-10).map(msg => ({
+              role: msg.type === 'user' ? 'user' : 'assistant',
+              content: msg.content
+            }))
+          },
+          header: {
+            'Content-Type': 'application/json'
+          },
+          success: resolve,
+          fail: reject
+        });
+      });
 
-    getAIResponses(input) {
-      const lowerInput = input.toLowerCase();
-      
-      if (lowerInput.includes('消防') || lowerInput.includes('火灾')) {
-        return '消防是保护人民生命财产安全的重要工作。建议您了解基本的消防知识，如火灾预防、逃生技巧、灭火器使用方法等。如有具体问题，我可以为您详细解答。';
-      } else if (lowerInput.includes('安全') || lowerInput.includes('隐患')) {
-        return '消防安全隐患排查是预防火灾的重要措施。建议定期检查电气线路、燃气管道、消防设施等，确保疏散通道畅通，及时消除安全隐患。';
-      } else if (lowerInput.includes('逃生') || lowerInput.includes('疏散')) {
-        return '火灾逃生时请保持冷静，用湿毛巾捂住口鼻，弯腰低姿前进，沿疏散指示标志方向逃生。切勿乘坐电梯，如遇浓烟应退回房间，用湿布封堵门缝，等待救援。';
-      } else if (lowerInput.includes('灭火器') || lowerInput.includes('灭火')) {
-        return '使用灭火器时，请记住"提、拔、握、压"四字口诀：提起灭火器，拔掉保险销，握住喷管，压下压把。对准火焰根部喷射，注意保持安全距离。';
-      } else if (lowerInput.includes('你好') || lowerInput.includes('hi')) {
-        return '您好！我是消防AI助手小贝，很高兴为您服务。我专注于消防安全知识普及和应急指导，可以为您解答火灾预防、逃生技巧、消防设备使用等各类消防安全问题。请问有什么可以帮助您的吗？';
+      // 处理接口响应
+      if (res?.data?.code === 200) {
+        // 假设后端返回格式：{ code: 200, data: { reply: 'AI回复内容' } }
+        const reply = res.data.data?.reply || res.data.data?.content || res.data.data || '抱歉，我现在无法回答您的问题。';
+        this.addRobotMessage(reply);
       } else {
-        return '感谢您的提问。我是消防AI助手小贝，专注于消防安全知识普及和应急指导。如果您有关于火灾预防、逃生技巧、消防设备使用等方面的问题，我很乐意为您详细解答。';
+        // 接口返回错误
+        const errorMsg = res?.data?.msg || res?.data?.message || '服务异常，请稍后再试';
+        this.addRobotMessage(errorMsg);
       }
     },
-
     addRobotMessage(content) {
       const robotMessage = {
         type: 'robot',

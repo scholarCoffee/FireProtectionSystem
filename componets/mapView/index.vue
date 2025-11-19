@@ -1,9 +1,17 @@
 <template>
   <view class="map-page">
-    <!-- 地图控制按钮 -->
-    <view class="map-controls">
+    <!-- 地图控制按钮（非选择模式显示） -->
+    <view class="map-controls" v-if="!selectMode">
       <view class="control-btn" @click="toggleSidebar">
         <text class="control-text">菜单</text>
+      </view>
+    </view>
+    
+    <!-- 搜索按钮（选择模式显示） -->
+    <view class="search-btn-container" v-if="selectMode">
+      <view class="search-btn" @click="openLocationSearch">
+        <image :src="serverUrl + '/static/icons/location/search.png'" class="search-btn-icon" />
+        <text class="search-btn-text">搜索地点</text>
       </view>
     </view>
     
@@ -21,35 +29,37 @@
         :enable-scroll="true"
         :enable-rotate="false"
         :enable-overlooking="false"
-        :enable-satellite="enableSatellite"
+         :enable-satellite="internalEnableSatellite"
         :enable-traffic="false"
         class="map-view"
         @markertap="onMarkerTap"
         @regionchange="onRegionChange"
+        @tap="onMapTap"
       ></map>
+      
     </view>
 
     <!-- 遮罩层 -->
-    <view class="sidebar-mask" v-if="showSidebar" @click="hideSidebar"></view>
+    <view class="sidebar-mask" v-if="showSidebar && !selectMode" @click="hideSidebar"></view>
 
-    <!-- 右侧抽屉 -->
-    <view class="sidebar" :class="{ active: showSidebar }">
+    <!-- 右侧抽屉（非选择模式显示） -->
+    <view class="sidebar" :class="{ active: showSidebar }" v-if="!selectMode">
       <view class="sidebar-content">
         <scroll-view class="sidebar-body" scroll-y>
           <!-- 卫星地图切换 -->
           <view class="menu-section">
             <text class="menu-label">地图类型</text>
             <view class="menu-item" @click="toggleSatellite">
-              <text class="menu-item-text">{{ enableSatellite ? '普通地图' : '卫星地图' }}</text>
-              <view class="switch-wrapper">
-                <switch :checked="enableSatellite" color="#1890ff" />
+               <text class="menu-item-text">{{ internalEnableSatellite ? '普通地图' : '卫星地图' }}</text>
+               <view class="switch-wrapper">
+                 <switch :checked="internalEnableSatellite" color="#1890ff" />
               </view>
             </view>
           </view>
 
-          <!-- 位置类型选择 -->
+          <!-- 单位类型选择 -->
           <view class="menu-section">
-            <text class="menu-label">位置类型</text>
+            <text class="menu-label">单位类型</text>
             <view class="menu-options">
               <view 
                 v-for="(type, index) in locationTypeOptions" 
@@ -109,6 +119,14 @@ export default {
     addressId: {
       type: [String, Number],
       default: null
+    },
+    enableSatellite: {
+      type: Boolean,
+      default: false
+    },
+    selectMode: {
+      type: Boolean,
+      default: false
     }
   },
   data() {
@@ -124,21 +142,37 @@ export default {
       filteredLocations: [], // 筛选后的地址数据
       currentLocation: null, // 目标地址详情
       userLocation: null, // 用户当前位置
-      enableSatellite: false, // 是否启用卫星地图
       showSidebar: false, // 是否显示左侧抽屉
-      locationTypeOptions: [], // 位置类型选项
+      selectedMapCenter: null, // 选择模式下选中的地图中心点
+      locationTypeOptions: [], // 单位类型选项
       keywordOptions: [], // 关键字选项（队站辖区）
-      selectedType: null, // 选中的位置类型
-      selectedKeyword: null // 选中的关键字（队站辖区）
+      selectedType: null, // 选中的单位类型
+      selectedKeyword: null, // 选中的关键字（队站辖区）
+      internalEnableSatellite: false // 内部卫星地图状态
     };
   },
+  watch: {
+    // 监听 prop 变化，同步到内部状态
+    enableSatellite: {
+      immediate: true,
+      handler(newVal) {
+        this.internalEnableSatellite = newVal;
+      }
+    }
+  },
   mounted() {
-    // 初始化位置类型选项
+    // 初始化单位类型选项
     this.locationTypeOptions = locationTabList.map(item => ({
       label: item.name,
       value: item.type
     }));
-    this.loadAllLocations();
+    // 非选择模式才加载地址列表
+    if (!this.selectMode) {
+      this.loadAllLocations();
+    } else {
+      // 选择模式下只获取用户位置
+      this.getUserLocation();
+    }
   },
   methods: {
     // 获取用户当前位置
@@ -206,13 +240,28 @@ export default {
     
     updateMapMarkers() {
       this.mapMarkers = [];
+      
+      // 选择模式下不显示任何标记，只显示地图
+      if (this.selectMode) {
+        // 设置地图中心点为用户位置（如果有）
+        if (this.userLocation && this.userLocation.latitude && this.userLocation.longitude) {
+          this.mapCenter = {
+            latitude: this.userLocation.latitude,
+            longitude: this.userLocation.longitude
+          };
+        }
+        // 不添加任何标记，包括用户位置标记
+        return;
+      }
+      
+      // 非选择模式：显示所有地址标记
       console.log('更新地图标记，位置数量:', this.allLocations.length);
       
       // 添加用户当前位置标记（蓝色）
       if (this.userLocation && this.userLocation.latitude && this.userLocation.longitude) {
         console.log('添加用户位置标记:', this.userLocation.addressName);
         this.mapMarkers.push({
-          id: 'user', // 用户位置使用特殊id
+          id: -1, // 用户位置使用特殊id（负数）
           latitude: this.userLocation.latitude,
           longitude: this.userLocation.longitude,
           title: this.userLocation.addressName,
@@ -242,7 +291,7 @@ export default {
           const isTarget = this.currentLocation && location.addressId == this.currentLocation.addressId;
           
           this.mapMarkers.push({
-            id: isTarget ? 'target' : index, // 目标地址使用特殊id，其他使用索引
+            id: isTarget ? -2 : index, // 目标地址使用特殊id（-2），其他使用索引
             latitude: location.latitude,
             longitude: location.longitude,
             title: location.addressName,
@@ -281,24 +330,182 @@ export default {
       console.log('最终标记数量:', this.mapMarkers.length);
     },
     
-    onMarkerTap(e) {
-      const markerId = e.detail.markerId;
-      
-      if (markerId === 'user') {
-        // 用户位置不跳转，只显示提示
-        uni.showToast({ title: '我的位置', icon: 'none' });
-      } else if (markerId === 'target') {
-        // 点击目标地址，跳转到720全景
-        this.goTo720View(this.currentLocation);
-      } else if (typeof markerId === 'number' && this.filteredLocations[markerId]) {
-        // 点击其他位置，跳转到720全景
-        this.goTo720View(this.filteredLocations[markerId]);
-      }
-    },
+     onMarkerTap(e) {
+       const markerId = e.detail.markerId;
+       
+       if (markerId === -1) {
+         // 用户位置不跳转，只显示提示
+         uni.showToast({ title: '我的位置', icon: 'none' });
+       } else if (markerId === -2) {
+         // 点击目标地址，跳转到720全景
+         this.goTo720View(this.currentLocation);
+       } else if (typeof markerId === 'number' && markerId >= 0 && this.filteredLocations[markerId]) {
+         // 点击其他位置，跳转到720全景
+         this.goTo720View(this.filteredLocations[markerId]);
+       }
+     },
     
     onRegionChange(e) {
       console.log('地图区域变化:', e);
+      // 在选择模式下，记录地图中心点变化（用户拖动地图）
+      if (this.selectMode && e.type === 'end') {
+        this.selectedMapCenter = {
+          latitude: e.detail.centerLocation.latitude,
+          longitude: e.detail.centerLocation.longitude
+        };
+      }
     },
+    
+     // 地图点击事件（选择模式）- 直接选择并返回
+     onMapTap(e) {
+       if (!this.selectMode) return;
+       // 获取点击位置的经纬度
+       if (e.detail && e.detail.latitude && e.detail.longitude) {
+         this.selectedMapCenter = {
+           latitude: e.detail.latitude,
+           longitude: e.detail.longitude
+         };
+         // 更新地图中心点
+         this.mapCenter = {
+           latitude: e.detail.latitude,
+           longitude: e.detail.longitude
+         };
+         // 直接选择并返回
+         this.confirmLocationSelection();
+       }
+     },
+     
+     // 确认选择位置（选择模式）
+     async confirmLocationSelection() {
+       if (!this.selectMode) return;
+       
+       // 使用地图中心点作为选择的位置
+       const selectedLocation = this.selectedMapCenter || this.mapCenter;
+       
+       if (!selectedLocation || !selectedLocation.latitude || !selectedLocation.longitude) {
+         uni.showToast({
+           title: '请先在地图上选择位置',
+           icon: 'none'
+         });
+         return;
+       }
+       
+       // 显示加载提示
+       uni.showLoading({
+         title: '获取地址信息...',
+         mask: true
+       });
+       
+       try {
+         // 调用逆地理编码API获取地址名称
+         const addressInfo = await this.reverseGeocode(selectedLocation.latitude, selectedLocation.longitude);
+         
+         // 触发位置选择事件
+         this.$emit('location-selected', {
+           latitude: selectedLocation.latitude,
+           longitude: selectedLocation.longitude,
+           name: addressInfo.name || this.searchKeyword || '已选择位置',
+           address: addressInfo.address || addressInfo.fullAddress || `经度: ${selectedLocation.longitude}, 纬度: ${selectedLocation.latitude}`
+         });
+       } catch (error) {
+         console.error('获取地址信息失败:', error);
+         // 如果逆地理编码失败，仍然返回位置信息
+         this.$emit('location-selected', {
+           latitude: selectedLocation.latitude,
+           longitude: selectedLocation.longitude,
+           name: this.searchKeyword || '已选择位置',
+           address: `经度: ${selectedLocation.longitude}, 纬度: ${selectedLocation.latitude}`
+         });
+       } finally {
+         uni.hideLoading();
+       }
+     },
+     
+     // 逆地理编码：通过经纬度获取地址信息
+     async reverseGeocode(latitude, longitude) {
+       try {
+         // 调用后端API进行逆地理编码
+         const res = await new Promise((resolve, reject) => {
+           uni.request({
+             url: this.serverUrl + '/location/reverseGeocode',
+             method: 'GET',
+             data: {
+               latitude: latitude,
+               longitude: longitude
+             },
+             success: resolve,
+             fail: reject
+           });
+         });
+         
+         if (res.data && res.data.code === 200) {
+           const data = res.data.data || {};
+           return {
+             name: data.name || data.addressName || data.formatted_address || '',
+             address: data.province + data.city + data.fullAddress
+           };
+         } else {
+           throw new Error(res.data?.msg || '获取地址信息失败');
+         }
+       } catch (error) {
+         console.error('逆地理编码失败:', error);
+         // 如果后端API失败，尝试使用微信小程序的逆地理编码
+         // #ifdef MP-WEIXIN
+         try {
+           // 微信小程序可以使用腾讯地图API
+           // 这里需要配置腾讯地图的key，或者使用后端API
+           throw error; // 暂时抛出错误，使用默认值
+         } catch (e) {
+           throw e;
+         }
+         // #endif
+         throw error;
+       }
+     },
+     
+     // 打开位置搜索（选择模式）
+     openLocationSearch() {
+       // #ifdef MP-WEIXIN
+       // 微信小程序使用 chooseLocation 进行搜索和选择
+       uni.chooseLocation({
+         success: (res) => {
+           // 移动地图到搜索结果位置
+           this.mapCenter = {
+             latitude: res.latitude,
+             longitude: res.longitude
+           };
+           this.selectedMapCenter = {
+             latitude: res.latitude,
+             longitude: res.longitude
+           };
+           // 直接选择并返回
+           this.$emit('location-selected', {
+             latitude: res.latitude,
+             longitude: res.longitude,
+             name: res.name,
+             address: res.address
+           });
+         },
+         fail: (err) => {
+           console.error('搜索位置失败:', err);
+           if (err.errMsg && !err.errMsg.includes('cancel')) {
+             uni.showToast({
+               title: '搜索失败，请重试',
+               icon: 'none'
+             });
+           }
+         }
+       });
+       // #endif
+       
+       // #ifndef MP-WEIXIN
+       // 其他平台可以调用地图API进行搜索
+       uni.showToast({
+         title: '该平台暂不支持位置搜索',
+         icon: 'none'
+       });
+       // #endif
+     },
     
     
     // 跳转到720全景
@@ -336,18 +543,18 @@ export default {
       this.showSidebar = false;
     },
 
-    // 切换卫星地图
-    toggleSatellite() {
-      this.enableSatellite = !this.enableSatellite;
-      
-      uni.showToast({ 
-        title: this.enableSatellite ? '已切换到卫星地图' : '已切换到普通地图', 
-        icon: 'none',
-        duration: 1500
-      });
-    },
+     // 切换卫星地图
+     toggleSatellite() {
+       this.internalEnableSatellite = !this.internalEnableSatellite;
+       
+       uni.showToast({ 
+         title: this.internalEnableSatellite ? '已切换到卫星地图' : '已切换到普通地图', 
+         icon: 'none',
+         duration: 1500
+       });
+     },
 
-    // 选择位置类型（立即触发筛选）
+    // 选择单位类型（立即触发筛选）
     selectLocationType(type) {
       this.selectedType = type;
       // 如果选择队站辖区，初始化关键字选项
@@ -380,7 +587,7 @@ export default {
     applyFilter() {
       // 根据筛选条件过滤地址
       this.filteredLocations = this.allLocations.filter(location => {
-        // 如果选择了位置类型，进行类型过滤
+        // 如果选择了单位类型，进行类型过滤
         if (this.selectedType !== null) {
           if (this.selectedType !== 3) {
             return location.type === this.selectedType;
@@ -582,5 +789,73 @@ export default {
   to {
     opacity: 1;
   }
+}
+
+/* 选择模式确认按钮 */
+.select-confirm-btn {
+  position: absolute;
+  bottom: 40rpx;
+  left: 50%;
+  transform: translateX(-50%);
+  background: linear-gradient(135deg, #1890ff 0%, #096dd9 100%);
+  color: #ffffff;
+  padding: 24rpx 60rpx;
+  border-radius: 50rpx;
+  box-shadow: 0 8rpx 24rpx rgba(24, 144, 255, 0.3);
+  z-index: 1001;
+  transition: all 0.3s ease;
+}
+
+.select-confirm-btn:active {
+  transform: translateX(-50%) scale(0.95);
+  box-shadow: 0 4rpx 12rpx rgba(24, 144, 255, 0.4);
+}
+
+.confirm-btn-text {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #ffffff;
+}
+
+/* 搜索按钮样式 */
+.search-btn-container {
+  position: absolute;
+  top: 40rpx;
+  left: 20rpx;
+  right: 20rpx;
+  z-index: 1000;
+  display: flex;
+  justify-content: center;
+}
+
+.search-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #ffffff;
+  border-radius: 40rpx;
+  padding: 12rpx 24rpx;
+  box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+  border: 1rpx solid #e0e0e0;
+}
+
+.search-btn:active {
+  transform: scale(0.95);
+  box-shadow: 0 1rpx 4rpx rgba(0, 0, 0, 0.15);
+  background: #f5f5f5;
+}
+
+.search-btn-icon {
+  width: 28rpx;
+  height: 28rpx;
+  margin-right: 8rpx;
+  flex-shrink: 0;
+}
+
+.search-btn-text {
+  font-size: 24rpx;
+  font-weight: 400;
+  color: #666666;
 }
 </style>

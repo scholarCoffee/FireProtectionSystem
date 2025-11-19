@@ -12,7 +12,7 @@ export const directionOptions = [
   { value: 8, label: '西北' }
 ]
 
-// 位置类型选项
+// 单位类型选项
 export const locationTypeOptions = locationTabList
 
 // 任务反馈状态

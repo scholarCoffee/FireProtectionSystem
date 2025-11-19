@@ -183,6 +183,13 @@ export default {
     // 如果activeTab不是2（地图），则调用changeTab加载数据
     if (this.activeTab !== 2) {
       this.changeTab(0); 
+    } else {
+      // 如果初始就是队站辖区tab，获取用户位置
+      this.$nextTick(() => {
+        if (this.$refs.mapViewRef && typeof this.$refs.mapViewRef.getUserLocation === 'function') {
+          this.$refs.mapViewRef.getUserLocation();
+        }
+      });
     }
   },
   methods: {
@@ -249,7 +256,12 @@ export default {
       this.searchKeyword = '';
       
       if (index === 2) {
-        // 队站辖区显示地图，不需要加载列表数据
+        // 队站辖区显示地图，获取用户当前位置
+        this.$nextTick(() => {
+          if (this.$refs.mapViewRef && typeof this.$refs.mapViewRef.getUserLocation === 'function') {
+            this.$refs.mapViewRef.getUserLocation();
+          }
+        });
         return;
       } else {
         // 其他tab显示列表

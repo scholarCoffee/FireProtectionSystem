@@ -32,9 +32,9 @@
         <text class="section-title">位置信息</text>
       </view>
       
-      <!-- 队站辖区时，位置类型放在地址名称上面 -->
+      <!-- 队站辖区时，单位类型放在地址名称上面 -->
       <view class="form-item">
-        <text class="form-label">位置类型 <text class="required">*</text></text>
+        <text class="form-label">单位类型 <text class="required">*</text></text>
         <picker 
           :value="formData.type" 
           :range="locationTypeOptions" 
@@ -123,7 +123,7 @@
       <view class="form-item">
         <text class="form-label">全云景地址 <text class="required">*</text></text>
         <view class="url-display" @tap="openLinkModal">
-          <text class="url-display-text">{{ (urlBase || '') + (allSenceLinkSuffix || '') }}</text>
+          <text class="url-display-text">{{ formData.allSenceLink || '请输入全云景地址' }}</text>
           <image :src="serverUrl + '/static/icons/common/edit-white.png'" class="edit-inline-icon" />
         </view>
       </view>
@@ -344,7 +344,7 @@
       </view>
     </view>
 
-    <!-- 全云景地址弹窗（仅填写后缀，前缀固定为 urlBase） -->
+    <!-- 全云景地址弹窗 -->
     <view class="contact-modal" v-if="showLinkModalFlag" @tap="closeLinkModal">
       <view class="modal-content link-modal" @tap.stop>
         <view class="modal-header">
@@ -355,26 +355,23 @@
         </view>
         <view class="modal-body">
           <view class="form-group">
-            <text class="form-label">地址后缀 <text class="required">*</text></text>
-            <view class="url-input-container vertical">
-              <text class="url-prefix">{{ urlBase }}</text>
-              <view class="url-input multiline">
-                <textarea
-                  v-model="tempAllSenceLinkSuffix"
-                  class="form-modal-textarea"
-                  placeholder="请输入地址后缀"
-                  maxlength="500"
-                  auto-height
-                  show-confirm-bar="false"
-                />
-              </view>
+            <text class="form-label">全云景地址 <text class="required">*</text></text>
+            <view class="url-input-container">
+              <textarea
+                v-model="tempAllSenceLink"
+                class="form-modal-textarea"
+                placeholder="请输入完整的全云景地址，例如: https://71ez3e7oi8u.720yun.com/my/scene/path"
+                maxlength="500"
+                auto-height
+                show-confirm-bar="false"
+              />
             </view>
-            <text class="tip-text">只需填写后缀，例如: my/scene/path</text>
+            <text class="tip-text">请输入完整的全云景地址URL</text>
           </view>
         </view>
         <view class="modal-footer">
           <button class="footer-btn cancel-btn" @tap="closeLinkModal">取消</button>
-          <button class="footer-btn confirm-btn" @tap="confirmLinkSuffix">确定</button>
+          <button class="footer-btn confirm-btn" @tap="confirmLink">确定</button>
         </view>
       </view>
     </view>
@@ -531,10 +528,8 @@
           defaultImg: ''
         },
         errors: {},
-        // 仅用于输入后缀，最终组合为 urlBase + allSenceLinkSuffix
-        allSenceLinkSuffix: '',
-        urlBase: 'https://71ez3e7oi8u.720yun.com/',
-        locationTypeOptions: [], // 位置类型选项
+        tempAllSenceLink: '', // 临时存储全云景地址（用于弹窗编辑）
+        locationTypeOptions: [], // 单位类型选项
         // 队站辖区关键字选项
         keywordOptions: [],
         keywordPickerIndex: 0,
@@ -572,7 +567,7 @@
       }
     },
     created() {
-      // 初始化位置类型选项
+      // 初始化单位类型选项
       this.locationTypeOptions = locationTabList.map(item => ({
         value: item.type,
         label: item.name
@@ -659,13 +654,6 @@
       setFormData(data = {}) {
         if (Object.keys(data).length > 0) {
           this.formData = { ...this.formData, ...data }
-          // 初始化后缀：若已有完整 https:// 前缀，去掉前缀后放入后缀输入框
-          const link = String(this.formData.allSenceLink || '')
-          if (link.startsWith(this.urlBase)) {
-            this.allSenceLinkSuffix = link.slice(this.urlBase.length)
-          } else {
-            this.allSenceLinkSuffix = link
-          }
           // 队站辖区：同步关键字默认值与索引（按 value 匹配）
           if (this.formData.type === 3) {
             const incomingKeyword = data.keywordType || this.formData.keywordType
@@ -687,7 +675,6 @@
           }
         } else {
           this.formData = this.$options.data().formData
-          this.allSenceLinkSuffix = ''
           this.residentCount = 0
         }
       },
@@ -707,7 +694,7 @@
         if (!must(fd.addressExt)) this.errors.addressExt = '请先选择地址'
         if (!must(fd.addressId)) this.errors.addressId = '请输入地址编号'
         if (!must(fd.allSenceLink)) this.errors.allSenceLink = '请输入全云景地址'
-        if (!fd.type) this.errors.type = '请输入位置类型'
+        if (!fd.type) this.errors.type = '请输入单位类型'
         
         // 队站辖区不需要验证以下字段
         if (fd.type !== 3) {
@@ -753,27 +740,17 @@
         }
       },
       
-      onAllSenceLinkInput(e) {
-        const suffix = e?.detail?.value || ''
-        this.allSenceLinkSuffix = suffix
-        // 组合到表单字段，始终以指定 urlBase 开头
-        const normalized = suffix.replace(/^https?:\/\//i, '')
-        this.formData.allSenceLink = this.urlBase + normalized
-        if (this.errors.allSenceLink) this.errors.allSenceLink = ''
-      },
       // 打开/关闭全云景地址弹窗
       openLinkModal() {
-        this.tempAllSenceLinkSuffix = this.allSenceLinkSuffix || ''
+        this.tempAllSenceLink = this.formData.allSenceLink || ''
         this.showLinkModalFlag = true
       },
       closeLinkModal() {
         this.showLinkModalFlag = false
       },
-      confirmLinkSuffix() {
-        const suffix = String(this.tempAllSenceLinkSuffix || '').trim()
-        this.allSenceLinkSuffix = suffix
-        const normalized = suffix.replace(/^https?:\/\//i, '')
-        this.formData.allSenceLink = this.urlBase + normalized
+      confirmLink() {
+        const link = String(this.tempAllSenceLink || '').trim()
+        this.formData.allSenceLink = link
         if (this.errors.allSenceLink) this.errors.allSenceLink = ''
         this.closeLinkModal()
       },
@@ -1324,25 +1301,32 @@
         this.$emit('edit-safety-score');
       },
       
-      // 打开地图选择器
+      // 打开地图选择器（跳转到卫星地图页面）
       openMapSelector() {
-        // #ifdef MP-WEIXIN
-        // 微信小程序使用 chooseLocation
-        uni.chooseLocation({
+        // 跳转到地图页面，默认显示卫星地图
+        uni.navigateTo({
+          url: `/subPackages/locationInfo/mapView/index?enableSatellite=true&mode=select`,
           success: (res) => {
-            console.log('选择位置成功:', res);
-            this.handleLocationResult(res);
+            // 页面打开成功，监听页面返回事件
+            res.eventChannel.on('locationSelected', (data) => {
+              this.handleLocationResult(data);
+            });
           },
           fail: (err) => {
-            console.error('选择位置失败:', err);
+            console.error('打开地图页面失败:', err);
+            // 如果跳转失败，回退到原来的选择方式
+            // #ifdef MP-WEIXIN
+            uni.chooseLocation({
+              success: (res) => {
+                this.handleLocationResult(res);
+              },
+              fail: (err) => {
+                console.error('选择位置失败:', err);
+              }
+            });
+            // #endif
           }
         });
-        // #endif
-        
-        // #ifdef H5
-        // H5端使用浏览器定位
-        this.getCurrentLocation();
-        // #endif
       },
       
       // 处理位置选择结果
@@ -2027,12 +2011,6 @@
     border-radius: 12rpx;
     border: 2rpx solid #e6e6e6;
   }
-  .url-prefix {
-    padding-right: 8rpx;
-    color: #666;
-    font-size: 24rpx;
-    white-space: nowrap;
-  }
 }
 
 /* 弹窗中的竖向布局与多行输入 */
@@ -2203,18 +2181,23 @@
 
 .coordinates-info {
   display: flex;
-  gap: 32rpx;
+  flex-wrap: wrap;
+  gap: 16rpx;
   margin-top: 8rpx;
 }
 
 .coordinate-item {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 8rpx;
   padding: 8rpx 12rpx;
+  flex: 1 1 auto;
+  min-width: 200rpx;
   background: linear-gradient(135deg, #e6f7ff 0%, #f0f8ff 100%);
   border-radius: 8rpx;
   border: 1rpx solid #bae7ff;
+  word-wrap: break-word;
+  word-break: break-all;
 }
 
 .coordinate-label {
@@ -2222,6 +2205,8 @@
   color: #333333;
   font-weight: 600;
   letter-spacing: 0.3rpx;
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 
 .coordinate-value {
@@ -2233,6 +2218,10 @@
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
+  word-wrap: break-word;
+  word-break: break-all;
+  flex: 1;
+  min-width: 0;
 }
 
 /* 只读输入框样式 */

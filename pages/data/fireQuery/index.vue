@@ -480,7 +480,7 @@ export default {
       const status = this.statusOptions.find(item => item.value === String(statusValue))
       return status ? status.label : `状态${statusValue}`
     },
-    // 获取位置类型名称
+    // 获取单位类型名称
     getLocationTypeName(locationValue) {
       const location = this.locationTypeOptions.find(item => item.value === Number(locationValue))
       return location ? location.label : `位置${locationValue}`
