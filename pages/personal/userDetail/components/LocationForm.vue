@@ -121,9 +121,9 @@
       </view>
         
       <view class="form-item">
-        <text class="form-label">全云景地址 <text class="required">*</text></text>
+        <text class="form-label">全景云地址 <text class="required">*</text></text>
         <view class="url-display" @tap="openLinkModal">
-          <text class="url-display-text">{{ formData.allSenceLink || '请输入全云景地址' }}</text>
+          <text class="url-display-text">{{ formData.allSenceLink || '请输入全景云地址' }}</text>
           <image :src="serverUrl + '/static/icons/common/edit-white.png'" class="edit-inline-icon" />
         </view>
       </view>
@@ -344,29 +344,29 @@
       </view>
     </view>
 
-    <!-- 全云景地址弹窗 -->
+    <!-- 全景云地址弹窗 -->
     <view class="contact-modal" v-if="showLinkModalFlag" @tap="closeLinkModal">
       <view class="modal-content link-modal" @tap.stop>
         <view class="modal-header">
-          <text class="modal-title">编辑全云景地址</text>
+          <text class="modal-title">编辑全景云地址</text>
           <view class="close-btn" @tap="closeLinkModal">
             <text class="close-icon">×</text>
           </view>
         </view>
         <view class="modal-body">
           <view class="form-group">
-            <text class="form-label">全云景地址 <text class="required">*</text></text>
+            <text class="form-label">全景云地址 <text class="required">*</text></text>
             <view class="url-input-container">
               <textarea
                 v-model="tempAllSenceLink"
                 class="form-modal-textarea"
-                placeholder="请输入完整的全云景地址，例如: https://71ez3e7oi8u.720yun.com/my/scene/path"
+                placeholder="请输入完整的全景云地址，例如: https://71ez3e7oi8u.720yun.com/my/scene/path"
                 maxlength="500"
                 auto-height
                 show-confirm-bar="false"
               />
             </view>
-            <text class="tip-text">请输入完整的全云景地址URL</text>
+            <text class="tip-text">请输入完整的全景云地址URL</text>
           </view>
         </view>
         <view class="modal-footer">
@@ -528,7 +528,7 @@
           defaultImg: ''
         },
         errors: {},
-        tempAllSenceLink: '', // 临时存储全云景地址（用于弹窗编辑）
+        tempAllSenceLink: '', // 临时存储全景云地址（用于弹窗编辑）
         locationTypeOptions: [], // 单位类型选项
         // 队站辖区关键字选项
         keywordOptions: [],
@@ -559,7 +559,7 @@
         uploadingDeployment: false,
         // 节流时间戳
         throttleTimestamps: { chooseMedia: 0, addImage: 0, addDefault: 0 },
-        // 全云景地址编辑弹窗
+        // 全景云地址编辑弹窗
         showLinkModalFlag: false,
         tempAllSenceLinkSuffix: '',
         // 户主统计
@@ -576,7 +576,7 @@
       const district = locationTabList.find(item => item.type === 3)
       this.keywordOptions = (district && Array.isArray(district.keywordOptions) && district.keywordOptions.length > 0)
         ? district.keywordOptions
-        : [{ label: '全部', value: 'all' }, { label: '森林', value: 'forest' }]
+        : []
       // 默认关键字（保存 value）
       if (!this.formData.keywordType) {
         this.formData.keywordType = this.keywordOptions[0]?.value || 'all'
@@ -693,7 +693,7 @@
         if (!must(fd.addressName)) this.errors.addressName = '请先选择地址'
         if (!must(fd.addressExt)) this.errors.addressExt = '请先选择地址'
         if (!must(fd.addressId)) this.errors.addressId = '请输入地址编号'
-        if (!must(fd.allSenceLink)) this.errors.allSenceLink = '请输入全云景地址'
+        if (!must(fd.allSenceLink)) this.errors.allSenceLink = '请输入全景云地址'
         if (!fd.type) this.errors.type = '请输入单位类型'
         
         // 队站辖区不需要验证以下字段
@@ -740,7 +740,7 @@
         }
       },
       
-      // 打开/关闭全云景地址弹窗
+      // 打开/关闭全景云地址弹窗
       openLinkModal() {
         this.tempAllSenceLink = this.formData.allSenceLink || ''
         this.showLinkModalFlag = true

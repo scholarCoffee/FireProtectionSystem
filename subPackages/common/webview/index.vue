@@ -14,7 +14,7 @@ export default {
   data() {
     return {
       webviewUrl: '',
-      pageTitle: '720全云景',
+      pageTitle: '720全景云',
       serverUrl: 'https://www.xiaobei.space'
     }
   },

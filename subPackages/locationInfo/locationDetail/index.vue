@@ -31,7 +31,7 @@
             </view>
           </view>
                     
-          <!-- 单位类型和720全云景 -->
+          <!-- 单位类型和720全景云 -->
           <view class="type-panorama-row">
             <!-- 单位类型卡片 -->
             <view class="type-card">

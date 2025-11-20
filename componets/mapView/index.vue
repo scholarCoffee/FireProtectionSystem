@@ -33,6 +33,7 @@
         :enable-traffic="false"
         class="map-view"
         @markertap="onMarkerTap"
+        @callouttap="onCalloutTap"
         @regionchange="onRegionChange"
         @tap="onMapTap"
       ></map>
@@ -330,20 +331,39 @@ export default {
       console.log('最终标记数量:', this.mapMarkers.length);
     },
     
-     onMarkerTap(e) {
+    onMarkerTap(e) {
        const markerId = e.detail.markerId;
-       
+       this.handleMarkerClick(markerId);
+    },
+    
+    // 处理callout点击事件（点击文字气泡）
+    onCalloutTap(e) {
+       const markerId = e.detail.markerId;
+       this.handleMarkerClick(markerId);
+    },
+    
+    // 统一的标记点击处理逻辑
+    handleMarkerClick(markerId) {
        if (markerId === -1) {
          // 用户位置不跳转，只显示提示
          uni.showToast({ title: '我的位置', icon: 'none' });
        } else if (markerId === -2) {
          // 点击目标地址，跳转到720全景
-         this.goTo720View(this.currentLocation);
-       } else if (typeof markerId === 'number' && markerId >= 0 && this.filteredLocations[markerId]) {
+         if (this.currentLocation) {
+           this.goTo720View(this.currentLocation);
+         } else {
+           uni.showToast({ title: '位置信息无效', icon: 'none' });
+         }
+       } else if (typeof markerId === 'number' && markerId >= 0) {
          // 点击其他位置，跳转到720全景
-         this.goTo720View(this.filteredLocations[markerId]);
+         const location = this.filteredLocations[markerId];
+         if (location) {
+           this.goTo720View(location);
+         } else {
+           uni.showToast({ title: '位置信息不存在', icon: 'none' });
+         }
        }
-     },
+    },
     
     onRegionChange(e) {
       console.log('地图区域变化:', e);
@@ -356,27 +376,27 @@ export default {
       }
     },
     
-     // 地图点击事件（选择模式）- 直接选择并返回
-     onMapTap(e) {
-       if (!this.selectMode) return;
-       // 获取点击位置的经纬度
-       if (e.detail && e.detail.latitude && e.detail.longitude) {
-         this.selectedMapCenter = {
-           latitude: e.detail.latitude,
-           longitude: e.detail.longitude
-         };
-         // 更新地图中心点
-         this.mapCenter = {
-           latitude: e.detail.latitude,
-           longitude: e.detail.longitude
-         };
-         // 直接选择并返回
-         this.confirmLocationSelection();
-       }
-     },
+    // 地图点击事件（选择模式）- 直接选择并返回
+    onMapTap(e) {
+      if (!this.selectMode) return;
+      // 获取点击位置的经纬度
+      if (e.detail && e.detail.latitude && e.detail.longitude) {
+        this.selectedMapCenter = {
+          latitude: e.detail.latitude,
+          longitude: e.detail.longitude
+        };
+        // 更新地图中心点
+        this.mapCenter = {
+          latitude: e.detail.latitude,
+          longitude: e.detail.longitude
+        };
+        // 直接选择并返回
+        this.confirmLocationSelection();
+      }
+    },
      
      // 确认选择位置（选择模式）
-     async confirmLocationSelection() {
+    async confirmLocationSelection() {
        if (!this.selectMode) return;
        
        // 使用地图中心点作为选择的位置
@@ -510,17 +530,10 @@ export default {
     
     // 跳转到720全景
     goTo720View(location) {
-      if (!location) {
-        uni.showToast({ title: '位置信息无效', icon: 'none' });
-        return;
-      }
-      
-      // 构建720全景URL
-      const panoramaUrl = `${this.serverUrl}/720?lat=${location.latitude}&lng=${location.longitude}&name=${encodeURIComponent(location.addressName)}`;
-      
+      const { allSenceLink } = location || {};
       // 跳转到720全景页面
       uni.navigateTo({
-        url: `/subPackages/common/webview/index?url=${encodeURIComponent(panoramaUrl)}&title=${encodeURIComponent(location.addressName + ' - 720全景')}`
+        url: `/subPackages/common/webview/index?url=${encodeURIComponent(allSenceLink)}&title=${encodeURIComponent(location.addressName + ' - 720全景')}`
       });
     },
     
@@ -562,7 +575,7 @@ export default {
         const district = locationTabList.find(item => item.type === 3);
         this.keywordOptions = district && Array.isArray(district.keywordOptions) 
           ? district.keywordOptions 
-          : [{ label: '全部', value: 'all' }, { label: '森林', value: 'forest' }];
+          : [];
         // 默认选择第一个关键字
         if (!this.selectedKeyword) {
           this.selectedKeyword = this.keywordOptions[0]?.value || 'all';

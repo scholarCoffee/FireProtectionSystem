@@ -162,8 +162,8 @@ export default {
 
       // 处理接口响应
       if (res?.data?.code === 200) {
-        // 假设后端返回格式：{ code: 200, data: { reply: 'AI回复内容' } }
-        const reply = res.data.data?.reply || res.data.data?.content || res.data.data || '抱歉，我现在无法回答您的问题。';
+        // 后端返回格式：{ code: 200, data: { message: 'AI回复内容', ... } }
+        const reply = res.data.data?.message || res.data.data?.reply || res.data.data?.content || '抱歉，我现在无法回答您的问题。';
         this.addRobotMessage(reply);
       } else {
         // 接口返回错误
