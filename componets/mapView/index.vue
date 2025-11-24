@@ -47,9 +47,26 @@
     <view class="sidebar" :class="{ active: showSidebar }" v-if="!selectMode">
       <view class="sidebar-content">
         <scroll-view class="sidebar-body" scroll-y>
+          <!-- 搜索框 -->
+          <view class="menu-section search-section">
+            <view class="search-input-wrapper">
+              <image :src="serverUrl + '/static/icons/location/search.png'" class="search-icon" />
+              <input 
+                v-model="searchKeyword" 
+                class="search-input" 
+                placeholder="搜索地址编号/全景云编号/消火栓编号"
+                @input="onSearchInput"
+                @confirm="onSearchConfirm"
+                confirm-type="search"
+              />
+              <view class="search-clear" v-if="searchKeyword" @click="clearSearch">
+                <text class="clear-icon">×</text>
+              </view>
+            </view>
+          </view>
+          
           <!-- 卫星地图切换 -->
           <view class="menu-section">
-            <text class="menu-label">地图类型</text>
             <view class="menu-item" @click="toggleSatellite">
                <text class="menu-item-text">{{ internalEnableSatellite ? '普通地图' : '卫星地图' }}</text>
                <view class="switch-wrapper">
@@ -62,6 +79,18 @@
           <view class="menu-section">
             <text class="menu-label">单位类型</text>
             <view class="menu-options">
+              <!-- 全部选项放在首位 -->
+              <view 
+                class="menu-option"
+                :class="{ active: selectedType === null }"
+                @click="selectLocationType(null)"
+              >
+                <view class="checkbox">
+                  <view class="checkbox-inner" v-if="selectedType === null"></view>
+                </view>
+                <text class="option-label">全部</text>
+              </view>
+              <!-- 其他类型选项 -->
               <view 
                 v-for="(type, index) in locationTypeOptions" 
                 :key="index"
@@ -74,24 +103,13 @@
                 </view>
                 <text class="option-label">{{ type.label }}</text>
               </view>
-              <!-- 全部选项 -->
-              <view 
-                class="menu-option"
-                :class="{ active: selectedType === null }"
-                @click="selectLocationType(null)"
-              >
-                <view class="checkbox">
-                  <view class="checkbox-inner" v-if="selectedType === null"></view>
-                </view>
-                <text class="option-label">全部</text>
-              </view>
             </view>
           </view>
 
           <!-- 关键字选择（仅队站辖区显示） -->
           <view class="menu-section" v-if="selectedType === 3">
             <text class="menu-label">关键字</text>
-            <view class="menu-options">
+            <view class="menu-options keyword-options">
               <view 
                 v-for="(keyword, index) in keywordOptions" 
                 :key="index"
@@ -149,7 +167,8 @@ export default {
       keywordOptions: [], // 关键字选项（队站辖区）
       selectedType: null, // 选中的单位类型
       selectedKeyword: null, // 选中的关键字（队站辖区）
-      internalEnableSatellite: false // 内部卫星地图状态
+      internalEnableSatellite: false, // 内部卫星地图状态
+      searchKeyword: '' // 搜索关键词
     };
   },
   watch: {
@@ -291,6 +310,9 @@ export default {
           // 判断是否是目标地址
           const isTarget = this.currentLocation && location.addressId == this.currentLocation.addressId;
           
+          // 生成 callout 内容
+          const calloutContent = this.generateCalloutContent(location);
+          
           this.mapMarkers.push({
             id: isTarget ? -2 : index, // 目标地址使用特殊id（-2），其他使用索引
             latitude: location.latitude,
@@ -299,7 +321,7 @@ export default {
             width: isTarget ? 30 : 20, // 目标地址更大
             height: isTarget ? 30 : 20,
             callout: {
-              content: `${location.addressName} | ${this.getLocationTypeName(location.type)}`,
+              content: calloutContent,
               color: isTarget ? '#fff' : '#333', // 目标地址白色文字
               fontSize: isTarget ? 14 : 12,
               fontWeight: 'bold',
@@ -537,8 +559,38 @@ export default {
       });
     },
     
-    getLocationTypeName(type) {
-      return locationTabList.find(item => item.type === type)?.name || '未知类型';
+    // 生成 callout 内容
+    generateCalloutContent(location) {
+      const parts = [];
+      
+      // 地址名称
+      parts.push(location.addressName || '未知地址');
+      // 如果是队站辖区，显示编号
+      if (location.type === 3 && location.addressId) {
+        // 判断是全景云还是消火栓
+        const district = locationTabList.find(item => item.type === 3);
+        const keywordOption = district?.keywordOptions?.find(opt => opt.value === location.keywordType);
+        const category = keywordOption?.category || '';
+        
+        // 显示编号（全景云编号或消火栓编号）
+        parts.push(`${location.addressId}`);
+        
+        // 消火栓显示性能参数
+        if (category === 'hydrant') {
+          const pressure = location.hydrantPressure || '';
+          const flow = location.hydrantFlow || '';
+          if (pressure || flow) {
+            const paramParts = [];
+            if (pressure) paramParts.push(`压力:${pressure}mpa`);
+            if (flow) paramParts.push(`流量:${flow}L/s`);
+            if (paramParts.length > 0) {
+              parts.push(paramParts.join(' '));
+            }
+          }
+        }
+      }
+      
+      return parts.join(' | ');
     },
     
     // 切换左侧抽屉
@@ -600,16 +652,79 @@ export default {
     applyFilter() {
       // 根据筛选条件过滤地址
       this.filteredLocations = this.allLocations.filter(location => {
-        // 如果选择了单位类型，进行类型过滤
+        // 类型筛选
+        let typeMatch = true;
         if (this.selectedType !== null) {
           if (this.selectedType !== 3) {
-            return location.type === this.selectedType;
+            typeMatch = location.type === this.selectedType;
           } else {
-            return location.keywordType === this.selectedKeyword;
+            // 队站辖区需要匹配关键字
+            if (this.selectedKeyword !== null) {
+              typeMatch = location.keywordType === this.selectedKeyword;
+            } else {
+              typeMatch = location.type === 3;
+            }
           }
         }
+        
+        // 搜索关键词筛选（模糊匹配：地址编号/全景云编号/消火栓编号/地址名称/详细地址）
+        let searchMatch = true;
+        if (this.searchKeyword && this.searchKeyword.trim()) {
+          // 处理搜索关键词：去除多余空格，转换为小写
+          const keywords = this.searchKeyword.trim().toLowerCase().split(/\s+/).filter(k => k);
+          
+          // 获取所有可搜索的字段（去除空格，转换为小写）
+          const searchFields = [
+            (location.addressId || '').toString().replace(/\s+/g, '').toLowerCase(), // 地址编号/全景云编号/消火栓编号
+            (location.addressName || '').toString().replace(/\s+/g, '').toLowerCase(), // 地址名称
+            (location.addressExt || '').toString().replace(/\s+/g, '').toLowerCase() // 详细地址
+          ].filter(field => field); // 过滤空字段
+          
+          // 合并所有字段为一个搜索文本
+          const searchText = searchFields.join(' ');
+          
+          // 模糊匹配：所有关键词都必须在搜索文本中出现
+          searchMatch = keywords.every(keyword => {
+            // 支持包含匹配
+            return searchText.includes(keyword);
+          });
+        }
+        
+        return typeMatch && searchMatch;
       });
+      
+      // 如果搜索后只有一个结果，自动定位到该地点
+      if (this.searchKeyword && this.searchKeyword.trim() && this.filteredLocations.length === 1) {
+        const foundLocation = this.filteredLocations[0];
+        if (foundLocation.latitude && foundLocation.longitude) {
+          this.mapCenter = {
+            latitude: foundLocation.latitude,
+            longitude: foundLocation.longitude
+          };
+          // 稍微放大一点以便查看
+          this.mapScale = 18;
+        }
+      }
+      
       this.updateMapMarkers();
+    },
+    
+    // 搜索输入事件
+    onSearchInput(e) {
+      this.searchKeyword = e.detail.value || '';
+      this.applyFilter();
+    },
+    
+    // 搜索确认事件
+    onSearchConfirm(e) {
+      this.searchKeyword = e.detail.value || '';
+      this.applyFilter();
+    },
+    
+    // 清空搜索
+    clearSearch() {
+      this.searchKeyword = '';
+      this.applyFilter();
     }
   }
 };
@@ -697,7 +812,9 @@ export default {
 .sidebar-body {
   flex: 1;
   overflow-y: auto;
-  padding: 32rpx 32rpx;
+  overflow-x: hidden;
+  padding: 32rpx;
+  box-sizing: border-box;
 }
 
 .menu-section {
@@ -740,18 +857,24 @@ export default {
 
 .menu-options {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
+  flex-wrap: wrap;
   gap: 12rpx;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .menu-option {
   display: flex;
   align-items: center;
-  padding: 20rpx;
+  padding: 16rpx 20rpx;
   border: 2rpx solid #e1e8ed;
   border-radius: 12rpx;
   background: #ffffff;
   transition: all 0.3s ease;
+  flex: 0 0 calc(50% - 6rpx);
+  box-sizing: border-box;
+  min-width: 0;
 }
 
 .menu-option.active {
@@ -792,8 +915,16 @@ export default {
   color: #333;
   font-weight: 500;
   flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
+/* 关键字选项一行显示一个 */
+.keyword-options .menu-option {
+  flex: 0 0 100%;
+}
 
 @keyframes fadeIn {
   from {
@@ -830,11 +961,78 @@ export default {
   color: #ffffff;
 }
 
-/* 搜索按钮样式 */
+/* 搜索框样式（抽屉内） */
+.search-section {
+  margin-bottom: 32rpx;
+}
+
+.search-input-wrapper {
+  display: flex;
+  align-items: center;
+  background: #f8f9fa;
+  border-radius: 12rpx;
+  padding: 0 20rpx;
+  border: 2rpx solid #e1e8ed;
+  transition: all 0.3s ease;
+}
+
+.search-input-wrapper:focus-within {
+  border-color: #1890ff;
+  background: #ffffff;
+  box-shadow: 0 0 0 4rpx rgba(24, 144, 255, 0.1);
+}
+
+.search-icon {
+  width: 28rpx;
+  height: 28rpx;
+  margin-right: 12rpx;
+  flex-shrink: 0;
+  opacity: 0.6;
+}
+
+.search-input {
+  flex: 1;
+  height: 64rpx;
+  font-size: 26rpx;
+  color: #333333;
+  background: transparent;
+  border: none;
+  outline: none;
+}
+
+.search-input::placeholder {
+  color: #999999;
+  font-size: 24rpx;
+}
+
+.search-clear {
+  width: 36rpx;
+  height: 36rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: 12rpx;
+  border-radius: 50%;
+  background: #e0e0e0;
+  transition: all 0.3s ease;
+}
+
+.search-clear:active {
+  background: #d0d0d0;
+  transform: scale(0.9);
+}
+
+.clear-icon {
+  font-size: 32rpx;
+  color: #666666;
+  line-height: 1;
+  font-weight: 300;
+}
+
+/* 搜索按钮样式（选择模式） */
 .search-btn-container {
   position: absolute;
   top: 40rpx;
-  left: 20rpx;
   right: 20rpx;
   z-index: 1000;
   display: flex;
@@ -872,3 +1070,4 @@ export default {
   color: #666666;
 }
 </style>
+

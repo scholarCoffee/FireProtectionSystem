@@ -7,8 +7,11 @@ export const locationTabList = [
         icon: '/static/icons/location/shop.png', 
         activeIcon: '/static/icons/location/shop-active.png', 
         keywordOptions: [
-            { label: '全部', value: 'all' },
-            { label: '森林', value: 'forest' }
+            { label: '全部', value: 'all', category: '' },
+            { label: '虞山森林-全景云', value: 'yushanForestPanorama', category: 'panorama' },
+            { label: '虞山森林-消火栓', value: 'yushanForestHydrant', category: 'hydrant' },
+            { label: '虞山城区-全景云', value: 'yushanCityPanorama', category: 'panorama' },
+            { label: '虞山城区-消火栓', value: 'yushanCityHydrant', category: 'hydrant' }
         ]
     }
 ]

@@ -1292,9 +1292,11 @@ export default {
 .load-more {
   text-align: center;
   color: #999;
-  font-size: 24rpx;
-  margin: 20rpx 0;
-  padding: 8rpx;
+  font-size: 13px;
+  margin: 20px 0 12px 0;
+  padding: 8px;
+  border-radius: 6px;
+  backdrop-filter: blur(10px);
 }
 
 /* 需要救援的卡片样式 */

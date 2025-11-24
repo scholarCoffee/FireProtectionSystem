@@ -83,7 +83,19 @@
         </view>
       </view>
       
-      <view class="form-item">
+      <!-- 详细地址（消火栓显示，全景云不显示） -->
+      <view class="form-item" v-if="formData.type === 3 && isHydrant">
+        <text class="form-label">详细地址 <text class="required">*</text></text>
+        <input 
+          v-model="formData.addressExt" 
+          :class="['form-input', (!formData.latitude || !formData.longitude) ? 'readonly-input' : '']"
+          :placeholder="(!formData.latitude || !formData.longitude) ? '请先选择地址' : '可编辑详细地址'"
+          maxlength="200"
+          :readonly="!formData.latitude || !formData.longitude"
+        />
+      </view>
+      <!-- 详细地址（非队站辖区显示） -->
+      <view class="form-item" v-if="formData.type !== 3">
         <text class="form-label">详细地址 <text class="required">*</text></text>
         <input 
           v-model="formData.addressExt" 
@@ -94,12 +106,18 @@
         />
       </view>
         
+      <!-- 地址编号（根据类型显示不同标签） -->
       <view class="form-item">
-        <text class="form-label">地址编号 <text class="required">*</text></text>
+        <text class="form-label">
+          <text v-if="formData.type === 3 && isPanorama">全景云编号</text>
+          <text v-else-if="formData.type === 3 && isHydrant">消火栓编号</text>
+          <text v-else>地址编号</text>
+          <text class="required">*</text>
+        </text>
         <input 
           v-model="formData.addressId" 
           class="form-input" 
-          placeholder="请输入地址编号"
+          :placeholder="formData.type === 3 && isPanorama ? '请输入全景云编号' : (formData.type === 3 && isHydrant ? '请输入消火栓编号' : '请输入地址编号')"
           maxlength="20"
           @input="onAddressIdInput"
         />
@@ -120,11 +138,53 @@
         </view>
       </view>
         
-      <view class="form-item">
+      <!-- 全景云地址（全景云显示，消火栓不显示） -->
+      <view class="form-item" v-if="formData.type === 3 && isPanorama">
         <text class="form-label">全景云地址 <text class="required">*</text></text>
         <view class="url-display" @tap="openLinkModal">
           <text class="url-display-text">{{ formData.allSenceLink || '请输入全景云地址' }}</text>
           <image :src="serverUrl + '/static/icons/common/edit-white.png'" class="edit-inline-icon" />
+        </view>
+      </view>
+      <!-- 全景云地址（非队站辖区显示） -->
+      <view class="form-item" v-if="formData.type !== 3">
+        <text class="form-label">全景云地址 <text class="required">*</text></text>
+        <view class="url-display" @tap="openLinkModal">
+          <text class="url-display-text">{{ formData.allSenceLink || '请输入全景云地址' }}</text>
+          <image :src="serverUrl + '/static/icons/common/edit-white.png'" class="edit-inline-icon" />
+        </view>
+      </view>
+      
+      <!-- 消火栓性能参数（仅消火栓显示） -->
+      <view class="form-item" v-if="formData.type === 3 && isHydrant">
+        <text class="form-label">性能参数 <text class="required">*</text></text>
+        <view class="hydrant-params">
+          <view class="param-item">
+            <text class="param-label">压力:</text>
+            <input 
+              v-model="formData.hydrantPressure" 
+              :class="['param-input', errors.hydrantPressure ? 'param-input-error' : '']"
+              placeholder="请输入消火栓压力"
+              type="digit"
+              maxlength="10"
+            />
+            <text class="param-unit">mpa</text>
+          </view>
+          <view class="param-item">
+            <text class="param-label">流量:</text>
+            <input 
+              v-model="formData.hydrantFlow" 
+              :class="['param-input', errors.hydrantFlow ? 'param-input-error' : '']"
+              placeholder="请输入消火栓流量"
+              type="digit"
+              maxlength="10"
+            />
+            <text class="param-unit">L/s</text>
+          </view>
+        </view>
+        <!-- 错误提示 -->
+        <view v-if="errors.hydrantPressure || errors.hydrantFlow" class="error-message">
+          <text class="error-text">{{ errors.hydrantPressure || errors.hydrantFlow }}</text>
         </view>
       </view>
       
@@ -525,7 +585,10 @@
           enterGateList: [],
           phoneList: [],
           imgList: [],
-          defaultImg: ''
+          defaultImg: '',
+          // 消火栓性能参数
+          hydrantPressure: '0.05',
+          hydrantFlow: '10'
         },
         errors: {},
         tempAllSenceLink: '', // 临时存储全景云地址（用于弹窗编辑）
@@ -572,14 +635,17 @@
         value: item.type,
         label: item.name
       }));
-      // 初始化“队站辖区”的关键字选项
+      // 初始化"队站辖区"的关键字选项（过滤掉"全部"）
       const district = locationTabList.find(item => item.type === 3)
-      this.keywordOptions = (district && Array.isArray(district.keywordOptions) && district.keywordOptions.length > 0)
+      const allKeywords = (district && Array.isArray(district.keywordOptions) && district.keywordOptions.length > 0)
         ? district.keywordOptions
         : []
-      // 默认关键字（保存 value）
+      // 过滤掉"全部"选项
+      this.keywordOptions = allKeywords.filter(item => item.value !== 'all')
+      // 默认关键字：虞山森林-全景云
       if (!this.formData.keywordType) {
-        this.formData.keywordType = this.keywordOptions[0]?.value || 'all'
+        const defaultKeyword = this.keywordOptions.find(item => item.value === 'yushanForestPanorama')
+        this.formData.keywordType = defaultKeyword ? defaultKeyword.value : (this.keywordOptions[0]?.value || '')
       }
       this.setFormData(this.initialData)
       // 重点单位下拉：预加载消防单位
@@ -630,6 +696,20 @@
         if (!Array.isArray(this.keywordOptions) || this.keywordOptions.length === 0) return ''
         const found = this.keywordOptions.find(o => String(o.value) === String(this.formData.keywordType))
         return found ? found.label : (this.keywordOptions[0]?.label || '')
+      },
+      // 判断当前关键字类型是全景云还是消火栓
+      currentKeywordCategory() {
+        if (!this.formData.keywordType || this.formData.type !== 3) return ''
+        const found = this.keywordOptions.find(o => String(o.value) === String(this.formData.keywordType))
+        return found ? found.category : ''
+      },
+      // 是否为全景云
+      isPanorama() {
+        return this.currentKeywordCategory === 'panorama'
+      },
+      // 是否为消火栓
+      isHydrant() {
+        return this.currentKeywordCategory === 'hydrant'
       }
     },
     methods: {      
@@ -662,8 +742,11 @@
               this.formData.keywordType = this.keywordOptions[idx].value
               this.keywordPickerIndex = idx
             } else {
-              this.formData.keywordType = this.keywordOptions[0]?.value || 'all'
-              this.keywordPickerIndex = 0
+              // 默认选择"虞山森林-全景云"
+              const defaultKeyword = this.keywordOptions.find(item => item.value === 'yushanForestPanorama')
+              this.formData.keywordType = defaultKeyword ? defaultKeyword.value : (this.keywordOptions[0]?.value || '')
+              const defaultIdx = this.keywordOptions.findIndex(o => String(o.value) === String(this.formData.keywordType))
+              this.keywordPickerIndex = defaultIdx >= 0 ? defaultIdx : 0
             }
           }
           // 从 location/detail 返回的 ownerInfo 节点回填住户总数
@@ -691,13 +774,29 @@
         }
         
         if (!must(fd.addressName)) this.errors.addressName = '请先选择地址'
-        if (!must(fd.addressExt)) this.errors.addressExt = '请先选择地址'
         if (!must(fd.addressId)) this.errors.addressId = '请输入地址编号'
-        if (!must(fd.allSenceLink)) this.errors.allSenceLink = '请输入全景云地址'
         if (!fd.type) this.errors.type = '请输入单位类型'
         
-        // 队站辖区不需要验证以下字段
-        if (fd.type !== 3) {
+        // 队站辖区根据类型验证不同字段
+        if (fd.type === 3) {
+          // 全景云：验证全景云编号、地址名称、全景云地址
+          if (this.isPanorama) {
+            if (!must(fd.addressId)) this.errors.addressId = '请输入全景云编号'
+            if (!must(fd.addressName)) this.errors.addressName = '请先选择地址'
+            if (!must(fd.allSenceLink)) this.errors.allSenceLink = '请输入全景云地址'
+          }
+          // 消火栓：验证消火栓编号、地址名称、详细地址、性能参数
+          if (this.isHydrant) {
+            if (!must(fd.addressId)) this.errors.addressId = '请输入消火栓编号'
+            if (!must(fd.addressName)) this.errors.addressName = '请先选择地址'
+            if (!must(fd.addressExt)) this.errors.addressExt = '请先选择地址'
+            if (!must(fd.hydrantPressure)) this.errors.hydrantPressure = '请输入消火栓压力'
+            if (!must(fd.hydrantFlow)) this.errors.hydrantFlow = '请输入消火栓流量'
+          }
+        } else {
+          // 非队站辖区：验证详细地址和全景云地址
+          if (!must(fd.addressExt)) this.errors.addressExt = '请先选择地址'
+          if (!must(fd.allSenceLink)) this.errors.allSenceLink = '请输入全景云地址'
           if (!must(fd.defaultImg)) this.errors.defaultImg = '必须配置一张默认图片'
           if (!Array.isArray(fd.enterGateList) || fd.enterGateList.length === 0) this.errors.enterGateList = '至少需要选择一个可出行大门'
           if (!Array.isArray(fd.phoneList) || fd.phoneList.length === 0) this.errors.phoneList = '至少需要配置一个联系人'
@@ -760,6 +859,15 @@
         this.keywordPickerIndex = idx
         const opt = this.keywordOptions[idx] || this.keywordOptions[0]
         this.formData.keywordType = opt ? opt.value : ''
+        // 切换关键字类型时，清空相关字段
+        if (opt && opt.category === 'panorama') {
+          // 切换到全景云，清空消火栓相关字段
+          this.formData.hydrantPressure = ''
+          this.formData.hydrantFlow = ''
+        } else if (opt && opt.category === 'hydrant') {
+          // 切换到消火栓，清空全景云地址
+          this.formData.allSenceLink = ''
+        }
       },
       // 住户数量从 location/detail 接口的 ownerInfo 节点回填
       // 跳转户主编辑页
@@ -791,7 +899,9 @@
           // 切换到队站辖区（type=3）时，确保关键字有默认值与索引（按 value 匹配）
           if (newType === 3) {
             if (!this.formData.keywordType) {
-              this.formData.keywordType = this.keywordOptions[0]?.value || 'all'
+              // 默认选择"虞山森林-全景云"
+              const defaultKeyword = this.keywordOptions.find(item => item.value === 'yushanForestPanorama')
+              this.formData.keywordType = defaultKeyword ? defaultKeyword.value : (this.keywordOptions[0]?.value || '')
             }
             const idx = this.keywordOptions.findIndex(o => String(o.value) === String(this.formData.keywordType))
             this.keywordPickerIndex = idx >= 0 ? idx : 0
@@ -2756,5 +2866,70 @@
   0%, 100% { transform: translateX(0); }
   25% { transform: translateX(-4rpx); }
   75% { transform: translateX(4rpx); }
+}
+
+/* 消火栓性能参数样式 */
+.hydrant-params {
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+  flex: 1;
+}
+
+.param-item {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  padding: 12rpx 16rpx;
+  background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+  border-radius: 12rpx;
+  border: 2rpx solid #e8f1ff;
+  box-shadow: 0 2rpx 8rpx rgba(24, 144, 255, 0.06);
+}
+
+.param-label {
+  font-size: 24rpx;
+  color: #333333;
+  font-weight: 600;
+  min-width: 80rpx;
+  flex-shrink: 0;
+}
+
+.param-input {
+  flex: 1;
+  height: 48rpx;
+  padding: 0 12rpx;
+  border: none;
+  border-radius: 8rpx;
+  font-size: 24rpx;
+  color: #333333;
+  background: #ffffff;
+  box-sizing: border-box;
+  text-align: left;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  
+  &:focus {
+    background: #ffffff;
+    box-shadow: 0 0 0 4rpx rgba(24, 144, 255, 0.1);
+    outline: none;
+  }
+  
+  &::placeholder {
+    color: #95a5a6;
+    font-size: 24rpx;
+  }
+}
+
+.param-unit {
+  font-size: 24rpx;
+  color: #666666;
+  font-weight: 500;
+  min-width: 60rpx;
+  flex-shrink: 0;
+}
+
+.param-input-error {
+  border: 2rpx solid #ff4d4f !important;
+  background: #fff2f0 !important;
 }
 </style>

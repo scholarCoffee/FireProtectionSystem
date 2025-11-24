@@ -80,8 +80,8 @@
         </view>
         
         <!-- 没有更多数据提示 -->
-        <view v-if="!hasMore && filteredList.length > 0" class="no-more">
-          <text class="no-more-text">没有更多数据了</text>
+        <view v-if="!hasMore && filteredList.length > 0" class="load-more">
+          <text>没有更多了</text>
         </view>
       </view>
     </scroll-view>
@@ -524,59 +524,14 @@ export default {
 }
 
 /* 没有更多数据提示 */
-.no-more {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 30rpx 0;
-  background: linear-gradient(135deg, #fff 0%, #ffffff 100%);
-  border-radius: 16rpx;
-  margin: 30rpx 20rpx 20rpx 20rpx;
-  box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.05);
-  position: relative;
-  
-  &::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 20rpx;
-    right: 20rpx;
-    height: 1rpx;
-    background: linear-gradient(90deg, transparent 0%, #dee2e6 50%, transparent 100%);
-  }
-  
-  &::after {
-    content: '';
-    position: absolute;
-    bottom: 0;
-    left: 20rpx;
-    right: 20rpx;
-    height: 1rpx;
-    background: linear-gradient(90deg, transparent 0%, #dee2e6 50%, transparent 100%);
-  }
-}
-
-.no-more-text {
-  font-size: 28rpx;
-  color: #6c757d;
-  font-weight: 500;
-  letter-spacing: 1rpx;
-  position: relative;
-  padding: 0 20rpx;
-  
-  &::before {
-    content: '—';
-    position: absolute;
-    left: -10rpx;
-    color: #adb5bd;
-  }
-  
-  &::after {
-    content: '—';
-    position: absolute;
-    right: -10rpx;
-    color: #adb5bd;
-  }
+.load-more {
+  text-align: center;
+  color: #999;
+  font-size: 26rpx;
+  margin: 20rpx 0 24rpx 0;
+  padding: 16rpx;
+  border-radius: 12rpx;
+  backdrop-filter: blur(10px);
 }
 
 /* 旋转动画 */
@@ -590,7 +545,7 @@ export default {
 }
 
 /* 添加淡入淡出效果 */
-.loading-more, .no-more {
+.loading-more {
   animation: fadeInUp 0.3s ease-out;
 }
 

@@ -79,6 +79,8 @@
           placeholder="请输入您的问题..."
           @confirm="sendMessage"
           :disabled="isTyping"
+          adjust-position="true"
+          cursor-spacing="20"
         />
         <view class="send-button" :class="{ 'disabled': !inputMessage.trim() || isTyping }" @click="sendMessage">
           <image :src="serverUrl + '/static/icons/common/right.png'" class="send-icon" mode="widthFix" />
@@ -283,6 +285,7 @@ export default {
 .chat-messages {
   flex: 1;
   padding: 24rpx;
+  padding-bottom: 40rpx;
   background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
   box-sizing: border-box;
 }
