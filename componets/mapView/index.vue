@@ -659,7 +659,7 @@ export default {
             typeMatch = location.type === this.selectedType;
           } else {
             // 队站辖区需要匹配关键字
-            if (this.selectedKeyword !== null) {
+            if (this.selectedKeyword !== null && this.selectedKeyword !== 'all') {
               typeMatch = location.keywordType === this.selectedKeyword;
             } else {
               typeMatch = location.type === 3;
@@ -693,20 +693,20 @@ export default {
         return typeMatch && searchMatch;
       });
       
+      this.updateMapMarkers();
+      
       // 如果搜索后只有一个结果，自动定位到该地点
       if (this.searchKeyword && this.searchKeyword.trim() && this.filteredLocations.length === 1) {
         const foundLocation = this.filteredLocations[0];
         if (foundLocation.latitude && foundLocation.longitude) {
-          this.mapCenter = {
-            latitude: foundLocation.latitude,
-            longitude: foundLocation.longitude
-          };
-          // 稍微放大一点以便查看
-          this.mapScale = 18;
+          // 延迟执行，确保地图标记更新完成后再定位
+          this.$nextTick(() => {
+            setTimeout(() => {
+              this.moveToLocation(foundLocation.latitude, foundLocation.longitude, 18);
+            }, 300);
+          });
         }
       }
-      
-      this.updateMapMarkers();
     },
     
     // 搜索输入事件
@@ -725,6 +725,44 @@ export default {
     clearSearch() {
       this.searchKeyword = '';
       this.applyFilter();
+    },
+    
+    // 移动地图到指定位置
+    moveToLocation(latitude, longitude, scale = 16) {
+      // 使用地图上下文API移动地图中心点
+      // #ifdef MP-WEIXIN
+      const mapContext = uni.createMapContext('locationMap', this);
+      mapContext.moveToLocation({
+        latitude: latitude,
+        longitude: longitude,
+        success: () => {
+          // 更新地图中心点和缩放级别
+          this.mapCenter = {
+            latitude: latitude,
+            longitude: longitude
+          };
+          this.mapScale = scale;
+        },
+        fail: (err) => {
+          console.error('移动地图失败:', err);
+          // 如果API失败，直接更新数据
+          this.mapCenter = {
+            latitude: latitude,
+            longitude: longitude
+          };
+          this.mapScale = scale;
+        }
+      });
+      // #endif
+      
+      // #ifndef MP-WEIXIN
+      // 其他平台直接更新数据
+      this.mapCenter = {
+        latitude: latitude,
+        longitude: longitude
+      };
+      this.mapScale = scale;
+      // #endif
     }
   }
 };
