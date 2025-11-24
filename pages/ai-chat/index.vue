@@ -72,6 +72,10 @@
 
     <!-- 输入区域 -->
     <view class="chat-input">
+      <!-- AI提示文字 -->
+      <view class="ai-tip">
+        <text class="ai-tip-text">内容由AI生成，仅供参考</text>
+      </view>
       <view class="input-container">
         <input 
           class="message-input" 
@@ -393,8 +397,24 @@ export default {
 
 .chat-input {
   padding: 24rpx;
+  padding-top: 16rpx;
   background: #ffffff;
   border-top: 1rpx solid rgba(59, 130, 246, 0.1);
+}
+
+.ai-tip {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-bottom: 12rpx;
+  padding: 8rpx 0;
+}
+
+.ai-tip-text {
+  font-size: 22rpx;
+  color: #9ca3af;
+  font-weight: 400;
+  letter-spacing: 0.5rpx;
 }
 
 .input-container {
