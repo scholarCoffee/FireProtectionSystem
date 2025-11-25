@@ -6,7 +6,7 @@
       <view class="header-info">
         <text class="robot-name">小贝</text>
         <view class="status-row">
-          <text class="robot-status">在线</text>
+          <text class="ai-badge">AI生成</text>
         </view>
       </view>
       <view class="deepseek-logo">
@@ -14,7 +14,7 @@
         <text class="logo-text">已接入DeepSeek</text>
       </view>
     </view>
-
+    
     <!-- 对话内容区域 -->
     <scroll-view class="chat-messages" scroll-y :scroll-top="scrollTop" scroll-with-animation>
       <view class="message-list">
@@ -74,7 +74,7 @@
     <view class="chat-input">
       <!-- AI提示文字 -->
       <view class="ai-tip">
-        <text class="ai-tip-text">内容由AI生成，仅供参考</text>
+        <text class="ai-tip-text">内容由人工智能生成，仅供参考</text>
       </view>
       <view class="input-container">
         <input 
@@ -247,15 +247,15 @@ export default {
   text-shadow: none;
 }
 
-.robot-status {
+.ai-badge {
   font-size: 16rpx;
-  background: #10b981;
+  background: #f59e0b;
   color: #ffffff;
-  padding: 2rpx 6rpx;
+  padding: 2rpx 8rpx;
   border-radius: 6rpx;
-  font-weight: 500;
+  font-weight: 600;
   display: inline-block;
-  margin-right: 8rpx;
+  letter-spacing: 0.5rpx;
 }
 
 .status-row {
@@ -334,6 +334,25 @@ export default {
   max-width: 80%;
   word-wrap: break-word;
   box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.05);
+  position: relative;
+}
+
+/* AI生成标签 */
+.ai-label {
+  display: inline-flex;
+  align-items: center;
+  margin-bottom: 8rpx;
+  padding: 4rpx 10rpx;
+  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+  border: 1rpx solid #f59e0b;
+  border-radius: 8rpx;
+}
+
+.ai-label-text {
+  font-size: 20rpx;
+  color: #92400e;
+  font-weight: 600;
+  letter-spacing: 0.5rpx;
 }
 
 .robot-message .message-bubble {
@@ -412,8 +431,8 @@ export default {
 
 .ai-tip-text {
   font-size: 22rpx;
-  color: #9ca3af;
-  font-weight: 400;
+  color: #92400e;
+  font-weight: 600;
   letter-spacing: 0.5rpx;
 }
 

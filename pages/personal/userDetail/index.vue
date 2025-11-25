@@ -15,7 +15,7 @@
                 <view class="row" @tap="onChosenImage" >
                     <view class="title">头像：</view>
                     <view class="cont" >
-                        <image :src="userInfo.avatarUrl ? userInfo.avatarUrl : serverUrl + '/user/person-avatar.png'" class="user-img"></image>
+                        <image :src="userInfo.avatarUrl ? serverUrl + userInfo.avatarUrl : serverUrl + '/user/person-avatar.png'" class="user-img"></image>
                     </view>
                     <view class="more" >
                         <image :src="serverUrl + '/static/icons/common/right.png'" mode="aspectFit"></image>
@@ -127,7 +127,7 @@
         </view>
         
         <!-- AI机器人组件 -->
-        <ai-robot />
+        <!-- <ai-robot /> -->
     </view>
 </template>
 
