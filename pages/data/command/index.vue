@@ -40,21 +40,6 @@ export default {
     methods: {
         async loadAllStaticData() {
             try {
-                // 检查是否已有缓存的静态数据
-                const cachedFireUnits = uni.getStorageSync('static_fireUnits')
-                const cachedFireCars = uni.getStorageSync('static_fireCars')
-                const cachedTaskTypes = uni.getStorageSync('static_taskTypes')
-                const cachedTaskStatuses = uni.getStorageSync('static_taskStatuses')
-                
-                // 如果所有静态数据都已缓存，直接返回
-                if (cachedFireUnits && cachedFireUnits.length > 0 &&
-                    cachedFireCars && cachedFireCars.length > 0 &&
-                    cachedTaskTypes && cachedTaskTypes.length > 0 &&
-                    cachedTaskStatuses && cachedTaskStatuses.length > 0) {
-                    console.log('静态数据已缓存，跳过请求')
-                    return
-                }
-                
                 // 并行加载所有静态数据
                 const [fireUnits, fireCars, taskTypes, taskStatuses] = await Promise.all([
                     this.fetchStaticData('fireUnits', 'unitList'),

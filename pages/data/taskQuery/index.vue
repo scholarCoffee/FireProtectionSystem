@@ -65,14 +65,14 @@
             </view>
           </view>
 
-          <!-- 指派人员和操作按钮 -->
+          <!-- 参战人员和操作按钮 -->
           <view class="filter-item-with-buttons">
-            <text class="filter-label">指派人员</text>
+            <text class="filter-label">参战人员</text>
             <view class="input-button-group">
               <input 
                 class="filter-input"
                 v-model="recordPerson"
-                placeholder="请输入指派人员"
+                placeholder="请输入参战人员"
                 @input="onInput"
               />
               <view class="button-group">
