@@ -91,11 +91,11 @@
             <!-- 内联配置区域 -->
             <view class="unit-config-inline">
               <!-- 参战车辆选择 -->
-              <view class="config-section">
+              <view class="config-section config-section-inline">
                 <text class="config-label">选择参战车辆 <text class="required">*</text></text>
                 <view class="car-selector" @tap="showCarDrawer(unit, index)">
                   <text class="car-text">{{ getCarNames(unit) || '选择参战车辆' }}</text>
-                  <image :src="serverUrl + '/static/icons/common/right.png'" class="arrow-icon" />
+                  <image :src="serverUrl + '/static/icons/common/down.png'" class="arrow-icon" />
                 </view>
               </view>
 
@@ -106,7 +106,7 @@
                   <text class="task-group-label">参战车辆</text>
                   <view class="task-group-cars-selector" @tap="showTaskGroupCarDrawer(unit, index, taskGroupIndex)">
                     <text class="task-group-cars" :class="{'placeholder': !getTaskGroupCarsText(taskGroup)}">{{ getTaskGroupCarsText(taskGroup) || '选择参战车辆' }}</text>
-                    <image :src="serverUrl + '/static/icons/common/right.png'" class="arrow-icon" />
+                    <image :src="serverUrl + '/static/icons/common/down.png'" class="arrow-icon" />
                   </view>
                 </view>
                 <view class="remove-task-group-btn" @tap="removeTaskGroup(unit, taskGroupIndex, index)">
@@ -305,7 +305,7 @@
           </view>
         </view>
         <view class="drawer-body">
-          <view v-for="(unit, index) in fireUnitOptions" :key="index" class="drawer-item" :class="{ disabled: isAlreadyAssigned(unit) || isUnitRescuing(unit), active: !isAlreadyAssigned(unit) && !isUnitRescuing(unit) && isUnitSelected(unit) }" @tap="onPickUnit(unit)">
+          <view v-for="(unit, index) in fireUnitOptions" :key="index" class="drawer-item" :class="{ disabled: isAlreadyAssigned(unit) || !unit.canSelect, active: !isAlreadyAssigned(unit) && unit.canSelect && isUnitSelected(unit) }" @tap="onPickUnit(unit)">
             <view class="checkbox">
               <view class="checkbox-inner" v-if="isUnitSelected(unit)"></view>
             </view>
@@ -356,7 +356,7 @@ export default {
   name: 'FireUpload',
   data() {
     return {
-      serverUrl: 'https://www.xiaobei.space',
+      serverUrl: 'http://172.17.121.112:3000',
       situationId: '', // 已有火灾情况ID
       formData: {
         addressId: '',
@@ -430,20 +430,18 @@ export default {
         this.fireCarOptions = fireCars
         this.taskTypeOptions = taskTypes.map(it => ({ ...it }))
         
-        // 获取正在救援的单位状态
-        await this.loadRescuingUnits()
-        // 获取正在救援的车辆状态和单位-车辆映射关系
-        await this.loadRescuingCars()
+        // 获取单位和车辆状态（合并接口）
+        await this.loadUnitAndCarStatus()
       } catch (e) {
         uni.showToast({ title: '加载数据失败', icon: 'none' })
       }
     },
-    // 加载正在救援的单位状态
-    async loadRescuingUnits() {
+    // 加载单位和车辆状态（合并接口）
+    async loadUnitAndCarStatus() {
       try {
         const res = await new Promise((resolve, reject) => {
           uni.request({
-            url: this.serverUrl + '/fire/unitStatus',
+            url: this.serverUrl + '/fire/unitAndCarStatus',
             method: 'GET',
             success: resolve,
             fail: reject
@@ -451,44 +449,84 @@ export default {
         })
         
         if (res && res.data && res.data.code === 200) {
-          this.rescuingUnits = res.data.data || []
-          // 更新单位选项中的状态
+          const data = res.data.data || {}
+          // 正在使用的车辆列表
+          this.rescuingCars = data.usingCars || []
+          // 单位-车辆映射关系（优先使用接口返回的，否则从静态资源构建）
+          if (data.unitCarMap) {
+            this.unitCarMap = data.unitCarMap
+          } else {
+            this.buildUnitCarMap()
+          }
+          // 更新单位状态
           this.updateUnitStatus()
         }
       } catch (e) {
-        console.error('获取单位状态失败:', e)
+        console.error('获取单位和车辆状态失败:', e)
         // 不显示错误提示，静默处理
       }
     },
-    // 加载正在救援的车辆状态和单位-车辆映射关系
-    async loadRescuingCars() {
-      try {
-        const res = await new Promise((resolve, reject) => {
-          uni.request({
-            url: this.serverUrl + '/fire/carStatus',
-            method: 'GET',
-            success: resolve,
-            fail: reject
-          })
+    // 构建单位-车辆映射关系（从静态资源获取）
+    buildUnitCarMap() {
+      const fireUnits = uni.getStorageSync('static_fireUnits') || []
+      const fireCars = uni.getStorageSync('static_fireCars') || []
+      
+      this.unitCarMap = {}
+      fireUnits.forEach(unit => {
+        // 从静态资源中获取该单位的所有车辆
+        // 根据实际的数据结构匹配，车辆可能通过 unitId、unitCode 或其他字段关联
+        const unitCars = fireCars.filter(car => {
+          return car.unitId === unit.value || 
+                 car.unitId === unit.id || 
+                 car.unitCode === unit.code ||
+                 (car.unit && (car.unit.value === unit.value || car.unit.id === unit.id))
         })
-        
-        if (res && res.data && res.data.code === 200) {
-          this.rescuingCars = res.data.data?.cars || []
-          this.unitCarMap = res.data.data?.unitCarMap || {}
-        }
-      } catch (e) {
-        console.error('获取车辆状态失败:', e)
-        // 不显示错误提示，静默处理
-      }
+        this.unitCarMap[unit.value] = unitCars.map(car => car.value || car.id || car.carId)
+      })
     },
     // 更新单位状态
     updateUnitStatus() {
       this.fireUnitOptions = this.fireUnitOptions.map(unit => {
-        const isRescuing = this.rescuingUnits.some(rescuingUnit => rescuingUnit.unitId === unit.value)
-        return {
-          ...unit,
-          status: isRescuing ? 'rescuing' : 'idle',
-          state: isRescuing ? 1 : 0
+        const unitCarIds = this.unitCarMap[unit.value] || []
+        if (unitCarIds.length === 0) {
+          // 如果没有车辆，默认为空闲
+          return {
+            ...unit,
+            status: 'idle',
+            statusText: '空闲中',
+            canSelect: true
+          }
+        }
+        
+        // 检查该单位正在使用的车辆数量
+        const usingCarCount = unitCarIds.filter(carId => 
+          this.rescuingCars.some(usingCar => usingCar.carId === carId || usingCar.id === carId)
+        ).length
+        
+        if (usingCarCount === 0) {
+          // 所有车辆都空闲
+          return {
+            ...unit,
+            status: 'idle',
+            statusText: '空闲中',
+            canSelect: true
+          }
+        } else if (usingCarCount === unitCarIds.length) {
+          // 所有车辆都在使用
+          return {
+            ...unit,
+            status: 'rescuing_all',
+            statusText: '救援中（全部）',
+            canSelect: false
+          }
+        } else {
+          // 部分车辆在使用
+          return {
+            ...unit,
+            status: 'rescuing_partial',
+            statusText: '救援中（局部）',
+            canSelect: true
+          }
         }
       })
     },
@@ -611,8 +649,8 @@ export default {
     // 选择救援单位
     onPickUnit(unit) {
       if (this.isAlreadyAssigned(unit)) return
-      // 检查是否正在救援中，如果是则禁用选择
-      if (this.isUnitRescuing(unit)) return
+      // 检查是否可以选择（如果所有车辆都在使用，则不能选择）
+      if (!unit.canSelect) return
       const index = this.tempSelectedUnits.findIndex(item => item.value === unit.value)
       if (index > -1) {
         this.tempSelectedUnits.splice(index, 1)
@@ -914,16 +952,18 @@ export default {
       if (this.isAlreadyAssigned(unit)) {
         return 'disabled'
       }
-      // 检查是否正在救援中，如果是则也显示为禁用状态
-      if (this.isUnitRescuing(unit)) {
+      // 如果不能选择（所有车辆都在使用），显示为禁用状态
+      if (!unit.canSelect) {
         return 'disabled'
       }
-      // 检查是否在正在救援的单位列表中
-      const isRescuing = this.rescuingUnits.some(rescuingUnit => rescuingUnit.unitId === unit.value)
-      return isRescuing ? 'rescuing' : 'idle'
+      // 根据状态返回对应的class
+      if (unit.status === 'rescuing_partial') {
+        return 'rescuing'
+      }
+      return unit.status === 'idle' ? 'idle' : 'rescuing'
     },
     getUnitStatusText(unit) {
-      return this.isUnitRescuing(unit) ? '救援中' : '空闲中'
+      return unit.statusText || '空闲中'
     },
     // 获取单位的所有车辆ID列表
     getUnitCarIds(unitId) {
@@ -931,40 +971,20 @@ export default {
     },
     // 检查单位的所有车辆是否都被占用
     areAllCarsOccupied(unitId) {
-      const carIds = this.getUnitCarIds(unitId)
-      if (carIds.length === 0) return false // 如果没有车辆，返回false
-      
-      // 检查该单位的所有车辆是否都在rescuingCars中
-      return carIds.every(carId => 
-        this.rescuingCars.some(rescuingCar => rescuingCar.carId === carId || rescuingCar.value === carId)
-      )
+      const unit = this.fireUnitOptions.find(u => u.value === unitId)
+      return unit && unit.status === 'rescuing_all'
     },
     // 检查单位是否正在救援（基于车辆占用情况）
     isUnitRescuing(unit) {
-      // 如果该单位的所有车辆都被占用，则显示为救援中
-      if (this.areAllCarsOccupied(unit.value)) {
-        return true
-      }
-      // 兼容旧逻辑
-      const st = unit.status || unit.state || 'idle'
-      return st === 'rescuing' || st === 1
+      return unit.status === 'rescuing_all' || unit.status === 'rescuing_partial'
     },
     // 抽屉内单位状态文案：若已参战（禁用），固定显示"正在使用"，否则按原状态显示
     getDrawerUnitStatusText(unit) {
       if (this.isAlreadyAssigned(unit)) {
         return '正在使用'
       }
-      // 检查该单位的所有车辆是否都被占用
-      if (this.areAllCarsOccupied(unit.value)) {
-        return '救援中'
-      }
-      // 检查是否正在救援中，如果是则显示"救援中"并禁用
-      if (this.isUnitRescuing(unit)) {
-        return '救援中'
-      }
-      // 检查是否在正在救援的单位列表中
-      const isRescuing = this.rescuingUnits.some(rescuingUnit => rescuingUnit.unitId === unit.value)
-      return isRescuing ? '救援中' : '空闲中'
+      // 使用更新后的状态文本
+      return unit.statusText || '空闲中'
     },
     confirmUnits() {
       this.selectedUnits = [...this.tempSelectedUnits]
@@ -1782,8 +1802,8 @@ export default {
 .section-title { font-size: 28rpx; font-weight: 600; color: #333; }
 .required { color: #ff4d4f; margin-left: 4rpx; }
 .assign-summary { flex: 1; display: flex; justify-content: flex-start; padding-left: 16rpx; }
-.summary-text { font-size: 24rpx; color: #333;}
-.summary-text.placeholder { color: #999; }
+.summary-text { font-size: 24rpx; color: #1890ff; font-weight: 500; background: #f0f8ff; padding: 6rpx 12rpx; border-radius: 6rpx; display: inline-block; }
+.summary-text.placeholder { color: #999; background: transparent; padding: 0; }
 .address-selector { flex: 1; display: flex; align-items: center; justify-content: space-between; height: 64rpx; padding: 0 16rpx; background: #f0f8ff; border-radius: 8rpx; margin-left: 24rpx; border: 1rpx solid #f0f8ff; transition: all 0.2s; }
 .address-selector:active { background: #e6f7ff; border-color: #f0f8ff; }
 .address-selector.disabled { background: #e6f7ff; border-color: #f0f8ff; cursor: not-allowed; opacity: 0.6; }
@@ -1907,6 +1927,9 @@ export default {
 .unit-config-inline { padding: 8rpx 16rpx 14rpx 16rpx; background: #fff; border: 0; border-top: 1rpx solid #f0f8ff; border-bottom-left-radius: 12rpx; border-bottom-right-radius: 12rpx; }
 .config-section { margin-bottom: 24rpx; }
 .config-section:last-child { margin-bottom: 0; }
+.config-section-inline { display: flex; align-items: center; gap: 12rpx; }
+.config-section-inline .config-label { margin-bottom: 0; flex-shrink: 0; }
+.config-section-inline .car-selector { margin-top: 0; flex: 1; }
 .car-config-item { margin-bottom: 32rpx; padding: 16rpx; background: #f0f8ff; border-radius: 8rpx; border: 1rpx solid #f0f8ff; }
 .car-config-item:last-child { margin-bottom: 0; }
 .car-config-header { margin-bottom: 16rpx; padding-bottom: 12rpx; border-bottom: 1rpx solid #f0f8ff; }
