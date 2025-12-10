@@ -8,7 +8,7 @@
           <view class="address-selector" :class="{ 'disabled': situationId }" @tap="goToAddressSelector">
             <view class="address-info">
               <text class="address-text" :class="{'placeholder':!selectedAddress.addressName}">{{ selectedAddress.addressName || '请选择救援地址' }}</text>
-              <text class="floor-info" v-if="selectedAddress.rescueFloor">{{ selectedAddress.rescueFloor }}层</text>
+              <!-- <text class="floor-info" v-if="selectedAddress.rescueFloor">{{ selectedAddress.rescueFloor }}层</text> -->
             </view>
             <image v-if="!situationId" :src="serverUrl + '/static/icons/common/right.png'" class="arrow-icon" />
           </view>
@@ -264,6 +264,26 @@
       <view class="form-bottom-spacer"></view>
     </view>
 
+    <!-- 上一次记录提示弹窗 -->
+    <view class="last-record-modal-mask" v-if="showLastRecordModal" @tap="dismissLastRecord">
+      <view class="last-record-modal" @tap.stop>
+        <view class="last-record-modal-header">
+          <text class="last-record-modal-title">提示</text>
+        </view>
+        <view class="last-record-modal-body">
+          <text class="last-record-modal-content">检测到您上一次的救援地址信息，是否沿用？</text>
+          <view class="last-record-modal-address" v-if="lastRecordData && lastRecordData.addressName">
+            <text class="last-record-address-label">救援地址：</text>
+            <text class="last-record-address-text">{{ lastRecordData.addressName }}</text>
+          </view>
+        </view>
+        <view class="last-record-modal-footer">
+          <view class="last-record-modal-btn cancel-btn" @tap="dismissLastRecord">不使用</view>
+          <view class="last-record-modal-btn confirm-btn" @tap="useLastRecord">使用</view>
+        </view>
+      </view>
+    </view>
+
     <!-- 提交 -->
     <view class="submit-section">
       <button class="submit-btn" @tap="submitForm">{{ submitting ? '提交中...' : '提交' }}</button>
@@ -279,7 +299,7 @@
           </view>
         </view>
         <view class="drawer-body">
-          <view v-for="(car, idx) in fireCarOptions" :key="idx" class="drawer-item" :class="{ active: isCarTempSelected(car) }" @tap="toggleCarInDrawer(car)">
+          <view v-for="(car, idx) in getAvailableCarsForUnit()" :key="idx" class="drawer-item" :class="{ active: isCarTempSelected(car), disabled: isCarRescuing(car) }" @tap="toggleCarInDrawer(car)">
             <view class="checkbox">
               <view class="checkbox-inner" v-if="isCarTempSelected(car)"></view>
             </view>
@@ -312,7 +332,7 @@
             <view class="drawer-item-info">
               <text class="unit-label">{{ unit.label }}</text>
             </view>
-            <text class="status-badge" :class="isAlreadyAssigned(unit) || isUnitRescuing(unit) ? 'disabled' : (rescuingUnits.some(rescuingUnit => rescuingUnit.unitId === unit.value) ? 'rescuing' : 'idle')">{{ getDrawerUnitStatusText(unit) }}</text>
+            <text class="status-badge" :class="isAlreadyAssigned(unit) || !unit.canSelect ? 'disabled' : (unit.status === 'rescuing_all' || unit.status === 'rescuing_partial' ? 'rescuing' : 'idle')">{{ getDrawerUnitStatusText(unit) }}</text>
           </view>
         </view>
         <view class="drawer-footer">
@@ -385,20 +405,17 @@ export default {
       currentTaskGroupUnitIndex: -1, // 当前任务组所属单位索引
       currentTaskGroupIndex: -1, // 当前编辑的任务组索引（-1表示新建）
       tempTaskGroupCars: [], // 任务组临时选择的车辆
-      rescuingUnits: [], // 正在救援的单位列表
       rescuingCars: [], // 正在救援的车辆列表
       unitCarMap: {}, // 单位-车辆映射关系 { unitId: [carId1, carId2, ...] }
       showCurrentAddress: true, // 是否展开当前地址（默认展开）
       currentLocation: null, // 当前位置信息
       currentLocationLoading: false, // 是否正在获取位置
-      matchedAddress: null // 匹配到的地址
+      matchedAddress: null, // 匹配到的地址
+      showLastRecordModal: false, // 显示上一次记录弹窗
+      lastRecordData: null // 上一次记录的数据
     }
   },
   computed: {
-    availableUnits() {
-      // 过滤掉已选择的单位
-      return this.fireUnitOptions.filter(unit => !this.selectedUnits.some(selected => selected.value === unit.value))
-    },
     // 供水选择集合：只能选择已参战的救援单位
     assignedUnitOptions() {
       return (this.selectedUnits || []).map(u => ({ label: u.label, value: u.value }))
@@ -414,7 +431,9 @@ export default {
         this.loadExistingFireData()
       })
     } else {
-      // 如果不是编辑模式，自动获取当前位置并匹配
+      // 如果不是编辑模式，先查询上一次记录
+      this.checkLastRecord()
+      // 自动获取当前位置并匹配
       this.getCurrentLocationAndMatch()
     }
   },
@@ -454,7 +473,12 @@ export default {
           this.rescuingCars = data.usingCars || []
           // 单位-车辆映射关系（优先使用接口返回的，否则从静态资源构建）
           if (data.unitCarMap) {
-            this.unitCarMap = data.unitCarMap
+            // 将后端返回的 unitCarMap 中的车辆ID统一转换为字符串
+            this.unitCarMap = {}
+            Object.keys(data.unitCarMap).forEach(unitId => {
+              const carIds = data.unitCarMap[unitId] || []
+              this.unitCarMap[unitId] = carIds.map(id => String(id)).filter(id => id)
+            })
           } else {
             this.buildUnitCarMap()
           }
@@ -476,16 +500,39 @@ export default {
         // 从静态资源中获取该单位的所有车辆
         // 根据实际的数据结构匹配，车辆可能通过 unitId、unitCode 或其他字段关联
         const unitCars = fireCars.filter(car => {
-          return car.unitId === unit.value || 
-                 car.unitId === unit.id || 
-                 car.unitCode === unit.code ||
-                 (car.unit && (car.unit.value === unit.value || car.unit.id === unit.id))
+          // 支持多种匹配方式
+          const unitValue = String(unit.value || '')
+          const unitId = String(unit.id || '')
+          const unitCode = String(unit.code || '')
+          
+          const carUnitId = String(car.unitId || '')
+          const carUnitCode = String(car.unitCode || '')
+          
+          return carUnitId === unitValue || 
+                 carUnitId === unitId || 
+                 carUnitCode === unitCode ||
+                 (car.unit && (String(car.unit.value || '') === unitValue || String(car.unit.id || '') === unitId))
         })
-        this.unitCarMap[unit.value] = unitCars.map(car => car.value || car.id || car.carId)
+        
+        // 提取车辆ID，统一转换为字符串
+        const carIds = unitCars.map(car => String(car.value || car.id || car.carId || '')).filter(id => id)
+        this.unitCarMap[unit.value] = carIds
       })
     },
     // 更新单位状态
     updateUnitStatus() {
+      // 获取当前表单中已选择单位使用的所有车辆ID（包括已有支持车辆）
+      const selectedCarIds = new Set()
+      this.selectedUnits.forEach(unit => {
+        if (unit.selectedCars && unit.selectedCars.length > 0) {
+          unit.selectedCars.forEach(car => {
+            if (car.value) {
+              selectedCarIds.add(String(car.value))
+            }
+          })
+        }
+      })
+      
       this.fireUnitOptions = this.fireUnitOptions.map(unit => {
         const unitCarIds = this.unitCarMap[unit.value] || []
         if (unitCarIds.length === 0) {
@@ -498,10 +545,24 @@ export default {
           }
         }
         
+        // 将单位车辆ID转换为字符串数组，便于匹配
+        const unitCarIdsStr = unitCarIds.map(id => String(id))
+        
         // 检查该单位正在使用的车辆数量
-        const usingCarCount = unitCarIds.filter(carId => 
-          this.rescuingCars.some(usingCar => usingCar.carId === carId || usingCar.id === carId)
-        ).length
+        // 包括：1. 接口返回的占用车辆（rescuingCars） 2. 当前表单中已选择的车辆（selectedCarIds）
+        const usingCarCount = unitCarIdsStr.filter(carId => {
+          // 检查是否在接口返回的占用车辆中
+          const isInRescuingCars = this.rescuingCars.some(usingCar => {
+            const usingCarId = String(usingCar.carId || usingCar.id || usingCar.value || '')
+            return usingCarId && usingCarId === carId
+          })
+          
+          // 检查是否在当前表单已选择的车辆中
+          const isInSelectedCars = selectedCarIds.has(carId)
+          
+          return isInRescuingCars || isInSelectedCars
+        }).length
+
         
         if (usingCarCount === 0) {
           // 所有车辆都空闲
@@ -511,8 +572,8 @@ export default {
             statusText: '空闲中',
             canSelect: true
           }
-        } else if (usingCarCount === unitCarIds.length) {
-          // 所有车辆都在使用
+        } else if (usingCarCount === this.fireCarOptions.length) {
+          // 所有车辆都在使用（包括接口返回的占用车辆 + 当前表单中已选择的车辆）
           return {
             ...unit,
             status: 'rescuing_all',
@@ -520,7 +581,7 @@ export default {
             canSelect: false
           }
         } else {
-          // 部分车辆在使用
+          // 部分车辆在使用，还有空闲车辆
           return {
             ...unit,
             status: 'rescuing_partial',
@@ -673,10 +734,19 @@ export default {
       this.carDrawerVisible = false
     },
     toggleCarInDrawer(car) {
+      // 如果车辆正在使用，不允许选择
+      if (this.isCarRescuing(car)) {
+        uni.showToast({ title: '该车辆正在使用中', icon: 'none' })
+        return
+      }
+      
+      // 车辆未被占用，可以选择（显示"空闲中"）
       const i = this.tempSelectedCars.findIndex(c => c.value === car.value)
       if (i > -1) {
+        // 取消选择
         this.tempSelectedCars.splice(i, 1)
       } else {
+        // 选择车辆
         this.tempSelectedCars.push(car)
       }
     },
@@ -687,12 +757,63 @@ export default {
       return this.isCarRescuing(car) ? 'rescuing' : 'idle'
     },
     getCarStatusText(car) {
+      // 如果车辆正在使用，显示"救援中"；否则显示"空闲中"（可以选择）
       return this.isCarRescuing(car) ? '救援中' : '空闲中'
     },
-    // 检查车辆是否正在救援
+    // 获取当前单位的可用车辆列表
+    getAvailableCarsForUnit() {
+      if (this.currentUnitIndex === -1) return []
+      
+      const currentUnit = this.selectedUnits[this.currentUnitIndex]
+      if (!currentUnit || !currentUnit.value) return []
+      
+      // 从unitCarMap中获取该单位的所有车辆ID
+      const unitCarIds = this.unitCarMap[currentUnit.value] || []
+      if (unitCarIds.length === 0) return []
+      
+      // 从fireCarOptions中筛选出属于该单位的车辆
+      const unitCarIdsStr = unitCarIds.map(id => String(id))
+      return this.fireCarOptions.filter(car => {
+        const carId = String(car.value || car.id || car.carId || '')
+        return !(carId && unitCarIdsStr.includes(carId))
+      })
+    },
+    // 检查车辆是否正在救援（只检查当前单位的车辆占用情况）
     isCarRescuing(car) {
-      const st = car.status || car.state || 'idle'
-      return st === 'rescuing' || st === 1
+      if (!car || !car.value) return false
+      
+      // 确保只检查属于当前单位的车辆
+      if (this.currentUnitIndex === -1) return false
+      
+      const currentUnit = this.selectedUnits[this.currentUnitIndex]
+      if (!currentUnit || !currentUnit.value) return false
+      
+      // 验证车辆是否属于当前单位
+      const unitCarIds = this.unitCarMap[currentUnit.value] || []
+      const unitCarIdsStr = unitCarIds.map(id => String(id))
+      const carId = String(car.value)
+      
+      // 如果车辆不属于当前单位，返回false（不应该出现在列表中）
+      if (!unitCarIdsStr.includes(carId)) return false
+      
+      // 检查是否在接口返回的占用车辆中
+      const isInRescuingCars = this.rescuingCars.some(usingCar => {
+        const usingCarId = String(usingCar.carId || usingCar.id || usingCar.value || '')
+        return usingCarId && usingCarId === carId
+      })
+      
+      // 检查是否在其他单位已选择的车辆中（排除当前正在编辑的单位）
+      const isInSelectedCars = this.selectedUnits.some((unit, unitIndex) => {
+        // 如果正在编辑当前单位，排除该单位的车辆
+        if (this.currentUnitIndex === unitIndex) return false
+        
+        if (unit.selectedCars && unit.selectedCars.length > 0) {
+          return unit.selectedCars.some(selectedCar => String(selectedCar.value) === carId)
+        }
+        return false
+      })
+      
+      return isInRescuingCars || isInSelectedCars
     },
     confirmCarDrawer() {
       const list = [...this.tempSelectedCars]
@@ -712,6 +833,8 @@ export default {
       }
       // 同步更新表单数据
       this.updateFormData()
+      // 更新单位状态（因为已选择的车辆会影响其他单位的状态）
+      this.updateUnitStatus()
       this.carDrawerVisible = false
     },
     getCarNames(unit) {
@@ -974,10 +1097,6 @@ export default {
       const unit = this.fireUnitOptions.find(u => u.value === unitId)
       return unit && unit.status === 'rescuing_all'
     },
-    // 检查单位是否正在救援（基于车辆占用情况）
-    isUnitRescuing(unit) {
-      return unit.status === 'rescuing_all' || unit.status === 'rescuing_partial'
-    },
     // 抽屉内单位状态文案：若已参战（禁用），固定显示"正在使用"，否则按原状态显示
     getDrawerUnitStatusText(unit) {
       if (this.isAlreadyAssigned(unit)) {
@@ -989,6 +1108,8 @@ export default {
     confirmUnits() {
       this.selectedUnits = [...this.tempSelectedUnits]
       this.updateFormData()
+      // 更新单位状态（因为已选择的单位会影响其他单位的状态）
+      this.updateUnitStatus()
       this.hideUnitSelector()
     },
     // 方向选择
@@ -1442,8 +1563,68 @@ export default {
       
       this.selectedUnits.splice(index, 1)
       this.updateFormData()
+      // 更新单位状态（因为移除单位后，车辆会释放，其他单位的状态可能改变）
+      this.updateUnitStatus()
     },
     
+    // 查询上一次记录
+    async checkLastRecord() {
+      try {
+        const currentUser = uni.getStorageSync('userInfo') || {}
+        if (!currentUser.userId) return
+        
+        const res = await new Promise((resolve, reject) => {
+          uni.request({
+            url: this.serverUrl + '/fire/lastRecord',
+            method: 'GET',
+            data: {
+              issuePersonId: currentUser.userId
+            },
+            success: resolve,
+            fail: reject
+          })
+        })
+        
+        if (res?.data?.code === 200 && res.data.data) {
+          this.lastRecordData = res.data.data
+          // 延迟显示弹窗，让页面先加载
+          this.$nextTick(() => {
+            setTimeout(() => {
+              this.showLastRecordModal = true
+            }, 500)
+          })
+        }
+      } catch (e) {
+        console.error('查询上一次记录失败:', e)
+        // 静默处理，不影响正常流程
+      }
+    },
+    // 使用上一次记录
+    useLastRecord() {
+      if (!this.lastRecordData) return
+      
+      const lastRecord = this.lastRecordData
+      // 填充救援地址（如果当前没有选择地址，或者当前地址不是录入的地址）
+      if (lastRecord.addressId && (!this.selectedAddress.addressId || !this.matchedAddress)) {
+        this.selectedAddress = {
+          addressId: lastRecord.addressId,
+          addressName: lastRecord.addressName || '',
+          rescueFloor: lastRecord.rescueFloor || ''
+        }
+        this.formData.addressId = lastRecord.addressId
+        this.formData.addressName = lastRecord.addressName || ''
+        this.formData.locationType = lastRecord.locationType || ''
+      }
+      
+      // 关闭弹窗
+      this.showLastRecordModal = false
+      this.lastRecordData = null
+    },
+    // 不使用上一次记录
+    dismissLastRecord() {
+      this.showLastRecordModal = false
+      this.lastRecordData = null
+    },
     // 切换当前地址显示
     toggleCurrentAddress() {
       this.showCurrentAddress = !this.showCurrentAddress
@@ -1551,7 +1732,7 @@ export default {
           
           this.matchedAddress = matched
           
-          // 如果匹配到地址且救援地址为空，自动填充
+          // 如果匹配到地址（是录入的地址），且救援地址为空，自动填充
           if (matched && !this.selectedAddress.addressId && !this.situationId) {
             this.selectedAddress = {
               addressId: matched.addressId,
@@ -1560,7 +1741,7 @@ export default {
             }
             this.formData.addressId = matched.addressId
             this.formData.addressName = matched.addressName
-            this.formData.locationType = matched.type
+            this.formData.locationType = matched.type || matched.locationType
           }
         }
       } catch (error) {
@@ -2031,4 +2212,31 @@ export default {
 .status-badge.disabled { background: #e6f7ff; border: 1rpx solid #f0f8ff; color: #999; }
 .drawer-footer { padding: 16rpx 24rpx 24rpx; border-top: 1rpx solid #f0f8ff; }
 .confirm-btn { width: 100%; height: 64rpx; background: linear-gradient(135deg, #1890ff, #40a9ff); color: #fff; border: none; border-radius: 12rpx; font-size: 26rpx; font-weight: 600; }
+
+/* 上一次记录弹窗样式 */
+.last-record-modal-mask { position: fixed; left: 0; right: 0; top: 0; bottom: 0; background: rgba(0, 0, 0, 0.45); z-index: 2000; display: flex; align-items: center; justify-content: center; animation: fadeIn 0.3s ease; }
+.last-record-modal { width: 640rpx; background: #fff; border-radius: 20rpx; overflow: hidden; animation: slideUp 0.3s ease; box-shadow: 0 12rpx 48rpx rgba(0, 0, 0, 0.15); }
+.last-record-modal-header { padding: 40rpx 40rpx 28rpx; border-bottom: 1rpx solid #f0f8ff; background: linear-gradient(135deg, #f0f8ff 0%, #fff 100%); }
+.last-record-modal-title { font-size: 34rpx; font-weight: 600; color: #1890ff; }
+.last-record-modal-body { padding: 40rpx; }
+.last-record-modal-content { font-size: 28rpx; color: #333; line-height: 1.8; display: block; margin-bottom: 24rpx; }
+.last-record-modal-address { display: flex; align-items: flex-start; padding: 20rpx; background: linear-gradient(135deg, #f0f8ff 0%, #e6f7ff 100%); border-radius: 12rpx; margin-top: 20rpx; border: 1rpx solid #d6e4ff; }
+.last-record-address-label { font-size: 26rpx; color: #1890ff; margin-right: 12rpx; flex-shrink: 0; font-weight: 500; }
+.last-record-address-text { font-size: 26rpx; color: #333; flex: 1; word-break: break-all; line-height: 1.6; }
+.last-record-modal-footer { display: flex; border-top: 1rpx solid #f0f8ff; }
+.last-record-modal-btn { flex: 1; height: 96rpx; display: flex; align-items: center; justify-content: center; font-size: 30rpx; font-weight: 500; transition: all 0.2s; }
+.last-record-modal-btn.cancel-btn { color: #666; border-right: 1rpx solid #f0f8ff; }
+.last-record-modal-btn.cancel-btn:active { background: #fafafa; }
+.last-record-modal-btn.confirm-btn { color: #1890ff; font-weight: 600; background: linear-gradient(135deg, #f0f8ff 0%, #e6f7ff 100%); }
+.last-record-modal-btn.confirm-btn:active { background: linear-gradient(135deg, #e6f7ff 0%, #d6e4ff 100%); }
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { transform: translateY(100rpx); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
 </style>

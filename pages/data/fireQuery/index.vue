@@ -112,7 +112,7 @@
                 <!-- 救援中标签 -->
                 <view class="status-tag rescue-tag" :class="{ 'active': item.taskStatus == 2 }">
                   <view class="tag-dot"></view>
-                  <text class="tag-label">救援中</text>
+                  <text class="tag-label">{{ getRescueStatusText(item) }}</text>
                   <view class="ripple" v-if="item.taskStatus == 2"></view>
                 </view>
                 
@@ -195,7 +195,7 @@ export default {
   components: { uniSwipeAction, uniSwipeActionItem },
   data() {
     return {
-      serverUrl: 'https://www.xiaobei.space',
+      serverUrl: 'http://172.17.121.112:3000',
       keyword: '',
       issuePersonName: '',
       feedbackPersonName: '', // 新增：任务下达人员
@@ -554,6 +554,44 @@ export default {
     getRescueUnits(item) {
       if (!item.assignedUnits || item.assignedUnits.length === 0) return '—'
       return item.assignedUnits.map(unit => unit.unitName).join('、')
+    },
+    // 获取救援状态文本（根据任务类型）
+    getRescueStatusText(item) {
+      // 如果状态不是救援中，返回默认状态文本
+      if (item.taskStatus != 2) {
+        if (item.taskStatus == 1) return '已完成'
+        if (item.taskStatus == 3) return '需要支援'
+        if (item.taskStatus == 4) return '正在支援'
+        return '救援中'
+      }
+      
+      // 获取第一个救援单位的任务类型
+      const rescueUnits = (item.assignedUnits || []).filter(unit => unit.unitStatus === 'rescue')
+      if (rescueUnits.length === 0) return '救援中'
+      
+      // 从任务组中获取任务类型
+      const firstUnit = rescueUnits[0]
+      if (firstUnit.taskGroups && firstUnit.taskGroups.length > 0) {
+        const taskType = firstUnit.taskGroups[0].taskType
+        return this.getTaskTypeStatusText(taskType)
+      }
+      
+      // 如果没有任务组，尝试从旧的任务类型字段获取
+      if (firstUnit.taskType) {
+        return this.getTaskTypeStatusText(firstUnit.taskType)
+      }
+      
+      return '救援中'
+    },
+    // 根据任务类型获取状态文本
+    getTaskTypeStatusText(taskType) {
+      const taskTypeStr = String(taskType)
+      if (taskTypeStr === '1') return '灭火中'
+      if (taskTypeStr === '2') return '堵截中'
+      if (taskTypeStr === '3') return '搜救中'
+      if (taskTypeStr === '6') return '排烟中'
+      if (taskTypeStr === '4' || taskTypeStr === '5') return '供水中'
+      return '救援中'
     },
     // 根据任务状态获取滑动操作选项
     getSwipeOptions(item) {

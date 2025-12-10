@@ -284,10 +284,43 @@ export default {
     // 获取状态文本
     getStatusText(status) {
       if (status == 1) return '已完成'
-      if (status == 2) return '救援中'
+      if (status == 2) {
+        // 救援中状态，根据任务类型显示更详细的状态
+        return this.getRescueStatusText()
+      }
       if (status == 3) return '需要支援'
       if (status == 4) return '正在支援'
       return '未知状态'
+    },
+    // 获取救援状态文本（根据任务类型）
+    getRescueStatusText() {
+      // 获取第一个救援单位的任务类型
+      const rescueUnits = this.getMainUnits()
+      if (rescueUnits.length === 0) return '救援中'
+      
+      // 从任务组中获取任务类型
+      const firstUnit = rescueUnits[0]
+      if (firstUnit.taskGroups && firstUnit.taskGroups.length > 0) {
+        const taskType = firstUnit.taskGroups[0].taskType
+        return this.getTaskTypeStatusText(taskType)
+      }
+      
+      // 如果没有任务组，尝试从旧的任务类型字段获取
+      if (firstUnit.taskType) {
+        return this.getTaskTypeStatusText(firstUnit.taskType)
+      }
+      
+      return '救援中'
+    },
+    // 根据任务类型获取状态文本
+    getTaskTypeStatusText(taskType) {
+      const taskTypeStr = String(taskType)
+      if (taskTypeStr === '1') return '灭火中'
+      if (taskTypeStr === '2') return '堵截中'
+      if (taskTypeStr === '3') return '搜救中'
+      if (taskTypeStr === '6') return '排烟中'
+      if (taskTypeStr === '4' || taskTypeStr === '5') return '供水中'
+      return '救援中'
     },
     // 获取主要救援单位（unitStatus为rescue）
     getMainUnits() {
