@@ -5,12 +5,12 @@
       <view class="form-section">
         <view class="form-row">
           <text class="section-title">救援地址 <text class="required">*</text></text>
-          <view class="address-selector" :class="{ 'disabled': situationId }" @tap="goToAddressSelector">
+          <view class="address-selector" :class="{ 'disabled': situationId && !isChangeTask }" @tap="goToAddressSelector">
             <view class="address-info">
               <text class="address-text" :class="{'placeholder':!selectedAddress.addressName}">{{ selectedAddress.addressName || '请选择救援地址' }}</text>
               <!-- <text class="floor-info" v-if="selectedAddress.rescueFloor">{{ selectedAddress.rescueFloor }}层</text> -->
             </view>
-            <image v-if="!situationId" :src="serverUrl + '/static/icons/common/right.png'" class="arrow-icon" />
+            <image v-if="!situationId || isChangeTask" :src="serverUrl + '/static/icons/common/right.png'" class="arrow-icon" />
           </view>
         </view>
       </view>
@@ -230,7 +230,7 @@
                   <view class="config-section" v-if="shouldShowDescription(taskGroup)">
                     <text class="config-label">描述</text>
                     <view class="textarea-container">
-                      <textarea v-model="taskGroup.description" class="form-textarea" maxlength="200" auto-height show-confirm-bar="false" placeholder="请输入描述信息（200字以内）" />
+                      <textarea v-model="taskGroup.description" class="form-textarea" maxlength="200" auto-height show-confirm-bar="false" placeholder="请输入描述信息（200字以内）" @input="onDescriptionInput(taskGroup)" />
                     </view>
                   </view>
                 </template>
@@ -378,6 +378,7 @@ export default {
     return {
       serverUrl: 'http://172.17.121.112:3000',
       situationId: '', // 已有火灾情况ID
+      isChangeTask: false, // 是否是变更任务
       formData: {
         addressId: '',
         addressName: '',
@@ -423,6 +424,10 @@ export default {
   },
   onLoad(options) {
     this.loadStaticData()
+    // 检查是否是变更任务
+    if (options && options.taskType === 'change') {
+      this.isChangeTask = true
+    }
     // 检查是否从火灾详情页跳转过来
     if (options && options.situationId) {
       this.situationId = options.situationId
@@ -619,19 +624,142 @@ export default {
           this.formData.locationType = fireData.locationType
           this.formData.remark = fireData.remark || ''
           
-          // 保存已有救援单位到单独的数据中
-          if (fireData.assignedUnits && fireData.assignedUnits.length > 0) {
-            this.existingUnits = fireData.assignedUnits.map(unit => ({
-              unitId: unit.unitId,
-              unitName: unit.unitName,
-              carInfo: unit.carInfo || [],
-              rescueFloor: unit.rescueFloor || '',
-              direction: unit.direction || '',
-              taskType: unit.taskType || '',
-              taskExtra: unit.taskExtra || {},
-              unitStatus: unit.unitStatus || 'rescue',
-              rescueTime: unit.rescueTime || new Date().toISOString()
-            }))
+          // 如果是变更任务，加载任务组信息到selectedUnits
+          if (this.isChangeTask && fireData.assignedUnits && fireData.assignedUnits.length > 0) {
+            this.selectedUnits = fireData.assignedUnits.map(unit => {
+              // 收集该单位所有任务组使用的车辆ID
+              const allCarIds = new Set()
+              const taskGroups = (unit.taskGroups || []).map(taskGroup => {
+                const carIds = taskGroup.carIds || []
+                carIds.forEach(id => allCarIds.add(String(id)))
+                
+                // 获取任务类型索引
+                const taskTypeIndex = this.getTaskTypeIndex(taskGroup.taskType)
+                const taskTypeOption = this.taskTypeOptions[taskTypeIndex] || {}
+                
+                // 获取任务配置
+                const taskConfig = this.getTaskConfig(taskGroup.taskType)
+                
+                // 构建车辆对象数组
+                const cars = []
+                if (taskGroup.carIds && taskGroup.carIds.length > 0) {
+                  taskGroup.carIds.forEach(carId => {
+                    const car = this.fireCarOptions.find(c => String(c.value) === String(carId))
+                    if (car) {
+                      cars.push({ ...car })
+                    }
+                  })
+                }
+                
+                // 获取方向索引
+                const directionIndex = this.getDirectionIndex(taskGroup.direction)
+                
+                // 构建任务组对象
+                const taskExtra = taskGroup.taskExtra || {}
+                const tg = {
+                  cars: cars,
+                  floor: taskGroup.floor || '',
+                  direction: taskGroup.direction || 1,
+                  directionIndex: directionIndex,
+                  description: taskGroup.description || '',
+                  taskType: taskGroup.taskType || '',
+                  taskTypeIndex: taskTypeIndex,
+                  taskConfig: taskConfig,
+                  taskExtra: taskExtra,
+                  dynamicSelectIndex: 0,
+                  // 搜救任务特殊字段（优先从taskGroup获取，否则从taskExtra获取）
+                  searchPower: taskGroup.searchPower || taskExtra.searchPower || '',
+                  searchResult: taskGroup.searchResult || taskExtra.searchResult || '',
+                  // 排烟任务特殊字段（优先从taskGroup获取，否则从taskExtra获取）
+                  smokePower: taskGroup.smokePower || taskExtra.smokePower || '',
+                  // 供水任务特殊字段
+                  targetCars: []
+                }
+                
+                // 处理供水任务的目标车辆
+                if (this.isWaterTask(tg) && taskGroup.targetCars && taskGroup.targetCars.length > 0) {
+                  tg.targetCars = taskGroup.targetCars.map(tc => {
+                    const car = this.fireCarOptions.find(c => String(c.value) === String(tc.carId || tc.value))
+                    return car ? { ...car } : null
+                  }).filter(Boolean)
+                }
+                
+                // 处理供水任务的目标中队（先设置为0，后续会在构建完selectedUnits后更新）
+                if (this.isWaterTask(tg) && taskGroup.taskExtra && taskGroup.taskExtra.targetUnit) {
+                  // 暂时保存目标单位ID，后续处理
+                  tg._targetUnitId = String(taskGroup.taskExtra.targetUnit)
+                }
+                
+                return tg
+              })
+              
+              // 构建该单位的车辆列表（所有任务组使用的车辆）
+              const selectedCars = []
+              allCarIds.forEach(carId => {
+                const car = this.fireCarOptions.find(c => String(c.value) === String(carId))
+                if (car) {
+                  selectedCars.push({ ...car })
+                }
+              })
+              
+              // 从fireUnitOptions中找到对应的单位信息
+              const unitOption = this.fireUnitOptions.find(u => String(u.value) === String(unit.unitId))
+              
+              return {
+                ...(unitOption || { label: unit.unitName, value: unit.unitId }),
+                selectedCars: selectedCars,
+                taskGroups: taskGroups,
+                unitStatus: unit.unitStatus || 'rescue',
+                rescueTime: unit.rescueTime || new Date().toISOString()
+              }
+            })
+            
+            // 处理供水任务的目标中队（需要在selectedUnits构建完成后）
+            // 使用$nextTick确保assignedUnitOptions计算属性已更新
+            this.$nextTick(() => {
+              this.selectedUnits.forEach(unit => {
+                if (unit.taskGroups && unit.taskGroups.length > 0) {
+                  unit.taskGroups.forEach(taskGroup => {
+                    if (this.isWaterTask(taskGroup) && taskGroup._targetUnitId) {
+                      // 从assignedUnitOptions中查找目标单位（因为供水任务只能选择已参战的单位）
+                      const targetUnitIndex = this.assignedUnitOptions.findIndex(u => String(u.value) === String(taskGroup._targetUnitId))
+                      if (targetUnitIndex >= 0) {
+                        taskGroup.dynamicSelectIndex = targetUnitIndex
+                        // 更新taskExtra中的targetUnit
+                        if (!taskGroup.taskExtra) {
+                          this.$set(taskGroup, 'taskExtra', {})
+                        }
+                        this.$set(taskGroup.taskExtra, 'targetUnit', String(taskGroup._targetUnitId))
+                      }
+                      // 清除临时字段
+                      delete taskGroup._targetUnitId
+                    }
+                  })
+                }
+              })
+              // 强制更新视图
+              this.$forceUpdate()
+            })
+            
+            // 更新表单数据
+            this.updateFormData()
+            // 更新单位状态
+            this.updateUnitStatus()
+          } else {
+            // 如果不是变更任务，保存已有救援单位到单独的数据中
+            if (fireData.assignedUnits && fireData.assignedUnits.length > 0) {
+              this.existingUnits = fireData.assignedUnits.map(unit => ({
+                unitId: unit.unitId,
+                unitName: unit.unitName,
+                carInfo: unit.carInfo || [],
+                rescueFloor: unit.rescueFloor || '',
+                direction: unit.direction || '',
+                taskType: unit.taskType || '',
+                taskExtra: unit.taskExtra || {},
+                unitStatus: unit.unitStatus || 'rescue',
+                rescueTime: unit.rescueTime || new Date().toISOString()
+              }))
+            }
           }
         }
       } catch (e) {
@@ -677,8 +805,8 @@ export default {
       return `${y}-${m}-${da} ${h}:${mi}`
     },
     goToAddressSelector() {
-      // 如果有situationId，则不允许修改地址
-      if (this.situationId) {
+      // 如果有situationId且不是变更任务，则不允许修改地址
+      if (this.situationId && !this.isChangeTask) {
         uni.showToast({ title: '已有火灾情况无法修改地址', icon: 'none' })
         return
       }
@@ -769,7 +897,6 @@ export default {
       
       // 从unitCarMap中获取该单位的所有车辆ID
       const unitCarIds = this.unitCarMap[currentUnit.value] || []
-      if (unitCarIds.length === 0) return []
       
       // 从fireCarOptions中筛选出属于该单位的车辆
       const unitCarIdsStr = unitCarIds.map(id => String(id))
@@ -1070,33 +1197,6 @@ export default {
     isAlreadyAssigned(unit) {
       return this.selectedUnits.some(item => item.value === unit.value)
     },
-    getUnitStatusClass(unit) {
-      // 如果已参战，显示为禁用状态
-      if (this.isAlreadyAssigned(unit)) {
-        return 'disabled'
-      }
-      // 如果不能选择（所有车辆都在使用），显示为禁用状态
-      if (!unit.canSelect) {
-        return 'disabled'
-      }
-      // 根据状态返回对应的class
-      if (unit.status === 'rescuing_partial') {
-        return 'rescuing'
-      }
-      return unit.status === 'idle' ? 'idle' : 'rescuing'
-    },
-    getUnitStatusText(unit) {
-      return unit.statusText || '空闲中'
-    },
-    // 获取单位的所有车辆ID列表
-    getUnitCarIds(unitId) {
-      return this.unitCarMap[unitId] || []
-    },
-    // 检查单位的所有车辆是否都被占用
-    areAllCarsOccupied(unitId) {
-      const unit = this.fireUnitOptions.find(u => u.value === unitId)
-      return unit && unit.status === 'rescuing_all'
-    },
     // 抽屉内单位状态文案：若已参战（禁用），固定显示"正在使用"，否则按原状态显示
     getDrawerUnitStatusText(unit) {
       if (this.isAlreadyAssigned(unit)) {
@@ -1113,14 +1213,16 @@ export default {
       this.hideUnitSelector()
     },
     // 方向选择
-    onDirectionChange(e, unit) {
+    onDirectionChange(e, taskGroup) {
       try {
         const value = e.detail ? e.detail.value : e.value
-        unit.directionIndex = Number(value)
+        taskGroup.directionIndex = Number(value)
         
         // 使用 $set 确保响应式更新
-        this.$set(unit, 'direction', this.directionOptions[unit.directionIndex]?.value || '')
+        this.$set(taskGroup, 'direction', this.directionOptions[taskGroup.directionIndex]?.value || '')
         
+        // 更新表单数据
+        this.updateFormData()
         // 强制更新视图
         this.$forceUpdate()
       } catch (error) {
@@ -1132,12 +1234,15 @@ export default {
       let val = String(e.detail.value || '').replace(/\D/g, '')
       if (val === '') { 
         this.$set(taskGroup, 'floor', '')
+        this.updateFormData()
         return 
       }
       let num = parseInt(val, 10)
       if (isNaN(num) || num < 0) num = 0
       if (num > 99) num = 99
       this.$set(taskGroup, 'floor', String(num))
+      // 更新表单数据
+      this.updateFormData()
     },
     getDirectionText(taskGroup) {
       return (this.directionOptions[taskGroup.directionIndex] && this.directionOptions[taskGroup.directionIndex].label) || '正东'
@@ -1193,6 +1298,9 @@ export default {
         this.$set(taskGroup, 'taskConfig', picked.config || null)
         this.$set(taskGroup, 'taskExtra', {})
         this.$set(taskGroup, 'dynamicSelectIndex', 0)
+        
+        // 更新表单数据
+        this.updateFormData()
         
         // 如果是灭火或堵截任务，初始化特殊字段
         if (this.isFireOrBlockTask(taskGroup)) {
@@ -1406,18 +1514,18 @@ export default {
       return (this.assignedUnitOptions[idx] && this.assignedUnitOptions[idx].label) || '请选择目标中队'
     },
     // 任务选项选择
-    selectTaskOption(event, val, unit) {
+    selectTaskOption(event, val, taskGroup) {
       try {
         // 阻止事件冒泡
         if (event && event.stopPropagation) {
           event.stopPropagation()
         }
         
-        if (!unit || !unit.taskConfig) return
+        if (!taskGroup || !taskGroup.taskConfig) return
         
         // 确保 taskExtra 对象存在
-        if (!unit.taskExtra) {
-          this.$set(unit, 'taskExtra', {})
+        if (!taskGroup.taskExtra) {
+          this.$set(taskGroup, 'taskExtra', {})
         }
         
         // 确保 val 是基本类型，避免循环引用
@@ -1427,12 +1535,12 @@ export default {
           safeVal = JSON.stringify(val)
         }
         
-        this.$set(unit.taskExtra, unit.taskConfig.actionKey, safeVal)
+        this.$set(taskGroup.taskExtra, taskGroup.taskConfig.actionKey, safeVal)
         
-        // 使用 nextTick 而不是 forceUpdate，避免循环引用问题
-        this.$nextTick(() => {
-          // 视图更新完成
-        })
+        // 更新表单数据
+        this.updateFormData()
+        // 强制更新视图
+        this.$forceUpdate()
       } catch (e) {
         console.error('selectTaskOption error:', e)
       }
@@ -1441,6 +1549,7 @@ export default {
     selectSearchPower(val, taskGroup) {
       try {
         this.$set(taskGroup, 'searchPower', val)
+        this.updateFormData()
         this.$forceUpdate()
       } catch (e) {
         console.error('selectSearchPower error:', e)
@@ -1450,6 +1559,7 @@ export default {
     selectSearchResult(val, taskGroup) {
       try {
         this.$set(taskGroup, 'searchResult', val)
+        this.updateFormData()
         this.$forceUpdate()
       } catch (e) {
         console.error('selectSearchResult error:', e)
@@ -1459,6 +1569,7 @@ export default {
     selectSmokePower(val, taskGroup) {
       try {
         this.$set(taskGroup, 'smokePower', val)
+        this.updateFormData()
         this.$forceUpdate()
       } catch (e) {
         console.error('selectSmokePower error:', e)
@@ -1481,22 +1592,23 @@ export default {
         } else {
           taskGroup.targetCars.push({ ...car })
         }
+        this.updateFormData()
         this.$forceUpdate()
       } catch (e) {
         console.error('selectTargetCar error:', e)
       }
     },
     // 动态选择变化
-    onDynamicSelectChange(e, unit) {
+    onDynamicSelectChange(e, taskGroup) {
       try {
         const value = e.detail ? e.detail.value : e.value
-        unit.dynamicSelectIndex = Number(value)
-        const picked = this.assignedUnitOptions[unit.dynamicSelectIndex]
+        taskGroup.dynamicSelectIndex = Number(value)
+        const picked = this.assignedUnitOptions[taskGroup.dynamicSelectIndex]
         
-        if (unit.taskConfig) {
+        if (taskGroup.taskConfig) {
           // 确保 taskExtra 对象存在
-          if (!unit.taskExtra) {
-            this.$set(unit, 'taskExtra', {})
+          if (!taskGroup.taskExtra) {
+            this.$set(taskGroup, 'taskExtra', {})
           }
           
           // 确保值是基本类型，避免循环引用
@@ -1509,14 +1621,21 @@ export default {
             }
           }
           
-          this.$set(unit.taskExtra, unit.taskConfig.actionKey, safeValue)
+          this.$set(taskGroup.taskExtra, taskGroup.taskConfig.actionKey, safeValue)
           
+          // 更新表单数据
+          this.updateFormData()
           // 强制更新视图
           this.$forceUpdate()
         }
       } catch (e) {
         console.error('onDynamicSelectChange error:', e)
       }
+    },
+    // 描述输入处理
+    onDescriptionInput(taskGroup) {
+      // 更新表单数据
+      this.updateFormData()
     },
     // 更新表单数据
     updateFormData() {
@@ -1923,6 +2042,10 @@ export default {
       try {
         this.submitting = true
         uni.showLoading({ title: '提交中...' })
+        
+        // 提交前再次更新表单数据，确保数据是最新的
+        this.updateFormData()
+        
         const currentUser = uni.getStorageSync('userInfo') || {}
         const now = new Date()
         
@@ -2099,22 +2222,17 @@ export default {
 .unit-status.support-status { background: #fff7e6; color: #fa8c16; border: 1rpx solid #f0f8ff; }
 .unit-details-row { display: flex; flex-wrap: wrap; gap: 12rpx; }
 .detail-text { font-size: 22rpx; color: #666; }
-.add-icon { width: 24rpx; height: 24rpx; }
 .add-text { font-size: 24rpx; color: #1890ff; font-weight: 500; }
 .selected-units { padding: 0 20rpx 8rpx; }
 .unit-item { background: #fff; border-radius: 12rpx; margin: 0 4rpx 14rpx 4rpx; box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.04); border: 1rpx solid #f0f8ff; position: relative; overflow: visible; }
 .unit-header { display: flex; align-items: center; justify-content: space-between; padding: 16rpx 16rpx 8rpx 16rpx; }
 .unit-title { font-size: 28rpx; color: #1f2d3d; font-weight: 700; }
-.unit-config-inline { padding: 8rpx 16rpx 14rpx 16rpx; background: #fff; border: 0; border-top: 1rpx solid #f0f8ff; border-bottom-left-radius: 12rpx; border-bottom-right-radius: 12rpx; }
+.unit-config-inline { padding: 8rpx 16rpx 14rpx 16rpx; background: #fff; border: 0; border-bottom-left-radius: 12rpx; border-bottom-right-radius: 12rpx; }
 .config-section { margin-bottom: 24rpx; }
 .config-section:last-child { margin-bottom: 0; }
 .config-section-inline { display: flex; align-items: center; gap: 12rpx; }
 .config-section-inline .config-label { margin-bottom: 0; flex-shrink: 0; }
 .config-section-inline .car-selector { margin-top: 0; flex: 1; }
-.car-config-item { margin-bottom: 32rpx; padding: 16rpx; background: #f0f8ff; border-radius: 8rpx; border: 1rpx solid #f0f8ff; }
-.car-config-item:last-child { margin-bottom: 0; }
-.car-config-header { margin-bottom: 16rpx; padding-bottom: 12rpx; border-bottom: 1rpx solid #f0f8ff; }
-.car-name { font-size: 26rpx; color: #1890ff; font-weight: 600; }
 .add-task-btn { width: 100%; height: 64rpx; background: linear-gradient(135deg, #1890ff, #40a9ff); color: #fff; border: none; border-radius: 12rpx; font-size: 26rpx; font-weight: 600; margin-top: 8rpx; box-shadow: 0 2rpx 8rpx rgba(24, 144, 255, 0.2); }
 .add-task-btn:active { background: linear-gradient(135deg, #40a9ff, #1890ff); opacity: 0.9; }
 .add-task-text { color: #fff; }

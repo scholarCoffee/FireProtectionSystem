@@ -17,21 +17,16 @@
         <view class="info-section">
           <view class="info-row" v-if="detail.issuePersonName">
             <view class="info-item">
-              <view class="info-icon">👤</view>
               <text class="info-label">下达人员</text>
               <text class="info-value">{{ detail.issuePersonName }}</text>
             </view>
           </view>
-          <view class="info-row" v-if="detail.issueTime">
-            <view class="info-item" >
-              <view class="info-icon">📅</view>
+          <view class="info-row" v-if="detail.issueTime || detail.updateTime">
+            <view class="info-item" v-if="detail.issueTime">
               <text class="info-label">下达时间</text>
               <text class="info-value">{{ formatTime(detail.issueTime) }}</text>
             </view>
-          </view>
-          <view class="info-row" v-if="detail.updateTime">
-            <view class="info-item" >
-              <view class="info-icon">🕒</view>
+            <view class="info-item" v-if="detail.updateTime">
               <text class="info-label">更新时间</text>
               <text class="info-value">{{ formatTime(detail.updateTime) }}</text>
             </view>
@@ -42,47 +37,44 @@
       <!-- 主要救援单位 -->
       <view class="section-card main-units" v-if="getMainUnits().length > 0">
         <view class="section-header">
-          <view class="section-icon">🚨</view>
+          <image :src="serverUrl + '/static/icons/location/factory.png'" class="section-icon" />
           <text class="section-title">救援单位</text>
           <view class="unit-count">{{ getMainUnits().length }}个单位</view>
         </view>
         <view class="units-grid">
           <view class="unit-card modern-card" v-for="(u, i) in getMainUnits()" :key="i">
             <view class="unit-header">
-              <view class="unit-icon">🏢</view>
+              <image :src="serverUrl + '/static/icons/location/factory.png'" class="unit-icon" />
               <text class="unit-name">{{ u.unitName }}</text>
             </view>
-            <view class="unit-details">
-              <view class="detail-item" v-if="u.rescueFloor">
-                <view class="detail-icon">🏢</view>
-                <text class="detail-label">楼层</text>
-                <text class="detail-value">{{ u.rescueFloor }}层</text>
-              </view>
-              <view class="detail-item" v-if="u.direction">
-                <view class="detail-icon">🧭</view>
-                <text class="detail-label">方向</text>
-                <text class="detail-value">{{ getDirectionName(u.direction) }}</text>
-              </view>
-              <view class="detail-item">
-                <view class="detail-icon">📋</view>
-                <text class="detail-label">任务类型</text>
-                <text class="detail-value">{{ getTaskTypeName(u.taskType) }}</text>
-              </view>
-              <!-- 任务类型具体内容 -->
-              <view class="detail-item" v-if="getTaskContent(u)">
-                <view class="detail-icon">🎯</view>
-                <text class="detail-label">任务内容</text>
-                <text class="detail-value">{{ getTaskContent(u) }}</text>
-              </view>
-              <view class="detail-item">
-                <view class="detail-icon">🚗</view>
-                <text class="detail-label">车辆</text>
-                <text class="detail-value">{{ (u.carInfo||[]).map(c=>c.label).join('、') || '—' }}</text>
-              </view>
-              <view class="detail-item" v-if="u.rescueTime">
-                <view class="detail-icon">⏰</view>
-                <text class="detail-label">救援时间</text>
-                <text class="detail-value">{{ formatTime(u.rescueTime) }}</text>
+            <!-- 任务组列表 -->
+            <view v-if="u.taskGroups && u.taskGroups.length > 0" class="task-groups-container">
+              <view v-for="(taskGroup, tgIdx) in u.taskGroups" :key="tgIdx" class="task-group-card">
+                <view class="task-group-badge">任务组{{ tgIdx + 1 }}</view>
+                <view class="task-group-header">
+                  <view class="task-group-power" v-if="getTaskPower(taskGroup)">
+                    <text class="power-label">{{ getTaskPowerLabel(taskGroup) }}：</text>
+                    <text class="power-value">{{ getTaskPower(taskGroup) }}</text>
+                  </view>
+                </view>
+                <view class="task-group-details">
+                  <view class="detail-item full-width" v-if="taskGroup.carNames && taskGroup.carNames.length > 0">
+                    <text class="detail-label">参战车辆</text>
+                    <text class="detail-value">{{ taskGroup.carNames.join('、') }}</text>
+                  </view>
+                  <view class="detail-item" v-if="taskGroup.direction">
+                    <text class="detail-label">方位</text>
+                    <text class="detail-value">{{ getDirectionName(taskGroup.direction) }}</text>
+                  </view>
+                  <view class="detail-item" v-if="taskGroup.floor">
+                    <text class="detail-label">楼层</text>
+                    <text class="detail-value">{{ taskGroup.floor }}层</text>
+                  </view>
+                  <view class="detail-item full-width" v-if="taskGroup.description">
+                    <text class="detail-label">描述</text>
+                    <text class="detail-value">{{ taskGroup.description }}</text>
+                  </view>
+                </view>
               </view>
             </view>
           </view>
@@ -92,45 +84,50 @@
       <!-- 支援单位 -->
       <view class="section-card support-units" v-if="getSupportUnits().length > 0">
         <view class="section-header">
-          <view class="section-icon">🤝</view>
+          <image :src="serverUrl + '/static/icons/location/factory.png'" class="section-icon" />
           <text class="section-title">支援单位</text>
           <view class="unit-count">{{ getSupportUnits().length }}个单位</view>
         </view>
         <view class="units-grid">
           <view class="unit-card modern-card" v-for="(u, i) in getSupportUnits()" :key="i">
             <view class="unit-header">
-              <view class="unit-icon">🏢</view>
+              <image :src="serverUrl + '/static/icons/location/factory.png'" class="unit-icon" />
               <text class="unit-name">{{ u.unitName }}</text>
             </view>
+            <!-- 任务组列表 -->
+            <view v-if="u.taskGroups && u.taskGroups.length > 0" class="task-groups-container">
+              <view v-for="(taskGroup, tgIdx) in u.taskGroups" :key="tgIdx" class="task-group-card">
+                <view class="task-group-badge">任务组{{ tgIdx + 1 }}</view>
+                <view class="task-group-header">
+                  <view class="task-group-power" v-if="getTaskPower(taskGroup)">
+                    <text class="power-label">{{ getTaskPowerLabel(taskGroup) }}：</text>
+                    <text class="power-value">{{ getTaskPower(taskGroup) }}</text>
+                  </view>
+                </view>
+                <view class="task-group-details">
+                  <view class="detail-item full-width" v-if="taskGroup.carNames && taskGroup.carNames.length > 0">
+                    <text class="detail-label">参战车辆</text>
+                    <text class="detail-value">{{ taskGroup.carNames.join('、') }}</text>
+                  </view>
+                  <view class="detail-item" v-if="taskGroup.direction">
+                    <text class="detail-label">方位</text>
+                    <text class="detail-value">{{ getDirectionName(taskGroup.direction) }}</text>
+                  </view>
+                  <view class="detail-item" v-if="taskGroup.floor">
+                    <text class="detail-label">楼层</text>
+                    <text class="detail-value">{{ taskGroup.floor }}层</text>
+                  </view>
+                  <view class="detail-item full-width" v-if="taskGroup.description">
+                    <text class="detail-label">描述</text>
+                    <text class="detail-value">{{ taskGroup.description }}</text>
+                  </view>
+                </view>
+              </view>
+            </view>
+            <!-- 单位级别信息 -->
             <view class="unit-details">
-              <view class="detail-item" v-if="u.rescueFloor">
-                <view class="detail-icon">🏢</view>
-                <text class="detail-label">楼层</text>
-                <text class="detail-value">{{ u.rescueFloor }}层</text>
-              </view>
-              <view class="detail-item" v-if="u.direction">
-                <view class="detail-icon">🧭</view>
-                <text class="detail-label">方向</text>
-                <text class="detail-value">{{ getDirectionName(u.direction) }}</text>
-              </view>
-              <view class="detail-item">
-                <view class="detail-icon">📋</view>
-                <text class="detail-label">任务类型</text>
-                <text class="detail-value">{{ getTaskTypeName(u.taskType) }}</text>
-              </view>
-              <!-- 任务类型具体内容 -->
-              <view class="detail-item" v-if="getTaskContent(u)">
-                <view class="detail-icon">🎯</view>
-                <text class="detail-label">任务内容</text>
-                <text class="detail-value">{{ getTaskContent(u) }}</text>
-              </view>
-              <view class="detail-item">
-                <view class="detail-icon">🚗</view>
-                <text class="detail-label">车辆</text>
-                <text class="detail-value">{{ (u.carInfo||[]).map(c=>c.label).join('、') || '—' }}</text>
-              </view>
               <view class="detail-item" v-if="u.rescueTime">
-                <view class="detail-icon">⏰</view>
+                <image :src="serverUrl + '/static/icons/common/time.png'" class="detail-icon" />
                 <text class="detail-label">救援时间</text>
                 <text class="detail-value">{{ formatTime(u.rescueTime) }}</text>
               </view>
@@ -142,7 +139,6 @@
       <!-- 备注信息 -->
       <view class="section-card remark-section" v-if="detail.remark">
         <view class="section-header">
-          <view class="section-icon">📝</view>
           <text class="section-title">备注信息</text>
         </view>
         <view class="remark-content">
@@ -153,18 +149,24 @@
 
     <!-- 底部操作按钮 -->
     <view class="bottom-actions" v-if="detail.taskStatus != 1">
-      <!-- 救援中状态：完成救援 + 需要支援 -->
+      <!-- 救援中状态：完成任务 + 需要支援 + 变更任务 -->
       <template v-if="detail.taskStatus == 2 || detail.taskStatus == 4">
+        <button class="action-btn change-btn" @tap="changeTask">
+          变更任务
+        </button>
         <button class="action-btn finish-btn" @tap="finishRescue">
-          完成救援
+          完成任务
         </button>
         <button class="action-btn support-btn" @tap="requestSupport">
           需要支援
         </button>
       </template>
       
-      <!-- 需要支援状态：任务下达 -->
+      <!-- 需要支援状态：变更任务 + 任务下达 -->
       <template v-if="detail.taskStatus == 3">
+        <button class="action-btn change-btn" @tap="changeTask">
+          变更任务
+        </button>
         <button class="action-btn deliver-btn" @tap="deliverTask">
           任务下达
         </button>
@@ -227,7 +229,50 @@ export default {
       const t = types.find(it => it.value === String(val))
       return t ? t.label : val
     },
-    // 获取任务类型的具体内容
+    // 获取任务组的作战力量
+    getTaskPower(taskGroup) {
+      if (!taskGroup || !taskGroup.taskExtra) return ''
+      
+      const taskExtra = taskGroup.taskExtra || {}
+      const taskType = String(taskGroup.taskType || '')
+      
+      // 根据任务类型获取作战力量
+      if (taskType === '1' && taskExtra.firePower) {
+        return taskExtra.firePower // 灭火力量
+      }
+      if (taskType === '2' && taskExtra.blockPower) {
+        return taskExtra.blockPower // 堵截力量
+      }
+      if (taskType === '3' && taskGroup.searchPower) {
+        return taskGroup.searchPower // 搜救力量
+      }
+      if (taskType === '6' && taskGroup.smokePower) {
+        return taskGroup.smokePower // 排烟力量
+      }
+      if ((taskType === '4' || taskType === '5') && taskExtra.targetUnit) {
+        // 供水任务，显示目标单位
+        const unitOptions = uni.getStorageSync('static_fireUnits') || []
+        const targetUnit = unitOptions.find(u => u.value === taskExtra.targetUnit)
+        return targetUnit ? targetUnit.label : taskExtra.targetUnit
+      }
+      
+      return ''
+    },
+    // 获取任务组的作战力量标签（根据任务类型）
+    getTaskPowerLabel(taskGroup) {
+      if (!taskGroup) return '作战力量'
+      
+      const taskType = String(taskGroup.taskType || '')
+      
+      if (taskType === '1') return '灭火力量'
+      if (taskType === '2') return '堵截力量'
+      if (taskType === '3') return '搜救力量'
+      if (taskType === '6') return '排烟力量'
+      if (taskType === '4' || taskType === '5') return '目标中队'
+      
+      return '作战力量'
+    },
+    // 获取任务类型的具体内容（保留用于兼容旧数据）
     getTaskContent(unit) {
       if (!unit || !unit.taskExtra) return ''
       
@@ -330,7 +375,7 @@ export default {
     getSupportUnits() {
       return (this.detail.assignedUnits || []).filter(unit => unit.unitStatus === 'support')
     },
-    // 完成救援
+    // 完成任务
     async finishRescue() {
       try {
         await new Promise((resolve, reject) => {
@@ -342,7 +387,7 @@ export default {
             fail: reject
           })
         })
-        uni.showToast({ title: '已完成救援', icon: 'success' })
+        uni.showToast({ title: '已完成任务', icon: 'success' })
         // 操作成功后返回上一页
         setTimeout(() => {
           uni.navigateBack()
@@ -407,6 +452,32 @@ export default {
         }, 1500)
       } catch(e) {
         uni.showToast({ title: '删除失败', icon: 'none' })
+      }
+    },
+    // 变更任务
+    async changeTask() {
+      try {
+        // 获取救援单位名称（用于提示）
+        const rescueUnits = this.getMainUnits()
+        const unitNames = rescueUnits.map(unit => unit.unitName).join('、') || '该'
+        
+        const confirmResult = await new Promise((resolve) => {
+          uni.showModal({
+            title: '确认变更任务',
+            content: `当前操作${unitNames}单位的变更任务，是否确认？`,
+            success: (res) => resolve(res.confirm),
+            fail: () => resolve(false)
+          })
+        })
+        
+        if (!confirmResult) return
+        
+        // 跳转到任务上传页面，携带situationId用于编辑
+        uni.navigateTo({ 
+          url: `/pages/data/fireUpload/index?situationId=${encodeURIComponent(this.detail.situationId)}` 
+        })
+      } catch(e) {
+        uni.showToast({ title: '操作失败', icon: 'none' })
       }
     }
   }
@@ -574,13 +645,13 @@ export default {
 .info-section {
   margin-top: 16rpx;
   padding-top: 16rpx;
-  border-top: 1rpx solid #f0f0f0;
 }
 
 .info-row {
   display: flex;
   gap: 16rpx;
   margin-bottom: 12rpx;
+  flex-wrap: wrap;
 }
 
 .info-row:last-child {
@@ -592,6 +663,7 @@ export default {
   align-items: center;
   gap: 8rpx;
   flex: 1;
+  min-width: 0;
   padding: 8rpx 12rpx;
   background: #f8faff;
   border-radius: 8rpx;
@@ -599,8 +671,11 @@ export default {
 }
 
 .info-icon {
-  font-size: 20rpx;
+  width: 32rpx;
+  height: 32rpx;
   flex-shrink: 0;
+  opacity: 0.7;
+  display: block;
 }
 
 .info-label {
@@ -633,12 +708,15 @@ export default {
   justify-content: space-between;
   margin-bottom: 20rpx;
   padding-bottom: 12rpx;
-  border-bottom: 2rpx solid #f0f0f0;
 }
 
 .section-icon {
-  font-size: 28rpx;
+  width: 36rpx;
+  height: 36rpx;
   margin-right: 12rpx;
+  flex-shrink: 0;
+  opacity: 0.8;
+  display: block;
 }
 
 .section-title {
@@ -670,7 +748,6 @@ export default {
   background: #f8faff;
   border-radius: 12rpx;
   padding: 20rpx;
-  border: 1rpx solid #e6f4ff;
   margin-bottom: 16rpx;
 }
 
@@ -685,8 +762,12 @@ export default {
 }
 
 .unit-icon {
-  font-size: 20rpx;
+  width: 28rpx;
+  height: 28rpx;
   margin-right: 10rpx;
+  flex-shrink: 0;
+  opacity: 0.7;
+  display: block;
 }
 
 .unit-name {
@@ -712,8 +793,11 @@ export default {
 }
 
 .detail-icon {
-  font-size: 16rpx;
+  width: 28rpx;
+  height: 28rpx;
   flex-shrink: 0;
+  opacity: 0.7;
+  display: block;
 }
 
 .detail-label {
@@ -728,6 +812,75 @@ export default {
   flex: 1;
   text-align: right;
   margin-left: auto;
+}
+
+.detail-item.full-width {
+  grid-column: 1 / -1;
+}
+
+/* 任务组容器 */
+.task-groups-container {
+  margin-bottom: 16rpx;
+  display: flex;
+  flex-direction: column;
+  gap: 12rpx;
+}
+
+.task-group-card {
+  background: linear-gradient(135deg, #f8faff, #e6f7ff);
+  border-radius: 10rpx;
+  padding: 14rpx 16rpx;
+  box-shadow: 0 2rpx 8rpx rgba(24, 144, 255, 0.08);
+  position: relative;
+}
+
+.task-group-badge {
+  position: absolute;
+  top: 0;
+  left: 0;
+  background: linear-gradient(135deg, #1890ff, #40a9ff);
+  color: #fff;
+  font-size: 20rpx;
+  font-weight: 600;
+  padding: 4rpx 12rpx;
+  border-radius: 12rpx 0 12rpx 0;
+  z-index: 1;
+  box-shadow: 0 2rpx 4rpx rgba(24, 144, 255, 0.3);
+  line-height: 1.2;
+}
+
+.task-group-header {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  margin-bottom: 10rpx;
+  padding-bottom: 8rpx;
+  padding-top: 8rpx;
+  gap: 8rpx;
+}
+
+.task-group-power {
+  display: flex;
+  align-items: center;
+  gap: 4rpx;
+}
+
+.power-label {
+  font-size: 20rpx;
+  color: #666;
+  font-weight: 500;
+}
+
+.power-value {
+  font-size: 20rpx;
+  color: #333;
+  font-weight: 500;
+}
+
+.task-group-details {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12rpx;
 }
 
 /* 备注信息样式 */
@@ -792,6 +945,11 @@ export default {
 
 .support-btn {
   background: linear-gradient(135deg, #ff4d4f, #ff7875);
+  color: #fff;
+}
+
+.change-btn {
+  background: linear-gradient(135deg, #722ed1, #9254de);
   color: #fff;
 }
 

@@ -355,32 +355,54 @@ export default {
     
     onMarkerTap(e) {
        const markerId = e.detail.markerId;
-       this.handleMarkerClick(markerId);
+       // 点击红色位置标签，跳转到地址详情
+       this.handleMarkerClick(markerId, 'detail');
     },
     
     // 处理callout点击事件（点击文字气泡）
     onCalloutTap(e) {
        const markerId = e.detail.markerId;
-       this.handleMarkerClick(markerId);
+       // 点击文字气泡，跳转到720全景
+       this.handleMarkerClick(markerId, '720');
     },
     
     // 统一的标记点击处理逻辑
-    handleMarkerClick(markerId) {
+    handleMarkerClick(markerId, action = 'detail') {
        if (markerId === -1) {
          // 用户位置不跳转，只显示提示
          uni.showToast({ title: '我的位置', icon: 'none' });
        } else if (markerId === -2) {
-         // 点击目标地址，跳转到720全景
+         // 目标地址
          if (this.currentLocation) {
-           this.goTo720View(this.currentLocation);
+           if (action === 'detail') {
+             // 点击标签，跳转到地址详情
+             if (this.currentLocation.addressId) {
+               this.goToLocationDetail(this.currentLocation.addressId);
+             } else {
+               uni.showToast({ title: '位置信息无效', icon: 'none' });
+             }
+           } else if (action === '720') {
+             // 点击气泡，跳转到720全景
+             this.goTo720View(this.currentLocation);
+           }
          } else {
            uni.showToast({ title: '位置信息无效', icon: 'none' });
          }
        } else if (typeof markerId === 'number' && markerId >= 0) {
-         // 点击其他位置，跳转到720全景
+         // 其他位置
          const location = this.filteredLocations[markerId];
          if (location) {
-           this.goTo720View(location);
+           if (action === 'detail') {
+             // 点击标签，跳转到地址详情
+             if (location.addressId) {
+               this.goToLocationDetail(location.addressId);
+             } else {
+               uni.showToast({ title: '位置信息不存在', icon: 'none' });
+             }
+           } else if (action === '720') {
+             // 点击气泡，跳转到720全景
+             this.goTo720View(location);
+           }
          } else {
            uni.showToast({ title: '位置信息不存在', icon: 'none' });
          }
@@ -550,7 +572,19 @@ export default {
      },
     
     
-    // 跳转到720全景
+    // 跳转到地址详情
+    goToLocationDetail(addressId) {
+      if (!addressId) {
+        uni.showToast({ title: '地址ID无效', icon: 'none' });
+        return;
+      }
+      // 跳转到地址详情页面
+      uni.navigateTo({
+        url: `/subPackages/locationInfo/locationDetail/index?addressId=${encodeURIComponent(addressId)}`
+      });
+    },
+    
+    // 跳转到720全景（保留此方法，可能其他地方会用到）
     goTo720View(location) {
       const { allSenceLink } = location || {};
       // 跳转到720全景页面
@@ -562,32 +596,29 @@ export default {
     // 生成 callout 内容
     generateCalloutContent(location) {
       const parts = [];
-      
-      // 地址名称
-      parts.push(location.addressName || '未知地址');
       // 如果是队站辖区，显示编号
       if (location.type === 3 && location.addressId) {
         // 判断是全景云还是消火栓
         const district = locationTabList.find(item => item.type === 3);
         const keywordOption = district?.keywordOptions?.find(opt => opt.value === location.keywordType);
-        const category = keywordOption?.category || '';
+        // const category = keywordOption?.category || '';
         
         // 显示编号（全景云编号或消火栓编号）
         parts.push(`${location.addressId}`);
         
         // 消火栓显示性能参数
-        if (category === 'hydrant') {
-          const pressure = location.hydrantPressure || '';
-          const flow = location.hydrantFlow || '';
-          if (pressure || flow) {
-            const paramParts = [];
-            if (pressure) paramParts.push(`压力:${pressure}mpa`);
-            if (flow) paramParts.push(`流量:${flow}L/s`);
-            if (paramParts.length > 0) {
-              parts.push(paramParts.join(' '));
-            }
-          }
-        }
+        // if (category === 'hydrant') {
+        //   const pressure = location.hydrantPressure || '';
+        //   const flow = location.hydrantFlow || '';
+        //   if (pressure || flow) {
+        //     const paramParts = [];
+        //     if (pressure) paramParts.push(`压力:${pressure}mpa`);
+        //     if (flow) paramParts.push(`流量:${flow}L/s`);
+        //     if (paramParts.length > 0) {
+        //       parts.push(paramParts.join(' '));
+        //     }
+        //   }
+        // }
       }
       
       return parts.join(' | ');

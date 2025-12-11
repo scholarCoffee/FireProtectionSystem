@@ -105,6 +105,11 @@
               <view class="address-info">
                 <text class="address-name">{{ item.addressName }}</text>
               </view>
+              <view class="header-meta">
+                <text class="meta-text" v-if="item.issuePersonName">{{ item.issuePersonName }}</text>
+                <text class="meta-divider" v-if="item.issuePersonName && item.issueTime">|</text>
+                <text class="meta-text" v-if="item.issueTime">{{ formatTime(item.issueTime) }}</text>
+              </view>
             </view>
             <!-- 状态进度条 -->
             <view class="status-route">
@@ -157,18 +162,29 @@
             </view>
             <view class="card-content">
               <view class="info-grid">
-                <view class="info-item full-width">
-                  <image :src="serverUrl + '/static/icons/location/factory.png'" class="info-icon" />
-                  <text class="info-text">{{ getRescueUnits(item) }}</text>
-                </view>
-                <view class="info-row">
-                  <view class="info-item">
-                    <image :src="serverUrl + '/static/icons/common/issuePerson.png'" class="info-icon" />
-                    <text class="info-text">{{ item.issuePersonName || '—' }}</text>
+                <view v-for="(unit, unitIdx) in (item.assignedUnits || [])" :key="unitIdx" class="unit-info-block">
+                  <!-- 救援单位 -->
+                  <view class="info-item full-width">
+                    <image :src="serverUrl + '/static/icons/location/factory.png'" class="info-icon" />
+                    <text class="info-text">{{ unit.unitName || '—' }}</text>
                   </view>
-                  <view class="info-item">
-                    <image :src="serverUrl + '/static/icons/common/time.png'" class="info-icon" />
-                    <text class="info-text">{{ formatTime(item.issueTime) }}</text>
+                  <!-- 作战力量、方位、楼层 -->
+                  <view v-if="unit.taskGroups && unit.taskGroups.length > 0" class="task-groups-info">
+                    <view v-for="(taskGroup, tgIdx) in unit.taskGroups" :key="tgIdx" class="task-group-info">
+                      <view class="task-group-content">
+                        <view class="task-power-item" v-if="getTaskPower(taskGroup)">
+                          <view class="task-power-left">
+                            <text class="task-power-label">{{ getTaskPowerLabel(taskGroup) }}：</text>
+                            <text class="task-power-value">{{ getTaskPower(taskGroup) }}</text>
+                          </view>
+                          <text class="task-detail-text task-cars-text" v-if="getTaskGroupCars(taskGroup)">参战车辆：{{ getTaskGroupCars(taskGroup) }}</text>
+                        </view>
+                        <view class="task-details-row" v-if="getTaskGroupCars(taskGroup) || taskGroup.direction || taskGroup.floor">
+                          <text class="task-detail-text" v-if="taskGroup.direction">方位：{{ getDirectionName(taskGroup.direction) }}</text>
+                          <text class="task-detail-text" v-if="taskGroup.floor">楼层：{{ taskGroup.floor }}层</text>
+                        </view>
+                      </view>
+                    </view>
                   </view>
                 </view>
               </view>
@@ -495,7 +511,7 @@ export default {
       if (item.taskStatus == 3) return 'rescue-card'
       return ''
     },
-    // 格式化时间
+    // 格式化时间（年月日时分秒）
     formatTime(timeStr) {
       if (!timeStr) return ''
       const date = new Date(timeStr)
@@ -504,7 +520,8 @@ export default {
       const day = String(date.getDate()).padStart(2, '0')
       const hours = String(date.getHours()).padStart(2, '0')
       const minutes = String(date.getMinutes()).padStart(2, '0')
-      return `${year}-${month}-${day} ${hours}:${minutes}`
+      const seconds = String(date.getSeconds()).padStart(2, '0')
+      return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`
     },
     // 获取任务额外值的显示文本
     getTaskExtraValue(taskType, key, value) {
@@ -555,6 +572,64 @@ export default {
       if (!item.assignedUnits || item.assignedUnits.length === 0) return '—'
       return item.assignedUnits.map(unit => unit.unitName).join('、')
     },
+    // 获取任务组的作战力量标签（根据任务类型）
+    getTaskPowerLabel(taskGroup) {
+      if (!taskGroup) return '作战力量'
+      
+      const taskType = String(taskGroup.taskType || '')
+      
+      if (taskType === '1') return '灭火力量'
+      if (taskType === '2') return '堵截力量'
+      if (taskType === '3') return '搜救力量'
+      if (taskType === '6') return '排烟力量'
+      if (taskType === '4' || taskType === '5') return '目标中队'
+      
+      return '作战力量'
+    },
+    // 获取任务组的参战车辆
+    getTaskGroupCars(taskGroup) {
+      if (!taskGroup) return ''
+      
+      // 优先使用 carNames 数组
+      if (taskGroup.carNames && Array.isArray(taskGroup.carNames) && taskGroup.carNames.length > 0) {
+        return taskGroup.carNames.join('、')
+      }
+      
+      // 如果没有 carNames，尝试从 carInfo 获取
+      if (taskGroup.carInfo && Array.isArray(taskGroup.carInfo) && taskGroup.carInfo.length > 0) {
+        return taskGroup.carInfo.map(car => car.carName || car.label || car.name).filter(Boolean).join('、')
+      }
+      
+      return ''
+    },
+    // 获取任务组的作战力量
+    getTaskPower(taskGroup) {
+      if (!taskGroup || !taskGroup.taskExtra) return ''
+      
+      const taskExtra = taskGroup.taskExtra || {}
+      const taskType = String(taskGroup.taskType || '')
+      
+      // 根据任务类型获取作战力量
+      if (taskType === '1' && taskExtra.firePower) {
+        return taskExtra.firePower // 灭火力量
+      }
+      if (taskType === '2' && taskExtra.blockPower) {
+        return taskExtra.blockPower // 堵截力量
+      }
+      if (taskType === '3' && taskExtra.searchPower) {
+        return taskExtra.searchPower // 搜救力量
+      }
+      if (taskType === '6' && taskExtra.smokePower) {
+        return taskExtra.smokePower // 排烟力量
+      }
+      if ((taskType === '4' || taskType === '5') && taskExtra.targetUnit) {
+        // 供水任务，显示目标单位
+        const targetUnit = this.unitOptions.find(u => u.value === taskExtra.targetUnit)
+        return targetUnit ? targetUnit.label : taskExtra.targetUnit
+      }
+      
+      return ''
+    },
     // 获取救援状态文本（根据任务类型）
     getRescueStatusText(item) {
       // 如果状态不是救援中，返回默认状态文本
@@ -598,35 +673,31 @@ export default {
       const taskStatus = item.taskStatus
       
       if (taskStatus == 1) {
-        // 已完成 - 查看详情、删除
+        // 已完成 - 查看任务、删除
         return [
-          { text: '查看详情', style: { backgroundColor: '#2db7f5', color: '#fff' }, key: 'detail' },
           { text: '删除', style: { backgroundColor: '#ff4d4f', color: '#fff' }, key: 'delete' }
         ]
       } else if (taskStatus == 2) {
-        // 救援中 - 查看详情、完成救援、需要支援
+        // 救援中 - 查看任务、完成任务、需要支援、变更任务
         return [
-          { text: '查看详情', style: { backgroundColor: '#2db7f5', color: '#fff' }, key: 'detail' },
-          { text: '完成救援', style: { backgroundColor: '#52c41a', color: '#fff' }, key: 'finish' },
-          { text: '需要支援', style: { backgroundColor: '#ff4d4f', color: '#fff' }, key: 'support' }
+          { text: '变更任务', style: { backgroundColor: '#722ed1', color: '#fff' }, key: 'change' },
+          { text: '完成任务', style: { backgroundColor: '#52c41a', color: '#fff' }, key: 'finish' },
+          { text: '需要支援', style: { backgroundColor: '#ff4d4f', color: '#fff' }, key: 'support' },
+
         ]
       } else if (taskStatus == 3) {
-        // 需要支援 - 查看详情、任务下达
+        // 需要支援 - 查看任务、任务下达、变更任务
         return [
-          { text: '查看详情', style: { backgroundColor: '#2db7f5', color: '#fff' }, key: 'detail' },
+          { text: '变更任务', style: { backgroundColor: '#722ed1', color: '#fff' }, key: 'change' },
           { text: '任务下达', style: { backgroundColor: '#fa8c16', color: '#fff' }, key: 'deliver' }
         ]
       } else if (taskStatus == 4) {
-        // 正在支援 - 查看详情、完成救援
+        // 正在支援 - 查看任务、完成任务、任务下达、变更任务
         return [
-          { text: '查看详情', style: { backgroundColor: '#2db7f5', color: '#fff' }, key: 'detail' },
-          { text: '完成救援', style: { backgroundColor: '#52c41a', color: '#fff' }, key: 'finish' },
+          { text: '变更任务', style: { backgroundColor: '#722ed1', color: '#fff' }, key: 'change' },
+          { text: '完成任务', style: { backgroundColor: '#52c41a', color: '#fff' }, key: 'finish' },
           { text: '任务下达', style: { backgroundColor: '#fa8c16', color: '#fff' }, key: 'deliver' }
-        ]
-      } else {
-        // 其他状态 - 默认选项
-        return [
-          { text: '查看详情', style: { backgroundColor: '#2db7f5', color: '#fff' }, key: 'detail' }
+          
         ]
       }
     },
@@ -634,7 +705,6 @@ export default {
       try {
         // 微信小程序中事件参数可能不同，需要兼容处理
         let key = ''
-        
         // 尝试不同的参数结构
         if (e && e.content && e.content.key) {
           key = e.content.key
@@ -646,8 +716,6 @@ export default {
           key = e
         }
         
-        console.log('Swipe click event:', e, 'key:', key)
-        
         if (key === 'detail') {
           uni.navigateTo({ url: `/pages/data/fireDetail/index?situationId=${encodeURIComponent(item.situationId)}` })
         } else if (key === 'finish') {
@@ -658,6 +726,8 @@ export default {
           this.requestSupport(item)
         } else if (key === 'delete') {
           this.deleteFireSituation(item)
+        } else if (key === 'change') {
+          this.changeTask(item)
         }
       } catch (error) {
         console.error('onSwipeClick error:', error)
@@ -723,6 +793,32 @@ export default {
         this.fetch(true)
       } catch(e) {
         uni.showToast({ title: '删除失败', icon: 'none' })
+      }
+    },
+    // 变更任务
+    async changeTask(item) {
+      try {
+        // 获取救援单位名称（用于提示）
+        const rescueUnits = (item.assignedUnits || []).filter(unit => unit.unitStatus === 'rescue')
+        const unitNames = rescueUnits.map(unit => unit.unitName).join('、') || '该'
+        
+        const confirmResult = await new Promise((resolve) => {
+          uni.showModal({
+            title: '确认变更任务',
+            content: `当前操作${unitNames}单位的变更任务，是否确认？`,
+            success: (res) => resolve(res.confirm),
+            fail: () => resolve(false)
+          })
+        })
+        
+        if (!confirmResult) return
+        
+        // 跳转到任务上传页面，携带situationId和taskType=change用于变更任务
+        uni.navigateTo({ 
+          url: `/pages/data/fireUpload/index?situationId=${encodeURIComponent(item.situationId)}&taskType=change` 
+        })
+      } catch(e) {
+        uni.showToast({ title: '操作失败', icon: 'none' })
       }
     }
   }
@@ -841,7 +937,7 @@ export default {
 .filters-section {
   padding: 20rpx 24rpx;
   border-top: 1rpx solid #e6f4ff;
-  background: linear-gradient(135deg, #fafbff, #f0f8ff);
+  background: linear-gradient(135deg, #ffffff, #f8faff);
   border-radius: 0 0 12rpx 12rpx;
 }
 
@@ -902,21 +998,19 @@ export default {
 .personnel-input {
   height: 56rpx;
   padding: 0 16rpx;
-  border: 2rpx solid #e6f4ff;
-  border-radius: 12rpx;
-  background: #fff;
+  border: 1rpx solid #e6f4ff;
+  border-radius: 8rpx;
+  background: #ffffff;
   font-size: 24rpx;
   color: #333;
   box-sizing: border-box;
   transition: all 0.3s ease;
-  box-shadow: 0 2rpx 4rpx rgba(24, 144, 255, 0.05);
 }
 
 .personnel-input:focus {
   border-color: #1890ff;
-  background: #fff;
-  box-shadow: 0 4rpx 8rpx rgba(24, 144, 255, 0.15);
-  transform: translateY(-1rpx);
+  background: #f0f8ff;
+  box-shadow: 0 2rpx 8rpx rgba(24, 144, 255, 0.1);
 }
 
 /* 按钮行 */
@@ -941,9 +1035,9 @@ export default {
 .picker-box {
   height: 48rpx;
   line-height: 48rpx;
-  border-radius: 6rpx;
-  border: 1rpx solid #e0e0e0;
-  background: #fafafa;
+  border-radius: 8rpx;
+  border: 1rpx solid #e6f4ff;
+  background: #ffffff;
   padding: 0 12rpx;
   font-size: 24rpx;
   color: #333;
@@ -955,8 +1049,8 @@ export default {
 }
 
 .picker-box:active {
-  border-color: #1677ff;
-  background: #fff;
+  border-color: #1890ff;
+  background: #f0f8ff;
 }
 
 .filter-input {
@@ -1056,7 +1150,27 @@ export default {
   align-items: center;
   margin-bottom: 16rpx;
   padding-bottom: 12rpx;
-  border-bottom: 1rpx solid #f0f0f0;
+  gap: 16rpx;
+}
+
+.header-meta {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  flex-shrink: 0;
+}
+
+.header-meta .meta-text {
+  font-size: 20rpx;
+  color: #999;
+  white-space: nowrap;
+  line-height: 1.4;
+}
+
+.header-meta .meta-divider {
+  font-size: 18rpx;
+  color: #d9d9d9;
+  margin: 0 4rpx;
 }
 
 .ripple{position:absolute;left:-8rpx;top:-8rpx;width:28rpx;height:28rpx;border-radius:50%;border:2rpx solid rgba(24,144,255,.5);animation:rippleAnim 1.8s infinite}
@@ -1325,6 +1439,90 @@ export default {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.unit-info-block {
+  padding-bottom: 16rpx;
+}
+
+.unit-info-block:last-child {
+  margin-bottom: 0;
+  padding-bottom: 0;
+  border-bottom: none;
+}
+
+.task-groups-info {
+  margin-top: 12rpx;
+  display: flex;
+  flex-direction: column;
+  gap: 12rpx;
+}
+
+.task-group-info {
+  margin-bottom: 0;
+}
+
+.task-group-content {
+  display: flex;
+  flex-direction: column;
+  gap: 10rpx;
+  padding: 14rpx 16rpx;
+  background: linear-gradient(135deg, #f8faff, #e6f7ff);
+  border-radius: 10rpx;
+  border-left: 4rpx solid #1890ff;
+  box-shadow: 0 2rpx 8rpx rgba(24, 144, 255, 0.08);
+}
+
+.task-power-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12rpx;
+  line-height: 1.5;
+}
+
+.task-power-left {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+  flex: 1;
+  min-width: 0;
+}
+
+.task-power-label {
+  font-size: 23rpx;
+  color: #666;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.task-power-value {
+  font-size: 23rpx;
+  color: #333;
+  font-weight: 500;
+}
+
+.task-cars-text {
+  font-size: 21rpx;
+  color: #666;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.task-details-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20rpx;
+  align-items: center;
+  padding-top: 10rpx;
+  margin-top: 2rpx;
+}
+
+.task-detail-text {
+  font-size: 21rpx;
+  color: #666;
+  white-space: nowrap;
+  line-height: 1.5;
 }
 
 .load-more {
