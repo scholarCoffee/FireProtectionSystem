@@ -396,15 +396,11 @@ export default {
              // 点击标签，跳转到地址详情
              if (location.addressId) {
                this.goToLocationDetail(location.addressId);
-             } else {
-               uni.showToast({ title: '位置信息不存在', icon: 'none' });
              }
            } else if (action === '720') {
              // 点击气泡，跳转到720全景
              this.goTo720View(location);
            }
-         } else {
-           uni.showToast({ title: '位置信息不存在', icon: 'none' });
          }
        }
     },

@@ -472,9 +472,9 @@ export default {
         
         if (!confirmResult) return
         
-        // 跳转到任务上传页面，携带situationId用于编辑
+        // 跳转到任务上传页面，携带situationId和taskType=change用于变更任务
         uni.navigateTo({ 
-          url: `/pages/data/fireUpload/index?situationId=${encodeURIComponent(this.detail.situationId)}` 
+          url: `/pages/data/fireUpload/index?situationId=${encodeURIComponent(this.detail.situationId)}&taskType=change` 
         })
       } catch(e) {
         uni.showToast({ title: '操作失败', icon: 'none' })

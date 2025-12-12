@@ -855,6 +855,16 @@ export default {
     // 打开车辆抽屉
     showCarDrawer(unit, index) {
       this.currentUnitIndex = index
+      
+      // 先获取可用车辆列表
+      const availableCars = this.getAvailableCarsForUnit()
+      
+      // 如果没有可用车辆，提示并返回
+      if (availableCars.length === 0) {
+        uni.showToast({ title: '当前参战车辆已经全部选择完毕', icon: 'none' })
+        return
+      }
+      
       this.tempSelectedCars = [...((this.selectedUnits[index] && this.selectedUnits[index].selectedCars) || [])]
       this.carDrawerVisible = true
     },
