@@ -376,7 +376,7 @@ export default {
   name: 'FireUpload',
   data() {
     return {
-      serverUrl: 'http://172.17.121.112:3000',
+      serverUrl: 'https://www.xiaobei.space',
       situationId: '', // 已有火灾情况ID
       isChangeTask: false, // 是否是变更任务
       formData: {

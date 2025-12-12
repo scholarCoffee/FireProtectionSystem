@@ -211,7 +211,7 @@ export default {
   components: { uniSwipeAction, uniSwipeActionItem },
   data() {
     return {
-      serverUrl: 'http://172.17.121.112:3000',
+      serverUrl: 'https://www.xiaobei.space',
       keyword: '',
       issuePersonName: '',
       feedbackPersonName: '', // 新增：任务下达人员

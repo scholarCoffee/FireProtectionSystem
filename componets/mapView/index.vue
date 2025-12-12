@@ -150,7 +150,7 @@ export default {
   },
   data() {
     return {
-      serverUrl: 'http://172.17.121.112:3000',
+      serverUrl: 'https://www.xiaobei.space',
       mapCenter: {
         latitude: 39.9042, // 北京天安门坐标作为默认中心点
         longitude: 116.4074
