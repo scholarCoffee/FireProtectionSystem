@@ -150,7 +150,7 @@ export default {
   },
   data() {
     return {
-      serverUrl: 'https://www.xiaobei.space',
+      serverUrl: 'http://172.17.121.112:3000',
       mapCenter: {
         latitude: 39.9042, // 北京天安门坐标作为默认中心点
         longitude: 116.4074
@@ -227,8 +227,8 @@ export default {
           uni.request({
             url: this.serverUrl + '/location/list',
             method: 'GET',
-            data: { page: 1, pageSize: 100 },
             success: resolve,
+            data: { page: 1, pageSize: 9999 },
             fail: reject
           });
         });
@@ -587,6 +587,7 @@ export default {
     // 跳转到720全景（保留此方法，可能其他地方会用到）
     goTo720View(location) {
       const { allSenceLink } = location || {};
+      if (!allSenceLink) return;
       // 跳转到720全景页面
       uni.navigateTo({
         url: `/subPackages/common/webview/index?url=${encodeURIComponent(allSenceLink)}&title=${encodeURIComponent(location.addressName + ' - 720全景')}`
@@ -619,6 +620,8 @@ export default {
         //     }
         //   }
         // }
+      } else {
+        parts.push(location.addressName);
       }
       
       return parts.join(' | ');

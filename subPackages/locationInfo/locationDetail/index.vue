@@ -31,8 +31,8 @@
             </view>
           </view>
                     
-          <!-- 单位类型和720全景云 -->
-          <view class="type-panorama-row">
+          <!-- 单位类型和720全景云（队站辖区不显示） -->
+          <view class="type-panorama-row" v-if="locationObj.type !== 3">
             <!-- 单位类型卡片 -->
             <view class="type-card">
               <view class="type-header">
@@ -59,8 +59,38 @@
             </view>
           </view>
           
-          <!-- 安全等级卡片 -->
-          <view class="safety-card-full" :class="safeLevelClass" @tap="goToSafetyDetail" v-if="locationObj.fireSafetyScore">
+          <!-- 队站辖区特殊信息 -->
+          <view class="district-info-section" v-if="locationObj.type === 3">
+            <!-- 关键字 -->
+            <view class="info-row" v-if="getKeywordLabel()">
+              <view class="info-label">关键字</view>
+              <view class="info-value">{{ getKeywordLabel() }}</view>
+            </view>
+            
+            <!-- 编号 -->
+            <view class="info-row" v-if="locationObj.addressId">
+              <view class="info-label">{{ getNumberLabel() }}</view>
+              <view class="info-value">{{ locationObj.addressId }}</view>
+            </view>
+            
+            <!-- 消火栓性能参数 -->
+            <view class="hydrant-params-row" v-if="isHydrant()">
+              <view class="info-label">性能参数</view>
+              <view class="hydrant-params-content">
+                <view class="param-item" v-if="locationObj.hydrantPressure">
+                  <text class="param-label">压力:</text>
+                  <text class="param-value">{{ locationObj.hydrantPressure }}mpa</text>
+                </view>
+                <view class="param-item" v-if="locationObj.hydrantFlow">
+                  <text class="param-label">流量:</text>
+                  <text class="param-value">{{ locationObj.hydrantFlow }}L/s</text>
+                </view>
+              </view>
+            </view>
+          </view>
+          
+          <!-- 安全等级卡片（队站辖区不显示） -->
+          <view class="safety-card-full" :class="safeLevelClass" @tap="goToSafetyDetail" v-if="locationObj.type !== 3 && locationObj.fireSafetyScore">
             <view class="safety-header">
                 <view class="safety-info">
                   <view class="score-display">
@@ -163,8 +193,8 @@
           </view>
 
 
-          <!-- 出行大门 -->
-          <view class="info-row gate-list">
+          <!-- 出行大门（队站辖区不显示） -->
+          <view class="info-row gate-list" v-if="locationObj.type !== 3">
             <view class="gate-items">
               <text class="label">可出行大门</text>
               <view class="gate-item" v-for="(gate, index) in locationObj.enterGateList" :key="index">
@@ -326,6 +356,27 @@ export default {
     // 兼容保留（不再主动全屏）
     getLocationTypeName() {
       return locationTabList.find(item => item.type === this.locationObj.type)?.name || '未知类型';
+    },
+    // 获取关键字标签（队站辖区）
+    getKeywordLabel() {
+      if (this.locationObj.type !== 3 || !this.locationObj.keywordType) return ''
+      const district = locationTabList.find(item => item.type === 3)
+      if (!district || !district.keywordOptions) return ''
+      const keywordOption = district.keywordOptions.find(opt => opt.value === this.locationObj.keywordType)
+      return keywordOption ? keywordOption.label : ''
+    },
+    // 判断是否是消火栓
+    isHydrant() {
+      if (this.locationObj.type !== 3 || !this.locationObj.keywordType) return false
+      const district = locationTabList.find(item => item.type === 3)
+      if (!district || !district.keywordOptions) return false
+      const keywordOption = district.keywordOptions.find(opt => opt.value === this.locationObj.keywordType)
+      return keywordOption && keywordOption.category === 'hydrant'
+    },
+    // 获取编号标签（全景云编号或消火栓编号）
+    getNumberLabel() {
+      if (this.locationObj.type !== 3) return '地址编号'
+      return this.isHydrant() ? '消火栓编号' : '全景云编号'
     },
     
     // 消防单位相关方法
@@ -1508,6 +1559,82 @@ export default {
   font-size: 24px;
   font-weight: bold;
   line-height: 1;
+}
+
+/* 队站辖区信息样式 */
+.district-info-section {
+  padding: 15px;
+  background: #f8f9fa;
+  border-radius: 8px;
+  margin: 0 15px 15px 15px;
+}
+
+.district-info-section .info-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 0;
+  border-bottom: 1px solid #e8e8e8;
+}
+
+.district-info-section .info-row:last-child {
+  border-bottom: none;
+}
+
+.district-info-section .info-label {
+  font-size: 14px;
+  color: #666;
+  font-weight: 500;
+  min-width: 80px;
+}
+
+.district-info-section .info-value {
+  font-size: 14px;
+  color: #333;
+  font-weight: 500;
+  text-align: right;
+  flex: 1;
+}
+
+.hydrant-params-row {
+  padding: 12px 0;
+}
+
+.hydrant-params-row .info-label {
+  font-size: 14px;
+  color: #666;
+  font-weight: 500;
+  margin-bottom: 12px;
+  display: block;
+}
+
+.hydrant-params-content {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.param-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: #fff;
+  border-radius: 6px;
+  border: 1px solid #e8e8e8;
+}
+
+.param-label {
+  font-size: 13px;
+  color: #666;
+  font-weight: 500;
+  min-width: 50px;
+}
+
+.param-value {
+  font-size: 14px;
+  color: #333;
+  font-weight: 600;
 }
 
 </style>
