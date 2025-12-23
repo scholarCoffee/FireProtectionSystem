@@ -9,7 +9,7 @@
           <input 
             class="search-input"
             v-model="keyword"
-            placeholder="输入救灾地址或编号"
+            placeholder="输入救援地址或编号"
             @input="onInput"
             @confirm="onSearch"
           />
@@ -45,41 +45,31 @@
             </picker>
           </view>
 
-          <!-- 时间区间行 -->
-          <view class="time-row">
-            <view class="time-item">
-              <text class="time-label">开始时间</text>
-              <picker mode="multiSelector" :value="startTimeIndex" :range="startTimeRange" @change="onStartTimeChange" @bindchange="onStartTimeChange" class="filter-picker">
-                <view class="picker-box" :class="{ 'placeholder': !startTime }">
-                  {{ startTime || '请选择开始时间' }}
+          <!-- 任务类型和参战人员行 -->
+          <view class="task-type-personnel-row">
+            <view class="filter-item">
+              <text class="filter-label">任务类型</text>
+              <picker :value="taskTypeIndex" :range="taskTypeOptions" range-key="label" @change="onTaskTypeChange" @bindchange="onTaskTypeChange" class="filter-picker">
+                <view class="picker-box" :class="{ 'placeholder': taskTypeIndex === 0 }">
+                  {{ (taskTypeOptions[taskTypeIndex] && taskTypeOptions[taskTypeIndex].label) || '请选择任务类型' }}
                 </view>
               </picker>
             </view>
-            <view class="time-item">
-              <text class="time-label">结束时间</text>
-              <picker mode="multiSelector" :value="endTimeIndex" :range="endTimeRange" @change="onEndTimeChange" @bindchange="onEndTimeChange" class="filter-picker">
-                <view class="picker-box" :class="{ 'placeholder': !endTime }">
-                  {{ endTime || '请选择结束时间' }}
-                </view>
-              </picker>
-            </view>
-          </view>
-
-          <!-- 参战人员和操作按钮 -->
-          <view class="filter-item-with-buttons">
-            <text class="filter-label">参战人员</text>
-            <view class="input-button-group">
+            <view class="personnel-item">
+              <text class="personnel-label">参战人员</text>
               <input 
-                class="filter-input"
+                class="personnel-input"
                 v-model="recordPerson"
                 placeholder="请输入参战人员"
                 @input="onInput"
               />
-              <view class="button-group">
-                <button class="reset-btn" @tap="resetFilters">重置</button>
-                <button class="search-btn" @tap="onSearch">查询</button>
-              </view>
             </view>
+          </view>
+
+          <!-- 操作按钮行 -->
+          <view class="button-row">
+            <button class="search-btn" @tap="onSearch">查询</button>
+            <button class="reset-btn" @tap="resetFilters">重置</button>
           </view>
         </view>
       </view>
@@ -88,48 +78,105 @@
     <!-- 列表 -->
     <scroll-view class="list" :style="{ height: listHeight }" scroll-y :lower-threshold="100" @scrolltolower="loadMore" refresher-enabled :refresher-triggered="refresherTriggered" @refresherrefresh="onRefresh">
       <uni-swipe-action>
-        <uni-swipe-action-item v-for="(item, idx) in list" :key="idx" :right-options="getSwipeOptions(item)" @click="onSwipeClick($event, item)" @change="onSwipeClick($event, item)">
+        <uni-swipe-action-item v-for="(item, idx) in list" :key="idx" :right-options="getSwipeOptions(item)" @click="onSwipeClick($event, item)">
           <view class="card" :class="item.cardClass" @tap="goDetail(item)">
             <view class="card-header">
               <view class="address-info">
-                <text class="address-name">{{ item.fireSituation.addressName }}</text>
+                <text class="address-name">{{ item.fireSituation && item.fireSituation.addressName }}</text>
               </view>
-              <view class="task-status" :class="item.status === 1 ? 'status-unreceived' : (item.status === 2 ? 'status-received' : 'status-unknown')">
-                {{ getTaskStatusName(item.status) }}
+              <view class="header-meta">
+                <text class="meta-text" v-if="item.fireSituation && item.fireSituation.issuePersonName">{{ item.fireSituation.issuePersonName }}</text>
+                <text class="meta-divider" v-if="item.fireSituation && item.fireSituation.issuePersonName && item.fireSituation.issueTime">|</text>
+                <text class="meta-text" v-if="item.fireSituation && item.fireSituation.issueTime">{{ formatTime(item.fireSituation.issueTime) }}</text>
               </view>
             </view>
             
             <view class="card-content">
               <view class="info-grid">
-                <!-- 救援单位信息 -->
-                <view class="info-item full-width">
-                  <image :src="serverUrl + '/static/icons/location/factory.png'" class="info-icon" />
-                  <text class="info-text">{{ getRescueUnits(item.fireSituation && item.fireSituation.assignedUnits) }}</text>
-                </view>
-                
-                <!-- 任务下达信息 -->
-                <view class="info-row">
-                  <view class="info-item">
-                    <image :src="serverUrl + '/static/icons/common/issuePerson.png'" class="info-icon" />
-                    <text class="info-text">{{ (item.fireSituation && item.fireSituation.issuePersonName) || '—' }}</text>
+                <view v-for="(unit, unitIdx) in ((item.fireSituation && item.fireSituation.assignedUnits) || [])" :key="unitIdx" class="unit-info-block">
+                  <!-- 救援单位/支援单位 -->
+                  <view class="info-item full-width">
+                    <image :src="serverUrl + '/static/icons/location/factory.png'" class="info-icon" />
+                    <text class="info-text">{{ unit.unitName || '—' }}</text>
+                    <view class="unit-status-badge" :class="unit.unitStatus === 'rescue' ? 'rescue-badge' : 'support-badge'">
+                      <view class="status-dot"></view>
+                      <text class="status-text">{{ unit.unitStatus === 'rescue' ? '救援单位' : '支援单位' }}</text>
+                    </view>
                   </view>
-                  <view class="info-item">
-                    <image :src="serverUrl + '/static/icons/common/time.png'" class="info-icon" />
-                    <text class="info-text">{{ formatTime(item.fireSituation && item.fireSituation.issueTime) }}</text>
+                  <!-- 作战力量、方位、楼层 -->
+                  <view v-if="unit.taskGroups && unit.taskGroups.length > 0" class="task-groups-info">
+                    <view v-for="(taskGroup, tgIdx) in unit.taskGroups" :key="tgIdx" class="task-group-info">
+                      <view class="task-group-content">
+                        <!-- 任务类型名称（多个任务类型时显示，左上角） -->
+                        <view class="task-type-badge" v-if="hasMultipleTaskTypes(item.fireSituation)">
+                          <text class="task-type-text">{{ getTaskTypeName(taskGroup.taskType) }}</text>
+                        </view>
+                        
+                        <!-- 第一行：左侧（方位、楼层），右侧（参战车辆） -->
+                        <view class="task-group-first-row">
+                          <view class="task-location-info">
+                            <text class="task-detail-text" v-if="taskGroup.direction">方位：{{ getDirectionName(taskGroup.direction) }}</text>
+                            <text class="task-detail-text" v-if="taskGroup.floor">楼层：{{ taskGroup.floor }}层</text>
+                          </view>
+                          <text class="task-cars-text" v-if="getTaskGroupCars(taskGroup)">参战车辆：{{ getTaskGroupCars(taskGroup) }}</text>
+                        </view>
+                        
+                        <!-- 第二行：任务类型特殊属性 -->
+                        <view class="task-group-second-row">
+                          <!-- 搜救任务：显示搜救力量和搜救结果 -->
+                          <template v-if="isSearchTask(taskGroup)">
+                            <view class="task-attr-item" v-if="getSearchPower(taskGroup)">
+                              <text class="task-attr-label">搜救力量：</text>
+                              <text class="task-attr-value">{{ getSearchPower(taskGroup) }}</text>
+                            </view>
+                            <view class="task-attr-item" v-if="getSearchResult(taskGroup)">
+                              <text class="task-attr-label">搜救结果：</text>
+                              <text class="task-attr-value">{{ getSearchResult(taskGroup) }}</text>
+                            </view>
+                          </template>
+                          
+                          <!-- 排烟任务：显示排烟力量 -->
+                          <template v-else-if="isSmokeTask(taskGroup)">
+                            <view class="task-attr-item">
+                              <text class="task-attr-label">排烟力量：</text>
+                              <text class="task-attr-value">{{ getSmokePower(taskGroup) || '—' }}</text>
+                            </view>
+                          </template>
+                          
+                          <!-- 供水任务：显示目标中队和目标车辆 -->
+                          <template v-else-if="isWaterTask(taskGroup)">
+                            <view class="task-attr-item" v-if="getTargetUnit(taskGroup)">
+                              <text class="task-attr-label">目标中队：</text>
+                              <text class="task-attr-value">{{ getTargetUnit(taskGroup) }}</text>
+                            </view>
+                            <view class="task-attr-item" v-if="getTargetCars(taskGroup)">
+                              <text class="task-attr-label">目标车辆：</text>
+                              <text class="task-attr-value">{{ getTargetCars(taskGroup) }}</text>
+                            </view>
+                          </template>
+                          
+                          <!-- 其他任务类型：显示作战力量 -->
+                          <template v-else>
+                            <view class="task-attr-item" v-if="getTaskPower(taskGroup)">
+                              <text class="task-attr-label">{{ getTaskPowerLabel(taskGroup) }}：</text>
+                              <text class="task-attr-value">{{ getTaskPower(taskGroup) }}</text>
+                            </view>
+                          </template>
+                        </view>
+                        
+                        <!-- 任务组描述/备注 -->
+                        <view class="task-group-description" v-if="taskGroup.description">
+                          <text class="description-label">描述：</text>
+                          <text class="description-text">{{ taskGroup.description }}</text>
+                        </view>
+                      </view>
+                    </view>
                   </view>
-                </view>
-              </view>
-              
-              <!-- 任务详情信息 -->
-              <view class="extra-info" v-if="item.fireSituation && item.fireSituation.assignedUnits && item.fireSituation.assignedUnits.length > 0">
-                <view class="extra-item" v-for="(unit, index) in item.fireSituation.assignedUnits" :key="index">
-                  <view class="unit-info-row">
-                    <image :src="serverUrl + '/static/icons/common/power.png'" class="info-icon" />
-                    <text class="info-text">{{ unit.unitName }} - {{ getTaskTypeName(unit.taskType) }}{{ getTaskExtraInfo(unit.taskType, unit.taskExtra) }}</text>
-                  </view>
-                  <!-- 车辆信息显示在对应单位后面 -->
-                  <view class="unit-car-info" v-if="getUnitCarInfo(unit)">
-                    <text class="car-text">{{ getUnitCarInfo(unit) }}</text>
+                  
+                  <!-- 单位备注 -->
+                  <view class="unit-remark" v-if="unit.remark">
+                    <text class="unit-remark-label">备注：</text>
+                    <text class="unit-remark-text">{{ unit.remark }}</text>
                   </view>
                 </view>
               </view>
@@ -164,20 +211,16 @@ export default {
       serverUrl: 'https://www.xiaobei.space',
       keyword: '',
       recordPerson: '',
-      startTime: '', // 新增：开始时间
-      endTime: '', // 新增：结束时间
-      startTimeIndex: [0, 0, 0, 0, 0], // 新增：开始时间选择器索引
-      endTimeIndex: [0, 0, 0, 0, 0], // 新增：结束时间选择器索引
-      startTimeRange: [[], [], [], [], []], // 新增：开始时间选择器数据
-      endTimeRange: [[], [], [], [], []], // 新增：结束时间选择器数据
       debounceTimer: null,
       filtersExpanded: false,
       unitOptions: [],
       statusOptions: [],
+      taskTypeOptions: [], // 任务类型选项
       locationTypeOptions: locationTypeOptions,
       directionOptions: directionOptions,
       unitIndex: 0, 
       statusIndex: 0,
+      taskTypeIndex: 0,
       list: [],
       page: 1, 
       pageSize: 10, 
@@ -196,7 +239,6 @@ export default {
   },
   async onLoad() {
     await this.loadStatic()
-    this.initDateTimePickers()
     this.fetch(true)
   },
   onReachBottom() { this.loadMore() },
@@ -212,44 +254,6 @@ export default {
     }
   },
   methods: {
-    initDateTimePickers() {
-      // 初始化时间选择器数据
-      const now = new Date()
-      const currentYear = now.getFullYear()
-      
-      // 生成年份 (当前年份前后5年)
-      const years = []
-      for (let i = currentYear - 5; i <= currentYear + 5; i++) {
-        years.push(i)
-      }
-      
-      // 生成月份
-      const months = []
-      for (let i = 1; i <= 12; i++) {
-        months.push(i)
-      }
-      
-      // 生成日期 (1-31)
-      const days = []
-      for (let i = 1; i <= 31; i++) {
-        days.push(i)
-      }
-      
-      // 生成小时 (0-23)
-      const hours = []
-      for (let i = 0; i < 24; i++) {
-        hours.push(i)
-      }
-      
-      // 生成分钟 (0-59)
-      const minutes = []
-      for (let i = 0; i < 60; i++) {
-        minutes.push(i)
-      }
-      
-      this.startTimeRange = [years, months, days, hours, minutes]
-      this.endTimeRange = [years, months, days, hours, minutes]
-    },
     computeListHeight() {
       try {
         const sys = uni.getSystemInfoSync() || {}
@@ -271,6 +275,7 @@ export default {
     async loadStatic() {
       // 先检查本地存储是否有数据
       const cachedUnits = uni.getStorageSync('static_fireUnits')
+      const cachedTaskTypes = uni.getStorageSync('static_taskTypes')
       
       // 如果本地有数据，直接使用
       if (cachedUnits) {
@@ -279,6 +284,16 @@ export default {
           ...cachedUnits
         ]
         this.statusOptions = this.taskFeedbackOptions
+        // 加载任务类型
+        if (cachedTaskTypes && cachedTaskTypes.length > 0) {
+          this.taskTypeOptions = [
+            { label: '请选择任务类型', value: '', index: 0 },
+            ...cachedTaskTypes
+          ]
+        } else {
+          // 如果没有缓存，尝试从接口获取
+          await this.loadTaskTypes()
+        }
         return
       }
       
@@ -300,8 +315,65 @@ export default {
           ...unitList
         ]
         this.statusOptions = this.taskFeedbackOptions
+        
+        // 加载任务类型
+        await this.loadTaskTypes()
       } catch(e) {
         console.error('加载静态数据失败:', e)
+      }
+    },
+    async loadTaskTypes() {
+      try {
+        // 尝试从接口获取任务类型
+        const res = await new Promise((resolve, reject) => {
+          uni.request({ 
+            url: this.serverUrl + '/static/data', 
+            method: 'GET', 
+            data: { type: 'fireUnits', key: 'taskTypeList' }, 
+            success: resolve, 
+            fail: reject 
+          })
+        })
+        
+        if (res?.data?.code === 200 && res.data.data) {
+          const taskTypeList = res.data.data.map((it, i) => ({ 
+            label: it.data1, 
+            value: String(it.data2), 
+            index: i + 1 
+          }))
+          uni.setStorageSync('static_taskTypes', taskTypeList)
+          this.taskTypeOptions = [
+            { label: '请选择任务类型', value: '', index: 0 },
+            ...taskTypeList
+          ]
+        } else {
+          // 如果接口没有数据，使用默认任务类型
+          const defaultTaskTypes = [
+            { label: '灭火', value: '1', index: 1 },
+            { label: '堵截', value: '2', index: 2 },
+            { label: '搜救', value: '3', index: 3 },
+            { label: '排烟', value: '4', index: 4 },
+            { label: '供水', value: '5', index: 5 }
+          ]
+          this.taskTypeOptions = [
+            { label: '请选择任务类型', value: '', index: 0 },
+            ...defaultTaskTypes
+          ]
+        }
+      } catch(e) {
+        console.error('加载任务类型失败:', e)
+        // 使用默认任务类型
+        const defaultTaskTypes = [
+          { label: '灭火', value: '1', index: 1 },
+          { label: '堵截', value: '2', index: 2 },
+          { label: '搜救', value: '3', index: 3 },
+          { label: '排烟', value: '4', index: 4 },
+          { label: '供水', value: '5', index: 5 }
+        ]
+        this.taskTypeOptions = [
+          { label: '请选择任务类型', value: '', index: 0 },
+          ...defaultTaskTypes
+        ]
       }
     },
     fetch(reset = false, cb) {
@@ -312,9 +384,8 @@ export default {
         pageSize: this.pageSize,
         unit: (this.unitOptions[this.unitIndex] && this.unitOptions[this.unitIndex].value) || '',
         status: (this.statusOptions[this.statusIndex] && this.statusOptions[this.statusIndex].value) || '',
-        startTime: this.startTime || '',
-        endTime: this.endTime || '',
-        feedbackPersonName: (this.feedbackPersonName || '').trim(),
+        taskType: (this.taskTypeOptions[this.taskTypeIndex] && this.taskTypeOptions[this.taskTypeIndex].value) || '',
+        recordPerson: (this.recordPerson || '').trim(),
         keyword: (this.keyword || '').trim()
       }
       this.isLoading = true
@@ -376,35 +447,19 @@ export default {
         console.error('onStatusChange error:', error)
       }
     },
-    onStartTimeChange(e) {
+    onTaskTypeChange(e) { 
       try {
         const value = e.detail ? e.detail.value : e.value
-        this.startTimeIndex = value
-        const [year, month, day, hour, minute] = value
-        this.startTime = `${this.startTimeRange[0][year]}-${String(this.startTimeRange[1][month]).padStart(2, '0')}-${String(this.startTimeRange[2][day]).padStart(2, '0')} ${String(this.startTimeRange[3][hour]).padStart(2, '0')}:${String(this.startTimeRange[4][minute]).padStart(2, '0')}`
+        this.taskTypeIndex = Number(value)
         this.fetch(true)
       } catch (error) {
-        console.error('onStartTimeChange error:', error)
-      }
-    },
-    onEndTimeChange(e) {
-      try {
-        const value = e.detail ? e.detail.value : e.value
-        this.endTimeIndex = value
-        const [year, month, day, hour, minute] = value
-        this.endTime = `${this.endTimeRange[0][year]}-${String(this.endTimeRange[1][month]).padStart(2, '0')}-${String(this.endTimeRange[2][day]).padStart(2, '0')} ${String(this.endTimeRange[3][hour]).padStart(2, '0')}:${String(this.endTimeRange[4][minute]).padStart(2, '0')}`
-        this.fetch(true)
-      } catch (error) {
-        console.error('onEndTimeChange error:', error)
+        console.error('onTaskTypeChange error:', error)
       }
     },
     resetFilters() {
       this.unitIndex = 0
       this.statusIndex = 0
-      this.startTime = ''
-      this.endTime = ''
-      this.startTimeIndex = [0, 0, 0, 0, 0]
-      this.endTimeIndex = [0, 0, 0, 0, 0]
+      this.taskTypeIndex = 0
       this.recordPerson = ''
       this.keyword = ''
       this.fetch(true)
@@ -424,7 +479,8 @@ export default {
       // 根据taskStatus显示状态名称
       const statusMap = {
         1: '未接收',
-        2: '已接收'
+        2: '已接收',
+        3: '已执行'
       }
       return statusMap[statusValue] || `状态${statusValue}`
     },
@@ -432,7 +488,8 @@ export default {
       // 根据taskStatus返回样式类
       const classMap = {
         1: 'status-unreceived',
-        2: 'status-received'
+        2: 'status-received',
+        3: 'status-finished'
       }
       return classMap[statusValue] || 'status-unknown'
     },
@@ -453,55 +510,161 @@ export default {
     },
     // 获取任务类型名称
     getTaskTypeName(taskType) {
-      const typeMap = {
-        '1': '灭火救援',
-        '2': '断电救援', 
-        '3': '人员搜救',
-        '4': '火场供水',
-        '5': '火场供水',
-        '6': '人员搜救'
-      }
-      return typeMap[taskType] || `类型${taskType}`
+      const type = this.taskTypeOptions.find(item => item.value === String(taskType))
+      return type ? type.label : `类型${taskType}`
     },
-    // 获取任务额外信息
-    getTaskExtraInfo(taskType, taskExtra) {
-      if (!taskExtra || Object.keys(taskExtra).length === 0) return ''
+    // 获取方向名称
+    getDirectionName(directionValue) {
+      const direction = this.directionOptions.find(item => item.value === Number(directionValue))
+      return direction ? direction.label : `方向${directionValue}`
+    },
+    // 获取任务组的参战车辆
+    getTaskGroupCars(taskGroup) {
+      if (!taskGroup) return ''
       
-      const extraInfo = []
-      for (const key in taskExtra) {
-        if (taskExtra.hasOwnProperty(key)) {
-          const value = taskExtra[key]
-          if (taskType === '1' && key === 'firePower') {
-            extraInfo.push(value)
-          } else if (taskType === '2' && key === 'blockPower') {
-            extraInfo.push(value)
-          } else if (taskType === '3' && key === 'searchRoom') {
-            extraInfo.push('房间号：' + value)
-          } else if (taskType === '4' && key === 'supplyTarget') {
-            extraInfo.push(value + '个供水点')
-          } else if (taskType === '5' && key === 'supplyTarget') {
-            extraInfo.push(value + '个供水点')
-          } else if (taskType === '6' && key === 'rescueLocation') {
-            extraInfo.push('房间号：' + value)
-          } else {
-            extraInfo.push(value)
-          }
+      // 优先使用 carNames 数组
+      if (taskGroup.carNames && Array.isArray(taskGroup.carNames) && taskGroup.carNames.length > 0) {
+        return taskGroup.carNames.join('、')
+      }
+      
+      // 如果没有 carNames，尝试从 carInfo 获取
+      if (taskGroup.carInfo && Array.isArray(taskGroup.carInfo) && taskGroup.carInfo.length > 0) {
+        return taskGroup.carInfo.map(car => car.carName || car.label || car.name).filter(Boolean).join('、')
+      }
+      
+      return ''
+    },
+    // 获取任务组的作战力量
+    getTaskPower(taskGroup) {
+      if (!taskGroup || !taskGroup.taskExtra) return ''
+      
+      const taskExtra = taskGroup.taskExtra || {}
+      const taskType = String(taskGroup.taskType || '')
+      
+      // 根据任务类型获取作战力量
+      if (taskType === '1' && taskExtra.firePower) {
+        return taskExtra.firePower // 灭火力量
+      }
+      if (taskType === '2' && taskExtra.blockPower) {
+        return taskExtra.blockPower // 堵截力量
+      }
+      
+      return ''
+    },
+    // 获取任务组的作战力量标签（根据任务类型）
+    getTaskPowerLabel(taskGroup) {
+      if (!taskGroup) return '作战力量'
+      
+      const taskType = String(taskGroup.taskType || '')
+      
+      if (taskType === '1') return '灭火力量'
+      if (taskType === '2') return '堵截力量'
+      if (taskType === '3') return '搜救力量'
+      if (taskType === '4') return '排烟力量'
+      if (taskType === '5') return '目标中队'
+      
+      return '作战力量'
+    },
+    // 判断是否是搜救任务
+    isSearchTask(taskGroup) {
+      if (!taskGroup) return false
+      const taskType = String(taskGroup.taskType || '')
+      return taskType === '3'
+    },
+    // 判断是否是排烟任务
+    isSmokeTask(taskGroup) {
+      if (!taskGroup) return false
+      const taskType = String(taskGroup.taskType || '')
+      return taskType === '4'
+    },
+    // 判断是否是供水任务
+    isWaterTask(taskGroup) {
+      if (!taskGroup) return false
+      const taskType = String(taskGroup.taskType || '')
+      return taskType === '5'
+    },
+    // 获取搜救力量
+    getSearchPower(taskGroup) {
+      if (!taskGroup) return ''
+      // 优先从 taskGroup 顶层获取
+      if (taskGroup.searchPower) return taskGroup.searchPower
+      // 其次从 taskExtra 获取
+      if (taskGroup.taskExtra && taskGroup.taskExtra.searchPower) {
+        return taskGroup.taskExtra.searchPower
+      }
+      return ''
+    },
+    // 获取搜救结果
+    getSearchResult(taskGroup) {
+      if (!taskGroup) return ''
+      // 优先从 taskGroup 顶层获取
+      if (taskGroup.searchResult) return taskGroup.searchResult
+      // 其次从 taskExtra 获取
+      if (taskGroup.taskExtra && taskGroup.taskExtra.searchResult) {
+        return taskGroup.taskExtra.searchResult
+      }
+      return ''
+    },
+    // 获取排烟力量
+    getSmokePower(taskGroup) {
+      if (!taskGroup) return ''
+      // 优先从 taskGroup 顶层获取
+      if (taskGroup.smokePower) return taskGroup.smokePower
+      // 其次从 taskExtra 获取
+      if (taskGroup.taskExtra && taskGroup.taskExtra.smokePower) {
+        return taskGroup.taskExtra.smokePower
+      }
+      return ''
+    },
+    // 获取目标中队（供水任务）
+    getTargetUnit(taskGroup) {
+      if (!taskGroup || !taskGroup.taskExtra) return ''
+      const taskExtra = taskGroup.taskExtra || {}
+      // 优先从 targetUnit 获取
+      if (taskExtra.targetUnit) {
+        const targetUnit = this.unitOptions.find(u => u.value === taskExtra.targetUnit)
+        return targetUnit ? targetUnit.label : taskExtra.targetUnit
+      }
+      // 其次从 supplyTarget 获取
+      if (taskExtra.supplyTarget) {
+        const targetUnit = this.unitOptions.find(u => u.value === taskExtra.supplyTarget)
+        return targetUnit ? targetUnit.label : taskExtra.supplyTarget
+      }
+      return ''
+    },
+    // 获取目标车辆（供水任务）
+    getTargetCars(taskGroup) {
+      if (!taskGroup) return ''
+      // 从 targetCars 数组获取
+      if (taskGroup.targetCars && Array.isArray(taskGroup.targetCars) && taskGroup.targetCars.length > 0) {
+        return taskGroup.targetCars.map(car => car.carName || car.name || car.label || '').filter(Boolean).join('、')
+      }
+      return ''
+    },
+    // 判断是否有多个任务类型
+    hasMultipleTaskTypes(fireSituation) {
+      if (!fireSituation || !fireSituation.assignedUnits) return false
+      
+      // 收集所有救援单位的任务类型
+      const taskTypes = new Set()
+      const rescueUnits = (fireSituation.assignedUnits || []).filter(unit => unit.unitStatus === 'rescue')
+      
+      rescueUnits.forEach(unit => {
+        if (unit.taskGroups && unit.taskGroups.length > 0) {
+          unit.taskGroups.forEach(taskGroup => {
+            if (taskGroup.taskType) {
+              taskTypes.add(String(taskGroup.taskType))
+            }
+          })
         }
-      }
-      return extraInfo.length > 0 ? ' (' + extraInfo.join(', ') + ')' : ''
-    },
-    // 获取单个单位的车辆信息
-    getUnitCarInfo(unit) {
-      if (!unit || !unit.carInfo || unit.carInfo.length === 0) return ''
-      
-      const cars = []
-      unit.carInfo.forEach(car => {
-        if (car.label) {
-          cars.push(car.label)
+        // 如果没有任务组，尝试从旧的任务类型字段获取
+        if (unit.taskType) {
+          taskTypes.add(String(unit.taskType))
         }
       })
       
-      return cars.length > 0 ? cars.join('、') : ''
+      // 如果有多个任务类型，返回true
+      return taskTypes.size > 1
     },
     // 跳转到任务详情
     goDetail(item) {
@@ -512,22 +675,23 @@ export default {
       const status = item.status
       
       if (status === 1) {
-        // 未接收 - 显示接收任务和拒绝接受
+        // 未接收 - 显示接收任务
         return [
-          { text: '接收任务', style: { backgroundColor: '#52c41a', color: '#fff' }, key: 'receive' },
-          { text: '拒绝接受', style: { backgroundColor: '#fa8c16', color: '#fff' }, key: 'reject' }
+          { text: '接收任务', style: { backgroundColor: '#52c41a', color: '#fff' }, key: 'receive' }
         ]
       } else if (status === 2) {
-        // 已接收 - 显示删除
+        // 已接收 - 显示执行完毕和拒绝任务
+        return [
+          { text: '执行完毕', style: { backgroundColor: '#52c41a', color: '#fff' }, key: 'finish' },
+          { text: '拒绝任务', style: { backgroundColor: '#fa8c16', color: '#fff' }, key: 'reject' }
+        ]
+      } else if (status === 3) {
+        // 已执行 - 显示删除
         return [
           { text: '删除', style: { backgroundColor: '#ff4d4f', color: '#fff' }, key: 'delete' }
         ]
-      } else {
-        // 其他状态 - 默认选项
-        return [
-          { text: '查看详情', style: { backgroundColor: '#2db7f5', color: '#fff' }, key: 'detail' }
-        ]
       }
+      return []
     },
     // 处理滑动操作点击
     onSwipeClick(e, item) {
@@ -552,6 +716,8 @@ export default {
           this.receiveTask(item)
         } else if (key === 'reject') {
           this.rejectTask(item)
+        } else if (key === 'finish') {
+          this.finishTask(item)
         } else if (key === 'delete') {
           this.deleteTask(item)
         } else if (key === 'detail') {
@@ -564,27 +730,12 @@ export default {
     // 接收任务
     async receiveTask(item) {
       try {
-        await new Promise((resolve, reject) => {
-          uni.request({
-            url: this.serverUrl + `/task/feedback/${item.taskId}`,
-            method: 'PUT',
-            success: resolve,
-            fail: reject
-          })
-        })
-        uni.showToast({ title: '任务已接收', icon: 'success' })
-        this.fetch(true)
-      } catch(e) {
-        uni.showToast({ title: '操作失败', icon: 'none' })
-      }
-    },
-    // 拒绝任务
-    async rejectTask(item) {
-      try {
         const confirmResult = await new Promise((resolve) => {
           uni.showModal({
-            title: '确认拒绝',
-            content: '确定要拒绝接受这个任务吗？',
+            title: '确认接收',
+            content: '确定要接收这个任务吗？',
+            confirmText: '确认接收',
+            cancelText: '取消',
             success: (res) => resolve(res.confirm),
             fail: () => resolve(false)
           })
@@ -592,18 +743,108 @@ export default {
         
         if (!confirmResult) return
         
-        await new Promise((resolve, reject) => {
+        const res = await new Promise((resolve, reject) => {
           uni.request({
-            url: this.serverUrl + `/task/delete/${item.taskId}`,
+            url: this.serverUrl + `/task/feedback/${item.taskId}`,
+            method: 'PUT',
+            data: {
+              status: 1,
+              commitType: 'receive'
+            },
+            success: resolve,
+            fail: reject
+          })
+        })
+        
+        if (res?.data?.code === 200) {
+          uni.showToast({ title: '任务已接收', icon: 'success' })
+          this.fetch(true)
+        } else {
+          const errorMsg = res?.data?.msg || '接收任务失败'
+          uni.showToast({ title: errorMsg, icon: 'none', duration: 2000 })
+        }
+      } catch(e) {
+        const errorMsg = e?.message || e?.data?.msg || '操作失败'
+        uni.showToast({ title: errorMsg, icon: 'none', duration: 2000 })
+      }
+    },
+    // 拒绝任务
+    async rejectTask(item) {
+      try {
+        const addressName = (item.fireSituation && item.fireSituation.addressName) || '该任务'
+        const confirmResult = await new Promise((resolve) => {
+          uni.showModal({
+            title: '确认拒绝',
+            content: `确定要拒绝"${addressName}"的任务吗？`,
+            confirmText: '确认拒绝',
+            cancelText: '取消',
+            success: (res) => resolve(res.confirm),
+            fail: () => resolve(false)
+          })
+        })
+        
+        if (!confirmResult) return
+        
+        const res = await new Promise((resolve, reject) => {
+          uni.request({
+            url: this.serverUrl + `/task/delete/${item.taskId}?status=${item.status}`,
             method: 'DELETE',
             success: resolve,
             fail: reject
           })
         })
-        uni.showToast({ title: '已拒绝任务', icon: 'success' })
-        this.fetch(true)
+        
+        if (res?.data?.code === 200) {
+          uni.showToast({ title: '已拒绝任务', icon: 'success' })
+          this.fetch(true)
+        } else {
+          const errorMsg = res?.data?.msg || '拒绝任务失败'
+          uni.showToast({ title: errorMsg, icon: 'none', duration: 2000 })
+        }
       } catch(e) {
         uni.showToast({ title: '操作失败', icon: 'none' })
+      }
+    },
+    // 执行完毕
+    async finishTask(item) {
+      try {
+        const addressName = (item.fireSituation && item.fireSituation.addressName) || '该任务'
+        const confirmResult = await new Promise((resolve) => {
+          uni.showModal({
+            title: '确认执行完毕',
+            content: `确定要完成"${addressName}"的任务吗？`,
+            confirmText: '确认完成',
+            cancelText: '取消',
+            success: (res) => resolve(res.confirm),
+            fail: () => resolve(false)
+          })
+        })
+        
+        if (!confirmResult) return
+        
+        const res = await new Promise((resolve, reject) => {
+          uni.request({
+            url: this.serverUrl + `/task/feedback/${item.taskId}`,
+            method: 'PUT',
+            data: {
+              status: 2,
+              commitType: 'finish'
+            },
+            success: resolve,
+            fail: reject
+          })
+        })
+        
+        if (res?.data?.code === 200) {
+          uni.showToast({ title: '任务已完成', icon: 'success' })
+          this.fetch(true)
+        } else {
+          const errorMsg = res?.data?.msg || '完成任务失败'
+          uni.showToast({ title: errorMsg, icon: 'none', duration: 2000 })
+        }
+      } catch(e) {
+        const errorMsg = e?.message || e?.data?.msg || '操作失败'
+        uni.showToast({ title: errorMsg, icon: 'none', duration: 2000 })
       }
     },
     // 删除任务
@@ -620,18 +861,25 @@ export default {
         
         if (!confirmResult) return
         
-        await new Promise((resolve, reject) => {
+        const res = await new Promise((resolve, reject) => {
           uni.request({
-            url: this.serverUrl + `/task/delete/${item.taskId}`,
+            url: this.serverUrl + `/task/delete/${item.taskId}?status=${item.status}`,
             method: 'DELETE',
             success: resolve,
             fail: reject
           })
         })
-        uni.showToast({ title: '删除成功', icon: 'success' })
-        this.fetch(true)
+        
+        if (res?.data?.code === 200) {
+          uni.showToast({ title: '删除成功', icon: 'success' })
+          this.fetch(true)
+        } else {
+          const errorMsg = res?.data?.msg || '删除任务失败'
+          uni.showToast({ title: errorMsg, icon: 'none', duration: 2000 })
+        }
       } catch(e) {
-        uni.showToast({ title: '删除失败', icon: 'none' })
+        const errorMsg = e?.message || e?.data?.msg || '删除失败'
+        uni.showToast({ title: errorMsg, icon: 'none', duration: 2000 })
       }
     }
   }
@@ -766,44 +1014,66 @@ export default {
   gap: 8rpx;
 }
 
-/* 时间区间行 */
-.time-row {
+/* 任务类型和参战人员行 */
+.task-type-personnel-row {
   display: flex;
   gap: 20rpx;
   grid-column: 1 / -1;
   margin-bottom: 20rpx;
 }
 
-.time-item {
+.task-type-personnel-row .filter-item {
+  flex: 1;
+}
+
+.task-type-personnel-row .personnel-item {
+  flex: 1;
+}
+
+/* 人员信息行 */
+.personnel-item {
   flex: 1;
   display: flex;
   flex-direction: column;
   gap: 8rpx;
 }
 
-.time-label {
+.personnel-label {
   font-size: 24rpx;
   color: #333;
   font-weight: 500;
 }
 
-.filter-item-with-buttons {
-  display: flex;
-  flex-direction: column;
-  gap: 8rpx;
-  grid-column: 1 / -1;
+.personnel-input {
+  height: 56rpx;
+  padding: 0 16rpx;
+  border: 1rpx solid #e6f4ff;
+  border-radius: 8rpx;
+  background: #ffffff;
+  font-size: 24rpx;
+  color: #333;
+  box-sizing: border-box;
+  transition: all 0.3s ease;
 }
 
-.input-button-group {
+.personnel-input:focus {
+  border-color: #1890ff;
+  background: #f0f8ff;
+  box-shadow: 0 2rpx 8rpx rgba(24, 144, 255, 0.1);
+}
+
+/* 按钮行 */
+.button-row {
   display: flex;
-  align-items: center;
-  gap: 16rpx;
+  justify-content: flex-end;
+  margin-top: 8rpx;
+  position: relative;
 }
 
 .filter-label {
   font-size: 24rpx;
   color: #333;
-  font-weight: 500;
+  font-weight: 400;
 }
 
 .filter-picker {
@@ -811,16 +1081,15 @@ export default {
 }
 
 .picker-box {
-  height: 56rpx;
-  line-height: 56rpx;
-  border-radius: 12rpx;
-  border: 2rpx solid #e6f4ff;
-  background: #fff;
-  padding: 0 16rpx;
+  height: 48rpx;
+  line-height: 48rpx;
+  border-radius: 8rpx;
+  border: 1rpx solid #e6f4ff;
+  background: #ffffff;
+  padding: 0 12rpx;
   font-size: 24rpx;
   color: #333;
-  transition: all 0.3s ease;
-  box-shadow: 0 2rpx 4rpx rgba(24, 144, 255, 0.05);
+  transition: all 0.2s ease;
 }
 
 .picker-box.placeholder {
@@ -829,52 +1098,28 @@ export default {
 
 .picker-box:active {
   border-color: #1890ff;
-  background: #fff;
-  box-shadow: 0 4rpx 8rpx rgba(24, 144, 255, 0.15);
-  transform: translateY(-1rpx);
-}
-
-.filter-input {
-  flex: 1;
-  height: 56rpx;
-  padding: 0 16rpx;
-  border: 2rpx solid #e6f4ff;
-  border-radius: 12rpx;
-  background: #fff;
-  font-size: 24rpx;
-  color: #333;
-  box-sizing: border-box;
-  transition: all 0.3s ease;
-  box-shadow: 0 2rpx 4rpx rgba(24, 144, 255, 0.05);
-}
-
-.filter-input:focus {
-  border-color: #1890ff;
-  background: #fff;
-  box-shadow: 0 4rpx 8rpx rgba(24, 144, 255, 0.15);
-  transform: translateY(-1rpx);
-}
-
-.button-group {
-  display: flex;
-  gap: 20rpx;
+  background: #f0f8ff;
 }
 
 .reset-btn {
-  height: 48rpx;
-  padding: 0 24rpx;
-  border-radius: 6rpx;
+  height: 56rpx;
+  padding: 0 32rpx;
+  border-radius: 28rpx;
   background: #f5f5f5;
   border: 1rpx solid #d9d9d9;
   color: #666;
   font-size: 26rpx;
-  font-weight: 400;
-  line-height: 48rpx;
-  min-width: 80rpx;
+  font-weight: 500;
+  line-height: 56rpx;
+  min-width: 100rpx;
+  box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.08);
+  transition: all 0.3s ease;
 }
 
 .reset-btn:active {
   background: #e8e8e8;
+  transform: scale(0.98);
+  box-shadow: 0 1rpx 4rpx rgba(0, 0, 0, 0.12);
 }
 
 .reset-btn::after {
@@ -882,20 +1127,24 @@ export default {
 }
 
 .search-btn {
-  height: 48rpx;
-  padding: 0 24rpx;
-  border-radius: 6rpx;
-  background: #1890ff;
+  height: 56rpx;
+  padding: 0 32rpx;
+  border-radius: 28rpx;
+  background: linear-gradient(135deg, #1890ff, #40a9ff);
   border: none;
   color: #fff;
   font-size: 26rpx;
-  font-weight: 400;
-  line-height: 48rpx;
-  min-width: 80rpx;
+  font-weight: 500;
+  line-height: 56rpx;
+  min-width: 100rpx;
+  box-shadow: 0 4rpx 12rpx rgba(24, 144, 255, 0.3);
+  transition: all 0.3s ease;
 }
 
 .search-btn:active {
-  background: #40a9ff;
+  background: linear-gradient(135deg, #40a9ff, #69c0ff);
+  transform: scale(0.98);
+  box-shadow: 0 2rpx 8rpx rgba(24, 144, 255, 0.4);
 }
 
 .list {
@@ -970,7 +1219,27 @@ export default {
   align-items: center;
   margin-bottom: 16rpx;
   padding-bottom: 12rpx;
-  border-bottom: 1rpx solid #f0f0f0;
+  gap: 16rpx;
+}
+
+.header-meta {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  flex-shrink: 0;
+}
+
+.header-meta .meta-text {
+  font-size: 20rpx;
+  color: #999;
+  white-space: nowrap;
+  line-height: 1.4;
+}
+
+.header-meta .meta-divider {
+  font-size: 18rpx;
+  color: #d9d9d9;
+  margin: 0 4rpx;
 }
 
 .address-info {
@@ -1161,56 +1430,205 @@ export default {
   white-space: nowrap;
 }
 
-/* 额外信息样式 - 简洁风格 */
-.extra-info {
-  margin-top: 12rpx;
-  padding: 16rpx;
-  background: linear-gradient(135deg, #f0f8ff, #e6f7ff);
-  border-radius: 12rpx;
-  border: 1rpx solid #d6e4ff;
-  box-shadow: 0 2rpx 8rpx rgba(24, 144, 255, 0.08);
+.unit-status-badge {
+  display: flex;
+  align-items: center;
+  gap: 6rpx;
+  padding: 4rpx 12rpx;
+  border-radius: 16rpx;
+  font-size: 20rpx;
+  font-weight: 500;
+  flex-shrink: 0;
+  margin-left: 8rpx;
 }
 
-.extra-item {
+.unit-status-badge.rescue-badge {
+  background: linear-gradient(135deg, #1890ff, #40a9ff);
+  color: #fff;
+}
+
+.unit-status-badge.support-badge {
+  background: linear-gradient(135deg, #fa8c16, #ffa940);
+  color: #fff;
+}
+
+.status-dot {
+  width: 6rpx;
+  height: 6rpx;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.9);
+}
+
+.status-text {
+  font-size: 20rpx;
+  font-weight: 500;
+}
+
+.unit-info-block {
+  padding-bottom: 16rpx;
+}
+
+.unit-info-block:last-child {
+  margin-bottom: 0;
+  padding-bottom: 0;
+  border-bottom: none;
+}
+
+.task-groups-info {
+  margin-top: 12rpx;
+  display: flex;
+  flex-direction: column;
+  gap: 12rpx;
+}
+
+.task-group-info {
+  margin-bottom: 0;
+}
+
+.task-group-content {
+  display: flex;
+  flex-direction: column;
+  gap: 10rpx;
+  padding: 14rpx 16rpx;
+  background: linear-gradient(135deg, #f8faff, #e6f7ff);
+  border-radius: 10rpx;
+  border-left: 4rpx solid #1890ff;
+  box-shadow: 0 2rpx 8rpx rgba(24, 144, 255, 0.08);
+  position: relative;
+}
+
+.task-type-badge {
+  position: absolute;
+  top: 0;
+  left: 0;
+  background: linear-gradient(135deg, #1890ff, #40a9ff);
+  color: #fff;
+  font-size: 20rpx;
+  font-weight: 600;
+  padding: 4rpx 12rpx;
+  border-radius: 12rpx 0 12rpx 0;
+  z-index: 1;
+  box-shadow: 0 2rpx 4rpx rgba(24, 144, 255, 0.3);
+  line-height: 1.2;
+}
+
+.task-type-text {
+  color: #fff;
+  font-size: 20rpx;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.task-group-first-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12rpx;
+  margin-top: 8rpx;
+  padding-top: 8rpx;
+  min-height: 40rpx;
+}
+
+.task-location-info {
+  display: flex;
+  align-items: center;
+  gap: 20rpx;
+  flex: 1;
+  min-width: 0;
+}
+
+.task-group-second-row {
   display: flex;
   flex-direction: column;
   gap: 8rpx;
-  margin-bottom: 16rpx;
-  padding: 8rpx 0;
-  border-bottom: 1rpx solid rgba(24, 144, 255, 0.1);
+  margin-top: 8rpx;
+  padding-top: 8rpx;
 }
 
-.unit-info-row {
+.task-attr-item {
   display: flex;
   align-items: center;
   gap: 8rpx;
+  line-height: 1.5;
 }
 
-.extra-item:last-child {
-  margin-bottom: 0;
-  border-bottom: none;
-  padding-bottom: 0;
+.task-attr-label {
+  font-size: 23rpx;
+  color: #666;
+  font-weight: 500;
+  white-space: nowrap;
 }
 
-/* 单位内车辆信息样式 */
-.unit-car-info {
+.task-attr-value {
+  font-size: 23rpx;
+  color: #333;
+  font-weight: 500;
+  flex: 1;
+  min-width: 0;
+}
+
+.task-cars-text {
+  font-size: 21rpx;
+  color: #666;
+  white-space: nowrap;
+  flex-shrink: 0;
+  font-weight: 500;
+}
+
+.task-detail-text {
+  font-size: 21rpx;
+  color: #666;
+  white-space: nowrap;
+  line-height: 1.5;
+}
+
+.task-group-description {
+  margin-top: 12rpx;
+  padding-top: 12rpx;
+  border-top: 1rpx solid rgba(24, 144, 255, 0.1);
   display: flex;
-  align-items: center;
-  gap: 8rpx;
-  margin-left: 32rpx;
-  margin-top: 6rpx;
-  padding: 8rpx 12rpx;
+  flex-direction: column;
+  gap: 4rpx;
+}
+
+.description-label {
+  font-size: 22rpx;
+  color: #666;
+  font-weight: 500;
+}
+
+.description-text {
+  font-size: 22rpx;
+  color: #333;
+  line-height: 1.5;
+  word-break: break-all;
+  white-space: pre-wrap;
+}
+
+.unit-remark {
+  margin-top: 12rpx;
+  padding: 12rpx;
   background: linear-gradient(135deg, #fff7e6, #ffecc7);
   border-radius: 8rpx;
   border: 1rpx solid #ffd591;
   box-shadow: 0 1rpx 4rpx rgba(250, 140, 22, 0.1);
 }
 
-.car-text {
-  font-size: 20rpx;
+.unit-remark-label {
+  font-size: 22rpx;
   color: #d46b08;
   font-weight: 500;
+  margin-bottom: 4rpx;
 }
+
+.unit-remark-text {
+  font-size: 22rpx;
+  color: #333;
+  line-height: 1.5;
+  word-break: break-all;
+  white-space: pre-wrap;
+}
+
 
 /* 备注样式 - 卡片风格 */
 .remark {
@@ -1218,7 +1636,6 @@ export default {
   padding: 12rpx;
   background: #fff;
   border-radius: 8rpx;
-  border: 1rpx solid #e6f4ff;
   box-shadow: 0 1rpx 3rpx rgba(0, 0, 0, 0.05);
 }
 

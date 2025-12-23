@@ -195,6 +195,70 @@ export default {
     }
   },
   methods: {
+    // 验证经纬度是否在有效范围内
+    // 检测并修复经纬度交换问题
+    fixCoordinateSwap(latitude, longitude) {
+      // 转换为数字
+      let lat = typeof latitude === 'string' ? parseFloat(latitude) : Number(latitude);
+      let lng = typeof longitude === 'string' ? parseFloat(longitude) : Number(longitude);
+      
+      // 如果转换失败，返回原值
+      if (isNaN(lat) || isNaN(lng) || !isFinite(lat) || !isFinite(lng)) {
+        return { latitude, longitude, swapped: false };
+      }
+      
+      // 检测是否可能交换了：如果"纬度"超出范围但"经度"在纬度范围内，可能是交换了
+      const latOutOfRange = lat < -90 || lat > 90;
+      const lngInLatRange = lng >= -90 && lng <= 90;
+      const latInLngRange = lat >= -180 && lat <= 180;
+      const lngOutOfRange = lng < -180 || lng > 180;
+      
+      // 如果"纬度"超出范围，但"经度"在纬度范围内，且"纬度"在经度范围内，则交换
+      if (latOutOfRange && lngInLatRange && latInLngRange) {
+        console.warn('检测到经纬度可能被交换，自动修复:', { 原纬度: lat, 原经度: lng, 修复后纬度: lng, 修复后经度: lat });
+        return { latitude: lng, longitude: lat, swapped: true };
+      }
+      
+      // 如果"经度"超出范围，但"纬度"在经度范围内，且"经度"在纬度范围内，则交换
+      if (lngOutOfRange && latInLngRange && lngInLatRange) {
+        console.warn('检测到经纬度可能被交换，自动修复:', { 原纬度: lat, 原经度: lng, 修复后纬度: lng, 修复后经度: lat });
+        return { latitude: lng, longitude: lat, swapped: true };
+      }
+      
+      return { latitude: lat, longitude: lng, swapped: false };
+    },
+    
+    isValidCoordinate(latitude, longitude) {
+      // 如果值为 null 或 undefined，直接返回 false
+      if (latitude == null || longitude == null) {
+        return false;
+      }
+      
+      // 先尝试修复可能的交换问题
+      const fixed = this.fixCoordinateSwap(latitude, longitude);
+      
+      // 转换为数字（支持字符串类型的数字，因为 JSON 序列化可能将数字转为字符串）
+      const lat = typeof fixed.latitude === 'string' ? parseFloat(fixed.latitude) : Number(fixed.latitude);
+      const lng = typeof fixed.longitude === 'string' ? parseFloat(fixed.longitude) : Number(fixed.longitude);
+      
+      // 检查是否为有效数字
+      if (typeof lat !== 'number' || typeof lng !== 'number') {
+        return false;
+      }
+      // 检查是否为 NaN 或 Infinity
+      if (isNaN(lat) || isNaN(lng) || !isFinite(lat) || !isFinite(lng)) {
+        return false;
+      }
+      // 纬度范围：[-90, 90]
+      if (lat < -90 || lat > 90) {
+        return false;
+      }
+      // 经度范围：[-180, 180]
+      if (lng < -180 || lng > 180) {
+        return false;
+      }
+      return true;
+    },
     // 获取用户当前位置
     getUserLocation() {
       uni.getLocation({
@@ -263,8 +327,8 @@ export default {
       
       // 选择模式下不显示任何标记，只显示地图
       if (this.selectMode) {
-        // 设置地图中心点为用户位置（如果有）
-        if (this.userLocation && this.userLocation.latitude && this.userLocation.longitude) {
+        // 设置地图中心点为用户位置（如果有，并验证坐标有效性）
+        if (this.userLocation && this.isValidCoordinate(this.userLocation.latitude, this.userLocation.longitude)) {
           this.mapCenter = {
             latitude: this.userLocation.latitude,
             longitude: this.userLocation.longitude
@@ -278,7 +342,7 @@ export default {
       console.log('更新地图标记，位置数量:', this.allLocations.length);
       
       // 添加用户当前位置标记（蓝色）
-      if (this.userLocation && this.userLocation.latitude && this.userLocation.longitude) {
+      if (this.userLocation && this.isValidCoordinate(this.userLocation.latitude, this.userLocation.longitude)) {
         console.log('添加用户位置标记:', this.userLocation.addressName);
         this.mapMarkers.push({
           id: -1, // 用户位置使用特殊id（负数）
@@ -306,20 +370,35 @@ export default {
       
       // 显示筛选后的位置（包括目标地址和其他位置）
       this.filteredLocations.forEach((location, index) => {
-        if (location.latitude && location.longitude) {
+        // 先修复可能的经纬度交换问题
+        const fixedCoord = this.fixCoordinateSwap(location.latitude, location.longitude);
+        
+        // 验证修复后的经纬度是否有效
+        if (this.isValidCoordinate(fixedCoord.latitude, fixedCoord.longitude)) {
           // 判断是否是目标地址
           const isTarget = this.currentLocation && location.addressId == this.currentLocation.addressId;
           
           // 生成 callout 内容
           const calloutContent = this.generateCalloutContent(location);
           
+          // 获取标记图标路径
+          const iconPath = this.getMarkerIconPath(location);
+          
+          // 获取 callout 边框颜色
+          const calloutBorderColor = this.getCalloutBorderColor(location);
+          
+          // 使用修复后的坐标（确保是数字类型）
+          const lat = typeof fixedCoord.latitude === 'string' ? parseFloat(fixedCoord.latitude) : Number(fixedCoord.latitude);
+          const lng = typeof fixedCoord.longitude === 'string' ? parseFloat(fixedCoord.longitude) : Number(fixedCoord.longitude);
+          
           this.mapMarkers.push({
             id: isTarget ? -2 : index, // 目标地址使用特殊id（-2），其他使用索引
-            latitude: location.latitude,
-            longitude: location.longitude,
+            latitude: lat,
+            longitude: lng,
             title: location.addressName,
             width: isTarget ? 30 : 20, // 目标地址更大
             height: isTarget ? 30 : 20,
+            iconPath: iconPath, // 设置自定义图标
             callout: {
               content: calloutContent,
               color: isTarget ? '#fff' : '#333', // 目标地址白色文字
@@ -330,23 +409,34 @@ export default {
               padding: isTarget ? 8 : 6,
               display: 'ALWAYS',
               borderWidth: isTarget ? 2 : 1,
-              borderColor: isTarget ? '#fff' : '#ff4d4f',
+              borderColor: isTarget ? '#fff' : calloutBorderColor, // 根据类型设置边框颜色
               textAlign: 'center'
             }
+          });
+        } else {
+          // 记录无效坐标的位置（用于调试）
+          console.warn('无效的坐标数据:', location.addressName, location.latitude, location.longitude, {
+            latitudeType: typeof location.latitude,
+            longitudeType: typeof location.longitude,
+            latitudeValue: location.latitude,
+            longitudeValue: location.longitude,
+            isValid: this.isValidCoordinate(location.latitude, location.longitude)
           });
         }
       });
       
-      // 设置地图中心点
-      if (this.userLocation && this.userLocation.latitude && this.userLocation.longitude) {
+      // 设置地图中心点（验证坐标有效性，并修复可能的交换问题）
+      if (this.userLocation && this.isValidCoordinate(this.userLocation.latitude, this.userLocation.longitude)) {
+        const fixedUserCoord = this.fixCoordinateSwap(this.userLocation.latitude, this.userLocation.longitude);
         this.mapCenter = {
-          latitude: this.userLocation.latitude,
-          longitude: this.userLocation.longitude
+          latitude: Number(fixedUserCoord.latitude),
+          longitude: Number(fixedUserCoord.longitude)
         };
-      } else if (this.currentLocation && this.currentLocation.latitude && this.currentLocation.longitude) {
+      } else if (this.currentLocation && this.isValidCoordinate(this.currentLocation.latitude, this.currentLocation.longitude)) {
+        const fixedCurrentCoord = this.fixCoordinateSwap(this.currentLocation.latitude, this.currentLocation.longitude);
         this.mapCenter = {
-          latitude: this.currentLocation.latitude,
-          longitude: this.currentLocation.longitude
+          latitude: Number(fixedCurrentCoord.latitude),
+          longitude: Number(fixedCurrentCoord.longitude)
         };
       }
       
@@ -408,11 +498,16 @@ export default {
     onRegionChange(e) {
       console.log('地图区域变化:', e);
       // 在选择模式下，记录地图中心点变化（用户拖动地图）
-      if (this.selectMode && e.type === 'end') {
-        this.selectedMapCenter = {
-          latitude: e.detail.centerLocation.latitude,
-          longitude: e.detail.centerLocation.longitude
-        };
+      if (this.selectMode && e.type === 'end' && e.detail && e.detail.centerLocation) {
+        const lat = e.detail.centerLocation.latitude;
+        const lng = e.detail.centerLocation.longitude;
+        // 验证坐标有效性
+        if (this.isValidCoordinate(lat, lng)) {
+          this.selectedMapCenter = {
+            latitude: lat,
+            longitude: lng
+          };
+        }
       }
     },
     
@@ -421,6 +516,11 @@ export default {
       if (!this.selectMode) return;
       // 获取点击位置的经纬度
       if (e.detail && e.detail.latitude && e.detail.longitude) {
+        // 验证坐标有效性
+        if (!this.isValidCoordinate(e.detail.latitude, e.detail.longitude)) {
+          console.error('无效的点击坐标:', e.detail.latitude, e.detail.longitude);
+          return;
+        }
         this.selectedMapCenter = {
           latitude: e.detail.latitude,
           longitude: e.detail.longitude
@@ -442,9 +542,9 @@ export default {
        // 使用地图中心点作为选择的位置
        const selectedLocation = this.selectedMapCenter || this.mapCenter;
        
-       if (!selectedLocation || !selectedLocation.latitude || !selectedLocation.longitude) {
+       if (!selectedLocation || !this.isValidCoordinate(selectedLocation.latitude, selectedLocation.longitude)) {
          uni.showToast({
-           title: '请先在地图上选择位置',
+           title: '请先在地图上选择有效位置',
            icon: 'none'
          });
          return;
@@ -529,6 +629,12 @@ export default {
        // 微信小程序使用 chooseLocation 进行搜索和选择
        uni.chooseLocation({
          success: (res) => {
+           // 验证坐标有效性
+           if (!this.isValidCoordinate(res.latitude, res.longitude)) {
+             console.error('搜索返回的坐标无效:', res.latitude, res.longitude);
+             uni.showToast({ title: '搜索位置无效', icon: 'none' });
+             return;
+           }
            // 移动地图到搜索结果位置
            this.mapCenter = {
              latitude: res.latitude,
@@ -621,6 +727,54 @@ export default {
       }
       
       return parts.join(' | ');
+    },
+    
+    // 获取标记图标路径
+    getMarkerIconPath(location) {
+      // 如果是队站辖区，根据关键字类型返回不同的图标
+      if (location.type === 3 && location.keywordType) {
+        const district = locationTabList.find(item => item.type === 3);
+        const keywordOption = district?.keywordOptions?.find(opt => opt.value === location.keywordType);
+        const category = keywordOption?.category || '';
+        
+        if (category === 'hydrant') {
+          // 消火栓图标
+          return this.serverUrl + '/static/icons/map/hydrant.png';
+        } else if (category === 'panorama') {
+          // 全景云/森林图标
+          return this.serverUrl + '/static/icons/map/forset.png';
+        }
+      }
+      
+      // 默认图标（根据单位类型）
+      if (location.type === 1) {
+        // 高层小区
+        return this.serverUrl + '/static/icons/location/community-active.png';
+      } else if (location.type === 2) {
+        // 重点单位
+        return this.serverUrl + '/static/icons/location/factory-active.png';
+      }
+    },
+    
+    // 获取 callout 边框颜色
+    getCalloutBorderColor(location) {
+      // 如果是队站辖区，根据关键字类型返回不同的边框颜色
+      if (location.type === 3 && location.keywordType) {
+        const district = locationTabList.find(item => item.type === 3);
+        const keywordOption = district?.keywordOptions?.find(opt => opt.value === location.keywordType);
+        const category = keywordOption?.category || '';
+        
+        if (category === 'hydrant') {
+          // 消火栓：绿色边框
+          return '#52c41a';
+        } else if (category === 'panorama') {
+          // 森林（全景云）：红色边框
+          return '#ff4d4f';
+        }
+      }
+      
+      // 其他类型：蓝色边框
+      return '#1890ff';
     },
     
     // 切换左侧抽屉
@@ -759,6 +913,12 @@ export default {
     
     // 移动地图到指定位置
     moveToLocation(latitude, longitude, scale = 16) {
+      // 验证坐标有效性
+      if (!this.isValidCoordinate(latitude, longitude)) {
+        console.error('无效的坐标:', latitude, longitude);
+        return;
+      }
+      
       // 使用地图上下文API移动地图中心点
       // #ifdef MP-WEIXIN
       const mapContext = uni.createMapContext('locationMap', this);

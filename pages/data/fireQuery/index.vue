@@ -9,7 +9,7 @@
           <input 
             class="search-input"
             v-model="keyword"
-            placeholder="输入救灾地址或编号"
+            placeholder="输入救援地址或编号"
             @input="onInput"
             @confirm="onSearch"
           />
@@ -45,43 +45,22 @@
             </picker>
           </view>
 
-          <!-- 时间区间行 -->
-          <view class="time-row">
-            <view class="time-item">
-              <text class="time-label">开始时间</text>
-              <picker mode="multiSelector" :value="startTimeIndex" :range="startTimeRange" @change="onStartTimeChange" @bindchange="onStartTimeChange" class="filter-picker">
-                <view class="picker-box" :class="{ 'placeholder': !startTime }">
-                  {{ startTime || '请选择开始时间' }}
+          <!-- 任务类型和记录人员行 -->
+          <view class="task-type-personnel-row">
+            <view class="filter-item">
+              <text class="filter-label">任务类型</text>
+              <picker :value="taskTypeIndex" :range="taskTypeOptions" range-key="label" @change="onTaskTypeChange" @bindchange="onTaskTypeChange" class="filter-picker">
+                <view class="picker-box" :class="{ 'placeholder': taskTypeIndex === 0 }">
+                  {{ (taskTypeOptions[taskTypeIndex] && taskTypeOptions[taskTypeIndex].label) || '请选择任务类型' }}
                 </view>
               </picker>
             </view>
-            <view class="time-item">
-              <text class="time-label">结束时间</text>
-              <picker mode="multiSelector" :value="endTimeIndex" :range="endTimeRange" @change="onEndTimeChange" @bindchange="onEndTimeChange" class="filter-picker">
-                <view class="picker-box" :class="{ 'placeholder': !endTime }">
-                  {{ endTime || '请选择结束时间' }}
-                </view>
-              </picker>
-            </view>
-          </view>
-
-          <!-- 人员信息行 -->
-          <view class="personnel-row">
             <view class="personnel-item">
-              <text class="personnel-label">指派人员</text>
-              <input 
-                class="personnel-input"
-                v-model="feedbackPersonName"
-                placeholder="请输入任务下达人员"
-                @input="onInput"
-              />
-            </view>
-            <view class="personnel-item">
-              <text class="personnel-label">记录人员</text>
+              <text class="personnel-label">下达人员</text>
               <input 
                 class="personnel-input"
                 v-model="issuePersonName"
-                placeholder="请输入记录人员"
+                placeholder="请输入下达人员"
                 @input="onInput"
               />
             </view>
@@ -89,8 +68,8 @@
 
           <!-- 操作按钮行 -->
           <view class="button-row">
-            <button class="reset-btn" @tap="resetFilters">重置</button>
             <button class="search-btn" @tap="onSearch">查询</button>
+            <button class="reset-btn" @tap="resetFilters">重置</button>
           </view>
         </view>
       </view>
@@ -99,7 +78,7 @@
     <!-- 列表 -->
     <scroll-view class="list" :style="{ height: listHeight }" scroll-y :lower-threshold="100" @scrolltolower="loadMore" refresher-enabled :refresher-triggered="refresherTriggered" @refresherrefresh="onRefresh">
       <uni-swipe-action>
-        <uni-swipe-action-item v-for="(item, idx) in list" :key="idx" :right-options="getSwipeOptions(item)" @click="onSwipeClick($event, item)" @change="onSwipeClick($event, item)">
+        <uni-swipe-action-item v-for="(item, idx) in list" :key="idx" :right-options="item.swipeOptions || []" @click="onSwipeClick($event, item)">
           <view class="card" :class="(item.taskStatus == 3 ? 'rescue-card' : '') || (item.taskStatus == 4 ? 'supporting-card' : '')" @tap="goDetail(item)">
             <view class="card-header">
               <view class="address-info">
@@ -163,25 +142,74 @@
             <view class="card-content">
               <view class="info-grid">
                 <view v-for="(unit, unitIdx) in (item.assignedUnits || [])" :key="unitIdx" class="unit-info-block">
-                  <!-- 救援单位 -->
+                  <!-- 救援单位/支援单位 -->
                   <view class="info-item full-width">
                     <image :src="serverUrl + '/static/icons/location/factory.png'" class="info-icon" />
                     <text class="info-text">{{ unit.unitName || '—' }}</text>
+                    <view class="unit-status-badge" :class="unit.unitStatus === 'rescue' ? 'rescue-badge' : 'support-badge'">
+                      <view class="status-dot"></view>
+                      <text class="status-text">{{ unit.unitStatus === 'rescue' ? '救援单位' : '支援单位' }}</text>
+                    </view>
                   </view>
                   <!-- 作战力量、方位、楼层 -->
                   <view v-if="unit.taskGroups && unit.taskGroups.length > 0" class="task-groups-info">
                     <view v-for="(taskGroup, tgIdx) in unit.taskGroups" :key="tgIdx" class="task-group-info">
                       <view class="task-group-content">
-                        <view class="task-power-item" v-if="getTaskPower(taskGroup)">
-                          <view class="task-power-left">
-                            <text class="task-power-label">{{ getTaskPowerLabel(taskGroup) }}：</text>
-                            <text class="task-power-value">{{ getTaskPower(taskGroup) }}</text>
-                          </view>
-                          <text class="task-detail-text task-cars-text" v-if="getTaskGroupCars(taskGroup)">参战车辆：{{ getTaskGroupCars(taskGroup) }}</text>
+                        <!-- 任务类型名称（多个任务类型时显示，左上角） -->
+                        <view class="task-type-badge" v-if="hasMultipleTaskTypes(item)">
+                          <text class="task-type-text">{{ getTaskTypeName(taskGroup.taskType) }}</text>
                         </view>
-                        <view class="task-details-row" v-if="getTaskGroupCars(taskGroup) || taskGroup.direction || taskGroup.floor">
-                          <text class="task-detail-text" v-if="taskGroup.direction">方位：{{ getDirectionName(taskGroup.direction) }}</text>
-                          <text class="task-detail-text" v-if="taskGroup.floor">楼层：{{ taskGroup.floor }}层</text>
+                        
+                        <!-- 第一行：左侧（方位、楼层），右侧（参战车辆） -->
+                        <view class="task-group-first-row">
+                          <view class="task-location-info">
+                            <text class="task-detail-text" v-if="taskGroup.direction">方位：{{ getDirectionName(taskGroup.direction) }}</text>
+                            <text class="task-detail-text" v-if="taskGroup.floor">楼层：{{ taskGroup.floor }}层</text>
+                          </view>
+                          <text class="task-cars-text" v-if="getTaskGroupCars(taskGroup)">参战车辆：{{ getTaskGroupCars(taskGroup) }}</text>
+                        </view>
+                        
+                        <!-- 第二行：任务类型特殊属性 -->
+                        <view class="task-group-second-row">
+                          <!-- 搜救任务：显示搜救力量和搜救结果 -->
+                          <template v-if="isSearchTask(taskGroup)">
+                            <view class="task-attr-item" v-if="getSearchPower(taskGroup)">
+                              <text class="task-attr-label">搜救力量：</text>
+                              <text class="task-attr-value">{{ getSearchPower(taskGroup) }}</text>
+                            </view>
+                            <view class="task-attr-item" v-if="getSearchResult(taskGroup)">
+                              <text class="task-attr-label">搜救结果：</text>
+                              <text class="task-attr-value">{{ getSearchResult(taskGroup) }}</text>
+                            </view>
+                          </template>
+                          
+                          <!-- 排烟任务：显示排烟力量 -->
+                          <template v-else-if="isSmokeTask(taskGroup)">
+                            <view class="task-attr-item">
+                              <text class="task-attr-label">排烟力量：</text>
+                              <text class="task-attr-value">{{ getSmokePower(taskGroup) || '—' }}</text>
+                            </view>
+                          </template>
+                          
+                          <!-- 供水任务：显示目标中队和目标车辆 -->
+                          <template v-else-if="isWaterTask(taskGroup)">
+                            <view class="task-attr-item" v-if="getTargetUnit(taskGroup)">
+                              <text class="task-attr-label">目标中队：</text>
+                              <text class="task-attr-value">{{ getTargetUnit(taskGroup) }}</text>
+                            </view>
+                            <view class="task-attr-item" v-if="getTargetCars(taskGroup)">
+                              <text class="task-attr-label">目标车辆：</text>
+                              <text class="task-attr-value">{{ getTargetCars(taskGroup) }}</text>
+                            </view>
+                          </template>
+                          
+                          <!-- 其他任务类型：显示作战力量 -->
+                          <template v-else>
+                            <view class="task-attr-item" v-if="getTaskPower(taskGroup)">
+                              <text class="task-attr-label">{{ getTaskPowerLabel(taskGroup) }}：</text>
+                              <text class="task-attr-value">{{ getTaskPower(taskGroup) }}</text>
+                            </view>
+                          </template>
                         </view>
                       </view>
                     </view>
@@ -199,6 +227,37 @@
         </view>
       </view>
     </scroll-view>
+
+    <!-- 需要支援弹框 -->
+    <view class="support-modal-mask" v-if="showSupportModal" @tap="closeSupportModal">
+      <view class="support-modal" @tap.stop>
+        <view class="support-modal-header">
+          <text class="support-modal-title">申请支援</text>
+          <view class="support-modal-close" @tap="closeSupportModal">
+            <image :src="serverUrl + '/static/icons/common/close.png'" class="close-icon" />
+          </view>
+        </view>
+        <view class="support-modal-body">
+          <text class="support-modal-label">支援内容 <text class="required">*</text></text>
+          <view class="support-textarea-container">
+            <textarea 
+              v-model="supportContent" 
+              class="support-textarea" 
+              maxlength="500" 
+              auto-height 
+              show-confirm-bar="false" 
+              placeholder="请输入支援内容（500字以内）" 
+              @input="onSupportContentInput"
+            />
+            <text class="support-char-count">{{ supportContent.length }}/500</text>
+          </view>
+        </view>
+        <view class="support-modal-footer">
+          <button class="support-modal-btn cancel-btn" @tap="closeSupportModal">取消</button>
+          <button class="support-modal-btn confirm-btn" @tap="confirmSupport" :disabled="!supportContent.trim()">确认</button>
+        </view>
+      </view>
+    </view>
   </view>
 </template>
 
@@ -214,22 +273,17 @@ export default {
       serverUrl: 'https://www.xiaobei.space',
       keyword: '',
       issuePersonName: '',
-      feedbackPersonName: '', // 新增：任务下达人员
-      startTime: '', // 新增：开始时间
-      endTime: '', // 新增：结束时间
-      startTimeIndex: [0, 0, 0, 0, 0], // 新增：开始时间选择器索引
-      endTimeIndex: [0, 0, 0, 0, 0], // 新增：结束时间选择器索引
-      startTimeRange: [[], [], [], [], []], // 新增：开始时间选择器数据
-      endTimeRange: [[], [], [], [], []], // 新增：结束时间选择器数据
       debounceTimer: null,
       filtersExpanded: false, // 新增：筛选条件展开状态
       unitOptions: [],
       statusOptions: [],
       fireCarOptions: [],
+      taskTypeOptions: [], // 任务类型选项
       locationTypeOptions: locationTypeOptions,
       directionOptions: directionOptions,
       unitIndex: 0, 
       statusIndex: 0,
+      taskTypeIndex: 0,
       list: [],
       page: 1, 
       pageSize: 10, 
@@ -237,12 +291,15 @@ export default {
       loadingText: '向下拉取更多',
       listHeight: '60vh',
       isLoading: false,
-      refresherTriggered: false
+      refresherTriggered: false,
+      showSupportModal: false, // 支援弹框显示状态
+      supportContent: '', // 支援内容
+      currentSupportItem: null, // 当前申请支援的火灾情况
+      swipeClickTimer: null // 滑动点击防抖定时器
     }
   },
   async onLoad() {
     await this.loadStatic()
-    this.initDateTimePickers()
     this.fetch(true)
   },
   onReachBottom() { this.loadMore() },
@@ -267,44 +324,6 @@ export default {
     goDetail(item) {
       uni.navigateTo({ url: `/pages/data/fireDetail/index?situationId=${encodeURIComponent(item.situationId)}` })
     },
-    initDateTimePickers() {
-      // 初始化时间选择器数据
-      const now = new Date()
-      const currentYear = now.getFullYear()
-      
-      // 生成年份 (当前年份前后5年)
-      const years = []
-      for (let i = currentYear - 5; i <= currentYear + 5; i++) {
-        years.push(i)
-      }
-      
-      // 生成月份
-      const months = []
-      for (let i = 1; i <= 12; i++) {
-        months.push(i)
-      }
-      
-      // 生成日期 (1-31)
-      const days = []
-      for (let i = 1; i <= 31; i++) {
-        days.push(i)
-      }
-      
-      // 生成小时 (0-23)
-      const hours = []
-      for (let i = 0; i < 24; i++) {
-        hours.push(i)
-      }
-      
-      // 生成分钟 (0-59)
-      const minutes = []
-      for (let i = 0; i < 60; i++) {
-        minutes.push(i)
-      }
-      
-      this.startTimeRange = [years, months, days, hours, minutes]
-      this.endTimeRange = [years, months, days, hours, minutes]
-    },
     computeListHeight() {
       try {
         const sys = uni.getSystemInfoSync() || {}
@@ -328,6 +347,7 @@ export default {
       const cachedUnits = uni.getStorageSync('static_fireUnits')
       const cachedStatuses = uni.getStorageSync('static_taskStatuses')
       const cachedCars = uni.getStorageSync('static_fireCars')
+      const cachedTaskTypes = uni.getStorageSync('static_taskTypes')
       
       // 如果本地有数据，直接使用
       if (cachedUnits && cachedStatuses && cachedCars) {
@@ -343,6 +363,16 @@ export default {
           { label: '请选择消防车辆', value: '', index: 0 },
           ...cachedCars
         ]
+        // 加载任务类型
+        if (cachedTaskTypes && cachedTaskTypes.length > 0) {
+          this.taskTypeOptions = [
+            { label: '请选择任务类型', value: '', index: 0 },
+            ...cachedTaskTypes
+          ]
+        } else {
+          // 如果没有缓存，尝试从接口获取
+          await this.loadTaskTypes()
+        }
         return
       }
       
@@ -379,8 +409,65 @@ export default {
           { label: '请选择消防车辆', value: '', index: 0 },
           ...carList
         ]
+        
+        // 加载任务类型
+        await this.loadTaskTypes()
       } catch(e) {
         console.error('加载静态数据失败:', e)
+      }
+    },
+    async loadTaskTypes() {
+      try {
+        // 尝试从接口获取任务类型
+        const res = await new Promise((resolve, reject) => {
+          uni.request({ 
+            url: this.serverUrl + '/static/data', 
+            method: 'GET', 
+            data: { type: 'fireUnits', key: 'taskTypeList' }, 
+            success: resolve, 
+            fail: reject 
+          })
+        })
+        
+        if (res?.data?.code === 200 && res.data.data) {
+          const taskTypeList = res.data.data.map((it, i) => ({ 
+            label: it.data1, 
+            value: String(it.data2), 
+            index: i + 1 
+          }))
+          uni.setStorageSync('static_taskTypes', taskTypeList)
+          this.taskTypeOptions = [
+            { label: '请选择任务类型', value: '', index: 0 },
+            ...taskTypeList
+          ]
+        } else {
+          // 如果接口没有数据，使用默认任务类型
+          const defaultTaskTypes = [
+            { label: '灭火', value: '1', index: 1 },
+            { label: '堵截', value: '2', index: 2 },
+            { label: '搜救', value: '3', index: 3 },
+            { label: '排烟', value: '4', index: 4 },
+            { label: '供水', value: '5', index: 5 }
+          ]
+          this.taskTypeOptions = [
+            { label: '请选择任务类型', value: '', index: 0 },
+            ...defaultTaskTypes
+          ]
+        }
+      } catch(e) {
+        console.error('加载任务类型失败:', e)
+        // 使用默认任务类型
+        const defaultTaskTypes = [
+          { label: '灭火', value: '1', index: 1 },
+          { label: '堵截', value: '2', index: 2 },
+          { label: '搜救', value: '3', index: 3 },
+          { label: '排烟', value: '4', index: 4 },
+          { label: '供水', value: '5', index: 5 }
+        ]
+        this.taskTypeOptions = [
+          { label: '请选择任务类型', value: '', index: 0 },
+          ...defaultTaskTypes
+        ]
       }
     },
     fetch(reset = false, cb) {
@@ -391,9 +478,7 @@ export default {
         pageSize: this.pageSize,
         unit: (this.unitOptions[this.unitIndex] && this.unitOptions[this.unitIndex].value) || '',
         taskStatus: (this.statusOptions[this.statusIndex] && this.statusOptions[this.statusIndex].value) || '',
-        feedbackPersonName: (this.feedbackPersonName || '').trim(),
-        startTime: this.startTime || '',
-        endTime: this.endTime || '',
+        taskType: (this.taskTypeOptions[this.taskTypeIndex] && this.taskTypeOptions[this.taskTypeIndex].value) || '',
         issuePersonName: (this.issuePersonName || '').trim(),
         keyword: (this.keyword || '').trim()
       }
@@ -405,7 +490,11 @@ export default {
         success: (res) => {
           if (res?.data?.code === 200) {
             const { data: list, pagination } = res.data
-            const processedList = list.map(item => ({ ...item }))
+            // 为每个列表项预先计算滑动操作选项，避免在模板中调用方法
+            const processedList = list.map(item => ({ 
+              ...item,
+              swipeOptions: this.getSwipeOptions(item)
+            }))
             this.list = this.page === 1 ? processedList : this.list.concat(processedList)
             this.page = pagination.page || this.page
             this.finished = !pagination.hasNext || this.page >= pagination.pages
@@ -448,36 +537,19 @@ export default {
         console.error('onStatusChange error:', error)
       }
     },
-    onStartTimeChange(e) {
+    onTaskTypeChange(e) { 
       try {
         const value = e.detail ? e.detail.value : e.value
-        this.startTimeIndex = value
-        const [year, month, day, hour, minute] = value
-        this.startTime = `${this.startTimeRange[0][year]}-${String(this.startTimeRange[1][month]).padStart(2, '0')}-${String(this.startTimeRange[2][day]).padStart(2, '0')} ${String(this.startTimeRange[3][hour]).padStart(2, '0')}:${String(this.startTimeRange[4][minute]).padStart(2, '0')}`
+        this.taskTypeIndex = Number(value)
         this.fetch(true)
       } catch (error) {
-        console.error('onStartTimeChange error:', error)
-      }
-    },
-    onEndTimeChange(e) {
-      try {
-        const value = e.detail ? e.detail.value : e.value
-        this.endTimeIndex = value
-        const [year, month, day, hour, minute] = value
-        this.endTime = `${this.endTimeRange[0][year]}-${String(this.endTimeRange[1][month]).padStart(2, '0')}-${String(this.endTimeRange[2][day]).padStart(2, '0')} ${String(this.endTimeRange[3][hour]).padStart(2, '0')}:${String(this.endTimeRange[4][minute]).padStart(2, '0')}`
-        this.fetch(true)
-      } catch (error) {
-        console.error('onEndTimeChange error:', error)
+        console.error('onTaskTypeChange error:', error)
       }
     },
     resetFilters() {
       this.unitIndex = 0
       this.statusIndex = 0
-      this.feedbackPersonName = ''
-      this.startTime = ''
-      this.endTime = ''
-      this.startTimeIndex = [0, 0, 0, 0, 0]
-      this.endTimeIndex = [0, 0, 0, 0, 0]
+      this.taskTypeIndex = 0
       this.issuePersonName = ''
       this.keyword = ''
       this.fetch(true)
@@ -567,7 +639,7 @@ export default {
       }
       return '0%'
     },
-    // 获取救灾单位名称（所有单位）
+    // 获取救援单位名称（所有单位）
     getRescueUnits(item) {
       if (!item.assignedUnits || item.assignedUnits.length === 0) return '—'
       return item.assignedUnits.map(unit => unit.unitName).join('、')
@@ -581,8 +653,8 @@ export default {
       if (taskType === '1') return '灭火力量'
       if (taskType === '2') return '堵截力量'
       if (taskType === '3') return '搜救力量'
-      if (taskType === '6') return '排烟力量'
-      if (taskType === '4' || taskType === '5') return '目标中队'
+      if (taskType === '4') return '排烟力量'
+      if (taskType === '5') return '目标中队'
       
       return '作战力量'
     },
@@ -616,18 +688,83 @@ export default {
       if (taskType === '2' && taskExtra.blockPower) {
         return taskExtra.blockPower // 堵截力量
       }
-      if (taskType === '3' && taskExtra.searchPower) {
-        return taskExtra.searchPower // 搜救力量
+      
+      return ''
+    },
+    // 判断是否是搜救任务
+    isSearchTask(taskGroup) {
+      if (!taskGroup) return false
+      const taskType = String(taskGroup.taskType || '')
+      return taskType === '3'
+    },
+    // 判断是否是排烟任务
+    isSmokeTask(taskGroup) {
+      if (!taskGroup) return false
+      const taskType = String(taskGroup.taskType || '')
+      return taskType === '4'
+    },
+    // 判断是否是供水任务
+    isWaterTask(taskGroup) {
+      if (!taskGroup) return false
+      const taskType = String(taskGroup.taskType || '')
+      return taskType === '5'
+    },
+    // 获取搜救力量
+    getSearchPower(taskGroup) {
+      if (!taskGroup) return ''
+      // 优先从 taskGroup 顶层获取
+      if (taskGroup.searchPower) return taskGroup.searchPower
+      // 其次从 taskExtra 获取
+      if (taskGroup.taskExtra && taskGroup.taskExtra.searchPower) {
+        return taskGroup.taskExtra.searchPower
       }
-      if (taskType === '6' && taskExtra.smokePower) {
-        return taskExtra.smokePower // 排烟力量
+      return ''
+    },
+    // 获取搜救结果
+    getSearchResult(taskGroup) {
+      if (!taskGroup) return ''
+      // 优先从 taskGroup 顶层获取
+      if (taskGroup.searchResult) return taskGroup.searchResult
+      // 其次从 taskExtra 获取
+      if (taskGroup.taskExtra && taskGroup.taskExtra.searchResult) {
+        return taskGroup.taskExtra.searchResult
       }
-      if ((taskType === '4' || taskType === '5') && taskExtra.targetUnit) {
-        // 供水任务，显示目标单位
+      return ''
+    },
+    // 获取排烟力量
+    getSmokePower(taskGroup) {
+      if (!taskGroup) return ''
+      // 优先从 taskGroup 顶层获取
+      if (taskGroup.smokePower) return taskGroup.smokePower
+      // 其次从 taskExtra 获取
+      if (taskGroup.taskExtra && taskGroup.taskExtra.smokePower) {
+        return taskGroup.taskExtra.smokePower
+      }
+      return ''
+    },
+    // 获取目标中队（供水任务）
+    getTargetUnit(taskGroup) {
+      if (!taskGroup || !taskGroup.taskExtra) return ''
+      const taskExtra = taskGroup.taskExtra || {}
+      // 优先从 targetUnit 获取
+      if (taskExtra.targetUnit) {
         const targetUnit = this.unitOptions.find(u => u.value === taskExtra.targetUnit)
         return targetUnit ? targetUnit.label : taskExtra.targetUnit
       }
-      
+      // 其次从 supplyTarget 获取
+      if (taskExtra.supplyTarget) {
+        const targetUnit = this.unitOptions.find(u => u.value === taskExtra.supplyTarget)
+        return targetUnit ? targetUnit.label : taskExtra.supplyTarget
+      }
+      return ''
+    },
+    // 获取目标车辆（供水任务）
+    getTargetCars(taskGroup) {
+      if (!taskGroup) return ''
+      // 从 targetCars 数组获取
+      if (taskGroup.targetCars && Array.isArray(taskGroup.targetCars) && taskGroup.targetCars.length > 0) {
+        return taskGroup.targetCars.map(car => car.carName || car.name || car.label || '').filter(Boolean).join('、')
+      }
       return ''
     },
     // 获取救援状态文本（根据任务类型）
@@ -640,22 +777,33 @@ export default {
         return '救援中'
       }
       
-      // 获取第一个救援单位的任务类型
+      // 获取所有救援单位的任务类型
       const rescueUnits = (item.assignedUnits || []).filter(unit => unit.unitStatus === 'rescue')
       if (rescueUnits.length === 0) return '救援中'
       
-      // 从任务组中获取任务类型
-      const firstUnit = rescueUnits[0]
-      if (firstUnit.taskGroups && firstUnit.taskGroups.length > 0) {
-        const taskType = firstUnit.taskGroups[0].taskType
+      // 收集所有任务组的任务类型
+      const taskTypes = new Set()
+      rescueUnits.forEach(unit => {
+        if (unit.taskGroups && unit.taskGroups.length > 0) {
+          unit.taskGroups.forEach(taskGroup => {
+            if (taskGroup.taskType) {
+              taskTypes.add(String(taskGroup.taskType))
+            }
+          })
+        }
+        // 如果没有任务组，尝试从旧的任务类型字段获取
+        if (unit.taskType) {
+          taskTypes.add(String(unit.taskType))
+        }
+      })
+      
+      // 如果只有一个任务类型，显示对应的状态文本
+      if (taskTypes.size === 1) {
+        const taskType = Array.from(taskTypes)[0]
         return this.getTaskTypeStatusText(taskType)
       }
       
-      // 如果没有任务组，尝试从旧的任务类型字段获取
-      if (firstUnit.taskType) {
-        return this.getTaskTypeStatusText(firstUnit.taskType)
-      }
-      
+      // 如果有多个任务类型，显示"救援中"
       return '救援中'
     },
     // 根据任务类型获取状态文本
@@ -664,9 +812,34 @@ export default {
       if (taskTypeStr === '1') return '灭火中'
       if (taskTypeStr === '2') return '堵截中'
       if (taskTypeStr === '3') return '搜救中'
-      if (taskTypeStr === '6') return '排烟中'
-      if (taskTypeStr === '4' || taskTypeStr === '5') return '供水中'
+      if (taskTypeStr === '4') return '排烟中'
+      if (taskTypeStr === '5') return '供水中'
       return '救援中'
+    },
+    // 判断是否有多个任务类型
+    hasMultipleTaskTypes(item) {
+      if (!item || !item.assignedUnits) return false
+      
+      // 收集所有救援单位的任务类型
+      const taskTypes = new Set()
+      const rescueUnits = (item.assignedUnits || []).filter(unit => unit.unitStatus === 'rescue')
+      
+      rescueUnits.forEach(unit => {
+        if (unit.taskGroups && unit.taskGroups.length > 0) {
+          unit.taskGroups.forEach(taskGroup => {
+            if (taskGroup.taskType) {
+              taskTypes.add(String(taskGroup.taskType))
+            }
+          })
+        }
+        // 如果没有任务组，尝试从旧的任务类型字段获取
+        if (unit.taskType) {
+          taskTypes.add(String(unit.taskType))
+        }
+      })
+      
+      // 如果有多个任务类型，返回true
+      return taskTypes.size > 1
     },
     // 根据任务状态获取滑动操作选项
     getSwipeOptions(item) {
@@ -686,10 +859,11 @@ export default {
 
         ]
       } else if (taskStatus == 3) {
-        // 需要支援 - 查看任务、任务下达、变更任务
+        // 需要支援 - 查看任务、任务下达、变更任务、撤回支援
         return [
           { text: '变更任务', style: { backgroundColor: '#722ed1', color: '#fff' }, key: 'change' },
-          { text: '任务下达', style: { backgroundColor: '#fa8c16', color: '#fff' }, key: 'deliver' }
+          { text: '任务下达', style: { backgroundColor: '#fa8c16', color: '#fff' }, key: 'deliver' },
+          { text: '撤回支援', style: { backgroundColor: '#ff4d4f', color: '#fff' }, key: 'cancelSupport' }
         ]
       } else if (taskStatus == 4) {
         // 正在支援 - 查看任务、完成任务、任务下达、变更任务
@@ -703,6 +877,14 @@ export default {
     },
     onSwipeClick(e, item) {
       try {
+        // 防止重复触发 - 使用防抖机制
+        if (this.swipeClickTimer) {
+          clearTimeout(this.swipeClickTimer)
+        }
+        
+        // 防止重复触发
+        if (!e || !item) return
+        
         // 微信小程序中事件参数可能不同，需要兼容处理
         let key = ''
         // 尝试不同的参数结构
@@ -716,25 +898,56 @@ export default {
           key = e
         }
         
+        // 如果没有获取到 key，直接返回
+        if (!key) {
+          console.warn('onSwipeClick: 无法获取操作类型', e)
+          return
+        }
+        
+        // 防抖处理：延迟执行，避免重复触发
+        this.swipeClickTimer = setTimeout(() => {
+          this.swipeClickTimer = null
+          // 根据 key 执行相应操作
         if (key === 'detail') {
           uni.navigateTo({ url: `/pages/data/fireDetail/index?situationId=${encodeURIComponent(item.situationId)}` })
         } else if (key === 'finish') {
           this.finishRescue(item)
         } else if (key === 'deliver') {
-          uni.navigateTo({ url: `/pages/data/fireUpload/index?situationId=${encodeURIComponent(item.situationId)}` })
+          uni.navigateTo({ url: `/pages/data/fireUpload/index?situationId=${encodeURIComponent(item.situationId)}&taskType=commit` })
         } else if (key === 'support') {
           this.requestSupport(item)
         } else if (key === 'delete') {
           this.deleteFireSituation(item)
         } else if (key === 'change') {
           this.changeTask(item)
+          } else if (key === 'cancelSupport') {
+            this.cancelSupport(item)
         }
+        }, 100) // 100ms 防抖延迟
       } catch (error) {
         console.error('onSwipeClick error:', error)
+        if (this.swipeClickTimer) {
+          clearTimeout(this.swipeClickTimer)
+          this.swipeClickTimer = null
+        }
       }
     },
     async finishRescue(item) {
       try {
+        const addressName = item.addressName || '该火灾情况'
+        const confirmResult = await new Promise((resolve) => {
+          uni.showModal({
+            title: '确认完成任务',
+            content: `确定要完成"${addressName}"的救援任务吗？`,
+            confirmText: '确认完成',
+            cancelText: '取消',
+            success: (res) => resolve(res.confirm),
+            fail: () => resolve(false)
+          })
+        })
+        
+        if (!confirmResult) return
+        
         await new Promise((resolve, reject) => {
           uni.request({
             url: this.serverUrl + `/fire/situations/${item.situationId}`,
@@ -751,29 +964,110 @@ export default {
       }
     },
     async requestSupport(item) {
+      // 显示支援内容输入弹框
+      this.currentSupportItem = item
+      this.supportContent = ''
+      this.showSupportModal = true
+    },
+    // 关闭支援弹框
+    closeSupportModal() {
+      this.showSupportModal = false
+      this.supportContent = ''
+      this.currentSupportItem = null
+    },
+    // 支援内容输入处理
+    onSupportContentInput() {
+      // 限制字数在500字以内
+      if (this.supportContent.length > 500) {
+        this.supportContent = this.supportContent.substring(0, 500)
+      }
+    },
+    // 确认申请支援
+    async confirmSupport() {
+      if (!this.supportContent.trim()) {
+        uni.showToast({ title: '请输入支援内容', icon: 'none' })
+        return
+      }
+      
+      if (!this.currentSupportItem) {
+        uni.showToast({ title: '数据错误', icon: 'none' })
+        return
+      }
+      
       try {
+        uni.showLoading({ title: '提交中...' })
         await new Promise((resolve, reject) => {
           uni.request({
-            url: this.serverUrl + `/fire/situations/${item.situationId}`,
+            url: this.serverUrl + `/fire/situations/${this.currentSupportItem.situationId}`,
             method: 'PUT',
-            data: { taskStatus: 3 },
+            data: { 
+              taskStatus: 3,
+              supportContent: this.supportContent.trim()
+            },
             success: resolve,
             fail: reject
           })
         })
+        uni.hideLoading()
         uni.showToast({ title: '已申请支援', icon: 'success' })
+        this.closeSupportModal()
         this.fetch(true)
       } catch(e) {
+        uni.hideLoading()
+        uni.showToast({ title: '操作失败', icon: 'none' })
+      }
+    },
+    // 撤回支援
+    async cancelSupport(item) {
+      try {
+        const addressName = item.addressName || '该火灾情况'
+        const confirmResult = await new Promise((resolve) => {
+          uni.showModal({
+            title: '确认撤回支援',
+            content: `确定要撤回"${addressName}"的支援申请吗？`,
+            confirmText: '确认撤回',
+            cancelText: '取消',
+            confirmColor: '#ff4d4f',
+            success: (res) => resolve(res.confirm),
+            fail: () => resolve(false)
+          })
+        })
+        
+        if (!confirmResult) return
+        
+        uni.showLoading({ title: '处理中...' })
+        await new Promise((resolve, reject) => {
+          uni.request({
+            url: this.serverUrl + '/fire/updateTaskStatus',
+            method: 'PUT',
+            data: {
+              situationId: item.situationId,
+              taskStatus: 2 // 撤回支援后回到救援中状态
+            },
+            success: resolve,
+            fail: reject
+          })
+        })
+        uni.hideLoading()
+        uni.showToast({ title: '已撤回支援', icon: 'success' })
+        this.fetch(true)
+      } catch(e) {
+        uni.hideLoading()
         uni.showToast({ title: '操作失败', icon: 'none' })
       }
     },
     // 删除火灾情况
     async deleteFireSituation(item) {
       try {
+        // 构建提示内容，显示地址名称
+        const addressName = item.addressName || '该火灾情况'
         const confirmResult = await new Promise((resolve) => {
           uni.showModal({
             title: '确认删除',
-            content: '确定要删除这个火灾情况吗？删除后无法恢复。',
+            content: `确定要删除"${addressName}"的火灾情况吗？\n删除后无法恢复，请谨慎操作。`,
+            confirmText: '确认删除',
+            cancelText: '取消',
+            confirmColor: '#ff4d4f',
             success: (res) => resolve(res.confirm),
             fail: () => resolve(false)
           })
@@ -953,25 +1247,21 @@ export default {
   gap: 8rpx;
 }
 
-/* 时间区间行 */
-.time-row {
+
+/* 任务类型和记录人员行 */
+.task-type-personnel-row {
   display: flex;
   gap: 20rpx;
   grid-column: 1 / -1;
   margin-bottom: 20rpx;
 }
 
-.time-item {
+.task-type-personnel-row .filter-item {
   flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 8rpx;
 }
 
-.time-label {
-  font-size: 24rpx;
-  color: #333;
-  font-weight: 500;
+.task-type-personnel-row .personnel-item {
+  flex: 1;
 }
 
 /* 人员信息行 */
@@ -1017,9 +1307,8 @@ export default {
 .button-row {
   display: flex;
   justify-content: flex-end;
-  gap: 20rpx;
-  grid-column: 1 / -1;
   margin-top: 8rpx;
+  position: relative;
 }
 
 .filter-label {
@@ -1076,20 +1365,24 @@ export default {
 }
 
 .reset-btn {
-  height: 48rpx;
-  padding: 0 24rpx;
-  border-radius: 6rpx;
+  height: 56rpx;
+  padding: 0 32rpx;
+  border-radius: 28rpx;
   background: #f5f5f5;
   border: 1rpx solid #d9d9d9;
   color: #666;
   font-size: 26rpx;
-  font-weight: 400;
-  line-height: 48rpx;
-  min-width: 80rpx;
+  font-weight: 500;
+  line-height: 56rpx;
+  min-width: 100rpx;
+  box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.08);
+  transition: all 0.3s ease;
 }
 
 .reset-btn:active {
   background: #e8e8e8;
+  transform: scale(0.98);
+  box-shadow: 0 1rpx 4rpx rgba(0, 0, 0, 0.12);
 }
 
 .reset-btn::after {
@@ -1097,20 +1390,24 @@ export default {
 }
 
 .search-btn {
-  height: 48rpx;
-  padding: 0 24rpx;
-  border-radius: 6rpx;
-  background: #1890ff;
+  height: 56rpx;
+  padding: 0 32rpx;
+  border-radius: 28rpx;
+  background: linear-gradient(135deg, #1890ff, #40a9ff);
   border: none;
   color: #fff;
   font-size: 26rpx;
-  font-weight: 400;
-  line-height: 48rpx;
-  min-width: 80rpx;
+  font-weight: 500;
+  line-height: 56rpx;
+  min-width: 100rpx;
+  box-shadow: 0 4rpx 12rpx rgba(24, 144, 255, 0.3);
+  transition: all 0.3s ease;
 }
 
 .search-btn:active {
-  background: #40a9ff;
+  background: linear-gradient(135deg, #40a9ff, #69c0ff);
+  transform: scale(0.98);
+  box-shadow: 0 2rpx 8rpx rgba(24, 144, 255, 0.4);
 }
 
 .list {
@@ -1441,6 +1738,40 @@ export default {
   white-space: nowrap;
 }
 
+.unit-status-badge {
+  display: flex;
+  align-items: center;
+  gap: 6rpx;
+  padding: 4rpx 12rpx;
+  border-radius: 16rpx;
+  font-size: 20rpx;
+  font-weight: 500;
+  flex-shrink: 0;
+  margin-left: 8rpx;
+}
+
+.unit-status-badge.rescue-badge {
+  background: linear-gradient(135deg, #1890ff, #40a9ff);
+  color: #fff;
+}
+
+.unit-status-badge.support-badge {
+  background: linear-gradient(135deg, #fa8c16, #ffa940);
+  color: #fff;
+}
+
+.status-dot {
+  width: 6rpx;
+  height: 6rpx;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.9);
+}
+
+.status-text {
+  font-size: 20rpx;
+  font-weight: 500;
+}
+
 .unit-info-block {
   padding-bottom: 16rpx;
 }
@@ -1471,6 +1802,29 @@ export default {
   border-radius: 10rpx;
   border-left: 4rpx solid #1890ff;
   box-shadow: 0 2rpx 8rpx rgba(24, 144, 255, 0.08);
+  position: relative;
+}
+
+.task-type-badge {
+  position: absolute;
+  top: 0;
+  left: 0;
+  background: linear-gradient(135deg, #1890ff, #40a9ff);
+  color: #fff;
+  font-size: 20rpx;
+  font-weight: 600;
+  padding: 4rpx 12rpx;
+  border-radius: 12rpx 0 12rpx 0;
+  z-index: 1;
+  box-shadow: 0 2rpx 4rpx rgba(24, 144, 255, 0.3);
+  line-height: 1.2;
+}
+
+.task-type-text {
+  color: #fff;
+  font-size: 20rpx;
+  font-weight: 600;
+  white-space: nowrap;
 }
 
 .task-power-item {
@@ -1502,11 +1856,60 @@ export default {
   font-weight: 500;
 }
 
+.task-group-first-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12rpx;
+  margin-top: 8rpx;
+  padding-top: 8rpx;
+  min-height: 40rpx;
+}
+
+.task-location-info {
+  display: flex;
+  align-items: center;
+  gap: 20rpx;
+  flex: 1;
+  min-width: 0;
+}
+
+.task-group-second-row {
+  display: flex;
+  flex-direction: column;
+  gap: 8rpx;
+  margin-top: 8rpx;
+  padding-top: 8rpx;
+}
+
+.task-attr-item {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+  line-height: 1.5;
+}
+
+.task-attr-label {
+  font-size: 23rpx;
+  color: #666;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.task-attr-value {
+  font-size: 23rpx;
+  color: #333;
+  font-weight: 500;
+  flex: 1;
+  min-width: 0;
+}
+
 .task-cars-text {
   font-size: 21rpx;
   color: #666;
   white-space: nowrap;
   flex-shrink: 0;
+  font-weight: 500;
 }
 
 .task-details-row {
@@ -1573,6 +1976,160 @@ export default {
   100% {
     box-shadow: 0 4rpx 16rpx rgba(250, 140, 22, 0.2);
   }
+}
+
+/* 支援弹框样式 */
+.support-modal-mask {
+  position: fixed;
+  left: 0;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.45);
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: fadeIn 0.3s ease;
+}
+
+.support-modal {
+  width: 680rpx;
+  background: #fff;
+  border-radius: 20rpx;
+  overflow: hidden;
+  animation: slideUp 0.3s ease;
+  box-shadow: 0 12rpx 48rpx rgba(0, 0, 0, 0.15);
+}
+
+.support-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 32rpx 32rpx 24rpx;
+  border-bottom: 1rpx solid #e6f4ff;
+  background: linear-gradient(135deg, #fff1f0 0%, #fff 100%);
+}
+
+.support-modal-title {
+  font-size: 32rpx;
+  font-weight: 600;
+  color: #ff4d4f;
+}
+
+.support-modal-close {
+  padding: 8rpx;
+}
+
+.support-modal-close .close-icon {
+  width: 32rpx;
+  height: 32rpx;
+  opacity: 0.6;
+}
+
+.support-modal-body {
+  padding: 32rpx;
+}
+
+.support-modal-label {
+  font-size: 26rpx;
+  color: #333;
+  font-weight: 500;
+  margin-bottom: 16rpx;
+  display: block;
+}
+
+.support-modal-label .required {
+  color: #ff4d4f;
+  margin-left: 4rpx;
+}
+
+.support-textarea-container {
+  position: relative;
+  margin-top: 12rpx;
+}
+
+.support-textarea {
+  width: 100%;
+  min-height: 240rpx;
+  padding: 16rpx;
+  background: #f8faff;
+  border: 1rpx solid #e6f4ff;
+  border-radius: 12rpx;
+  font-size: 26rpx;
+  color: #333;
+  box-sizing: border-box;
+  line-height: 1.6;
+  transition: all 0.2s;
+}
+
+.support-textarea:focus {
+  background: #fff;
+  border-color: #ff4d4f;
+}
+
+.support-char-count {
+  position: absolute;
+  bottom: 12rpx;
+  right: 16rpx;
+  font-size: 22rpx;
+  color: #999;
+  background: rgba(255, 255, 255, 0.9);
+  padding: 4rpx 8rpx;
+  border-radius: 4rpx;
+}
+
+.support-modal-footer {
+  display: flex;
+  border-top: 1rpx solid #e6f4ff;
+}
+
+.support-modal-btn {
+  flex: 1;
+  height: 96rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28rpx;
+  font-weight: 500;
+  border: none;
+  border-radius: 0;
+  transition: all 0.2s;
+}
+
+.support-modal-btn.cancel-btn {
+  color: #666;
+  background: #fff;
+  border-right: 1rpx solid #e6f4ff;
+}
+
+.support-modal-btn.cancel-btn:active {
+  background: #fafafa;
+}
+
+.support-modal-btn.confirm-btn {
+  color: #fff;
+  background: linear-gradient(135deg, #ff4d4f, #ff7875);
+  font-weight: 600;
+}
+
+.support-modal-btn.confirm-btn:active {
+  background: linear-gradient(135deg, #ff7875, #ff4d4f);
+}
+
+.support-modal-btn.confirm-btn:disabled {
+  background: #d9d9d9;
+  color: #999;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { transform: translateY(100rpx); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
 }
 
 </style>

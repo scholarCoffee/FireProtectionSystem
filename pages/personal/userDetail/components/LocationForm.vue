@@ -1,9 +1,9 @@
 <template>
   <view class="location-form">
     <!-- 默认图片配置（队站辖区不显示） -->
-    <view class="location-info-section" v-if="formData.type !== 3">
+    <view class="location-info-section">
       <view class="section-header">
-        <text class="section-title">展示图片<text class="required">*</text></text>
+        <text class="section-title">展示图片</text>
       </view>
       <view class="default-image-upload-area">
         <!-- 已设置的默认图片 -->
@@ -66,7 +66,18 @@
         </picker>
       </view>
       
-      <view class="form-item">
+      <!-- 队站辖区时，地址选择方式切换 -->
+      <view class="form-item" v-if="formData.type === 3">
+        <text class="form-label">选择方式</text>
+        <view class="address-mode-switch">
+          <view class="switch-wrapper">
+            <switch :checked="useCoordinateInput" color="#1890ff" @change="toggleAddressMode" />
+          </view>
+        </view>
+      </view>
+      
+      <!-- 地址名称 -->
+      <view class="form-item" v-if="formData.type !== 3 || !useCoordinateInput">
         <text class="form-label">地址名称 <text class="required">*</text></text>
         <view class="address-input-container">
           <input 
@@ -81,6 +92,17 @@
             <text class="address-selector-text">选择地址</text>
           </view>
         </view>
+      </view>
+      
+      <!-- 地址名称（经纬度输入模式） -->
+      <view class="form-item" v-if="formData.type === 3 && useCoordinateInput">
+        <text class="form-label">地址名称 <text class="required">*</text></text>
+        <input 
+          v-model="formData.addressName" 
+          class="form-input" 
+          placeholder="根据经纬度自动填充"
+          maxlength="50"
+        />
       </view>
       
       <!-- 详细地址（消火栓显示，全景云不显示） -->
@@ -123,17 +145,35 @@
         />
       </view>
       
-      <!-- 经纬度显示 -->
-      <view class="form-item coordinates-display" v-if="formData.latitude && formData.longitude">
-        <text class="form-label">位置坐标</text>
+      <!-- 经纬度显示/输入 -->
+      <view class="form-item coordinates-display" v-if="(formData.latitude && formData.longitude) || (formData.type === 3 && useCoordinateInput)">
+        <text class="form-label">位置坐标 <text class="required" v-if="formData.type === 3 && useCoordinateInput">*</text></text>
         <view class="coordinates-info">
           <view class="coordinate-item">
             <text class="coordinate-label">经度:</text>
-            <text class="coordinate-value">{{ formData.longitude }}</text>
+            <input 
+              v-if="formData.type === 3 && useCoordinateInput"
+              v-model="tempLongitude" 
+              class="coordinate-value coordinate-input" 
+              placeholder="请输入经度"
+              type="digit"
+              maxlength="20"
+              @input="onLongitudeInput"
+            />
+            <text v-else class="coordinate-value">{{ formData.longitude }}</text>
           </view>
           <view class="coordinate-item">
             <text class="coordinate-label">纬度:</text>
-            <text class="coordinate-value">{{ formData.latitude }}</text>
+            <input 
+              v-if="formData.type === 3 && useCoordinateInput"
+              v-model="tempLatitude" 
+              class="coordinate-value coordinate-input" 
+              placeholder="请输入纬度"
+              type="digit"
+              maxlength="20"
+              @input="onLatitudeInput"
+            />
+            <text v-else class="coordinate-value">{{ formData.latitude }}</text>
           </view>
         </view>
       </view>
@@ -142,7 +182,7 @@
       <view class="form-item" v-if="formData.type === 3 && isPanorama">
         <text class="form-label">全景云地址 <text class="required">*</text></text>
         <view class="url-display" @tap="openLinkModal">
-          <text class="url-display-text">{{ formData.allSenceLink || '请输入全景云地址' }}</text>
+          <text class="url-display-text">{{ getDisplayPanoramaLink() || '请输入全景云地址' }}</text>
           <image :src="serverUrl + '/static/icons/common/edit-white.png'" class="edit-inline-icon" />
         </view>
       </view>
@@ -150,7 +190,7 @@
       <view class="form-item" v-if="formData.type !== 3">
         <text class="form-label">全景云地址 <text class="required">*</text></text>
         <view class="url-display" @tap="openLinkModal">
-          <text class="url-display-text">{{ formData.allSenceLink || '请输入全景云地址' }}</text>
+          <text class="url-display-text">{{ getDisplayPanoramaLink() || '请输入全景云地址' }}</text>
           <image :src="serverUrl + '/static/icons/common/edit-white.png'" class="edit-inline-icon" />
         </view>
       </view>
@@ -420,13 +460,13 @@
               <textarea
                 v-model="tempAllSenceLink"
                 class="form-modal-textarea"
-                placeholder="请输入完整的全景云地址，例如: https://71ez3e7oi8u.720yun.com/my/scene/path"
+                placeholder="只需填写拼接地址，例如: 123456"
                 maxlength="500"
                 auto-height
                 show-confirm-bar="false"
               />
             </view>
-            <text class="tip-text">请输入完整的全景云地址URL</text>
+            <text class="tip-text">只需填写拼接地址，系统会自动添加前缀 {{ panoramaUrlPrefix }}</text>
           </view>
         </view>
         <view class="modal-footer">
@@ -592,6 +632,12 @@
         },
         errors: {},
         tempAllSenceLink: '', // 临时存储全景云地址（用于弹窗编辑）
+        panoramaUrlPrefix: 'https://71ez3e7oi8u.720yun.com/vr/', // 全景云地址前缀
+        // 队站辖区地址选择方式：false=选择地址，true=输入经纬度
+        useCoordinateInput: false,
+        // 临时经纬度（用于输入）
+        tempLatitude: '',
+        tempLongitude: '',
         locationTypeOptions: [], // 单位类型选项
         // 队站辖区关键字选项
         keywordOptions: [],
@@ -652,6 +698,8 @@
       this.fetchFireUnits()
       // 防抖：地址编号唯一性校验
       this.debouncedCheckAddressId = debounce(this.checkAddressIdRaw, 600)
+      // 防抖：经纬度反查地址
+      this.debouncedReverseGeocode = debounce(this.reverseGeocodeFromCoordinates, 800)
     },
     computed: {
       contactTypeLimits() {
@@ -723,17 +771,31 @@
       },
 
       getFormData() { 
+        // 处理全景云地址，确保提交时是完整地址（带前缀）
+        const allSenceLink = this.getFullPanoramaLink(this.formData.allSenceLink)
+        
         return { 
           ...this.formData,
           // 确保经纬度信息被包含在提交数据中
           latitude: this.formData.latitude || null,
           longitude: this.formData.longitude || null,
-          keywordType: this.formData.keywordType || 'all'
+          keywordType: this.formData.keywordType || 'all',
+          // 提交完整地址
+          allSenceLink: allSenceLink
         } 
       },
       setFormData(data = {}) {
         if (Object.keys(data).length > 0) {
           this.formData = { ...this.formData, ...data }
+          // 处理全景云地址：如果从接口获取的数据包含前缀，保存时去掉前缀（显示时使用）
+          if (data.allSenceLink) {
+            const prefix = this.panoramaUrlPrefix
+            if (data.allSenceLink.startsWith(prefix)) {
+              this.formData.allSenceLink = data.allSenceLink.substring(prefix.length)
+            } else {
+              this.formData.allSenceLink = data.allSenceLink
+            }
+          }
           // 队站辖区：同步关键字默认值与索引（按 value 匹配）
           if (this.formData.type === 3) {
             const incomingKeyword = data.keywordType || this.formData.keywordType
@@ -748,6 +810,13 @@
               const defaultIdx = this.keywordOptions.findIndex(o => String(o.value) === String(this.formData.keywordType))
               this.keywordPickerIndex = defaultIdx >= 0 ? defaultIdx : 0
             }
+            // 如果有经纬度，同步到临时输入框
+            if (data.latitude) {
+              this.tempLatitude = String(data.latitude)
+            }
+            if (data.longitude) {
+              this.tempLongitude = String(data.longitude)
+            }
           }
           // 从 location/detail 返回的 ownerInfo 节点回填住户总数
           const ownerInfo = data && data.ownerInfo
@@ -759,6 +828,8 @@
         } else {
           this.formData = this.$options.data().formData
           this.residentCount = 0
+          this.tempLatitude = ''
+          this.tempLongitude = ''
         }
       },
       validate() {
@@ -768,36 +839,57 @@
         
         // 检查是否选择了地址（必须有经纬度）
         if (!fd.latitude || !fd.longitude) {
-          this.errors.addressName = '请先选择地址'
-          uni.showToast({ title: '请先选择地址', icon: 'none' })
+          if (fd.type === 3 && this.useCoordinateInput) {
+            this.errors.addressName = '请输入经纬度'
+            uni.showToast({ title: '请输入经纬度', icon: 'none' })
+          } else {
+            this.errors.addressName = '请先选择地址'
+            uni.showToast({ title: '请先选择地址', icon: 'none' })
+          }
           return false
         }
         
-        if (!must(fd.addressName)) this.errors.addressName = '请先选择地址'
-        if (!must(fd.addressId)) this.errors.addressId = '请输入地址编号'
-        if (!fd.type) this.errors.type = '请输入单位类型'
-        
         // 队站辖区根据类型验证不同字段
         if (fd.type === 3) {
+          // 验证经纬度格式（如果是经纬度模式）
+          if (this.useCoordinateInput) {
+            const lat = parseFloat(this.tempLatitude);
+            const lng = parseFloat(this.tempLongitude);
+            if (isNaN(lat) || isNaN(lng)) {
+              this.errors.addressName = '请输入有效的经纬度'
+              uni.showToast({ title: '请输入有效的经纬度', icon: 'none' })
+              return false
+            }
+            // 确保表单数据中的经纬度已更新
+            this.formData.latitude = lat;
+            this.formData.longitude = lng;
+          }
+          
           // 全景云：验证全景云编号、地址名称、全景云地址
           if (this.isPanorama) {
             if (!must(fd.addressId)) this.errors.addressId = '请输入全景云编号'
-            if (!must(fd.addressName)) this.errors.addressName = '请先选择地址'
+            if (!must(fd.addressName)) this.errors.addressName = this.useCoordinateInput ? '请反查地址信息' : '请先选择地址'
             if (!must(fd.allSenceLink)) this.errors.allSenceLink = '请输入全景云地址'
           }
           // 消火栓：验证消火栓编号、地址名称、详细地址、性能参数
           if (this.isHydrant) {
             if (!must(fd.addressId)) this.errors.addressId = '请输入消火栓编号'
-            if (!must(fd.addressName)) this.errors.addressName = '请先选择地址'
-            if (!must(fd.addressExt)) this.errors.addressExt = '请先选择地址'
+            if (!must(fd.addressName)) this.errors.addressName = this.useCoordinateInput ? '请反查地址信息' : '请先选择地址'
+            if (!must(fd.addressExt)) this.errors.addressExt = this.useCoordinateInput ? '请反查地址信息' : '请先选择地址'
             if (!must(fd.hydrantPressure)) this.errors.hydrantPressure = '请输入消火栓压力'
             if (!must(fd.hydrantFlow)) this.errors.hydrantFlow = '请输入消火栓流量'
           }
         } else {
+          if (!must(fd.addressName)) this.errors.addressName = '请先选择地址'
+        }
+        
+        if (!must(fd.addressId)) this.errors.addressId = '请输入地址编号'
+        if (!fd.type) this.errors.type = '请输入单位类型'
+        
+        if (fd.type !== 3) {
           // 非队站辖区：验证详细地址和全景云地址
           if (!must(fd.addressExt)) this.errors.addressExt = '请先选择地址'
           if (!must(fd.allSenceLink)) this.errors.allSenceLink = '请输入全景云地址'
-          if (!must(fd.defaultImg)) this.errors.defaultImg = '必须配置一张默认图片'
           if (!Array.isArray(fd.enterGateList) || fd.enterGateList.length === 0) this.errors.enterGateList = '至少需要选择一个可出行大门'
           if (!Array.isArray(fd.phoneList) || fd.phoneList.length === 0) this.errors.phoneList = '至少需要配置一个联系人'
           if (!Array.isArray(fd.imgList) || fd.imgList.length === 0) this.errors.imgList = '至少需要配置一张消防地图'
@@ -841,7 +933,8 @@
       
       // 打开/关闭全景云地址弹窗
       openLinkModal() {
-        this.tempAllSenceLink = this.formData.allSenceLink || ''
+        // 显示时去掉前缀，只显示拼接部分
+        this.tempAllSenceLink = this.getDisplayPanoramaLink() || ''
         this.showLinkModalFlag = true
       },
       closeLinkModal() {
@@ -849,9 +942,38 @@
       },
       confirmLink() {
         const link = String(this.tempAllSenceLink || '').trim()
+        // 保存时只保存拼接部分（不带前缀），提交时会自动添加前缀
         this.formData.allSenceLink = link
         if (this.errors.allSenceLink) this.errors.allSenceLink = ''
         this.closeLinkModal()
+      },
+      
+      // 获取显示用的全景云地址（去掉前缀）
+      getDisplayPanoramaLink() {
+        if (!this.formData.allSenceLink) return ''
+        const prefix = this.panoramaUrlPrefix
+        // 如果包含前缀，去掉前缀只返回拼接部分
+        if (this.formData.allSenceLink.startsWith(prefix)) {
+          return this.formData.allSenceLink.substring(prefix.length)
+        }
+        // 如果不包含前缀，直接返回（可能是旧数据或用户直接输入的）
+        return this.formData.allSenceLink
+      },
+      
+      // 获取完整全景云地址（添加前缀）
+      getFullPanoramaLink(link) {
+        if (!link) return ''
+        const prefix = this.panoramaUrlPrefix
+        // 如果已经包含前缀，直接返回
+        if (link.startsWith(prefix)) {
+          return link
+        }
+        // 如果以 http:// 或 https:// 开头，说明是完整地址，直接返回
+        if (link.startsWith('http://') || link.startsWith('https://')) {
+          return link
+        }
+        // 否则添加前缀
+        return prefix + link
       },
       // 关键字选择处理（队站辖区）
       onKeywordChange(e) {
@@ -1450,6 +1572,11 @@
           if (locationData.latitude && locationData.longitude) {
             this.formData.latitude = locationData.latitude;
             this.formData.longitude = locationData.longitude;
+            // 同步到临时输入框（如果是经纬度模式）
+            if (this.useCoordinateInput) {
+              this.tempLatitude = String(locationData.latitude);
+              this.tempLongitude = String(locationData.longitude);
+            }
           }
           
           // 强制更新视图
@@ -1467,60 +1594,99 @@
         }
       },
       
-      // 获取当前位置（H5端）
-      getCurrentLocation() {
-        uni.getLocation({
-          type: 'gcj02',
-          success: (res) => {
-            console.log('获取位置成功:', res);
-            // 保存经纬度信息
-            this.formData.latitude = res.latitude;
-            this.formData.longitude = res.longitude;
-            
-            uni.showToast({
-              title: '位置信息已获取',
-              icon: 'success'
-            });
-          },
-          fail: (err) => {
-            console.error('获取位置失败:', err);
-            // 检查是否是权限问题
-            if (err.errMsg && err.errMsg.includes('auth deny')) {
-              this.showLocationAuthModal();
-            } else {
-              uni.showToast({
-                title: '获取位置失败',
-                icon: 'none'
-              });
-            }
+      // 切换地址选择方式（队站辖区）
+      toggleAddressMode(e) {
+        this.useCoordinateInput = e.detail.value || false;
+        // 切换模式时，清空相关数据
+        if (this.useCoordinateInput) {
+          // 切换到经纬度模式，保留现有经纬度到临时输入框
+          if (this.formData.latitude) {
+            this.tempLatitude = String(this.formData.latitude);
           }
-        });
+          if (this.formData.longitude) {
+            this.tempLongitude = String(this.formData.longitude);
+          }
+        } else {
+          // 切换回地址选择模式，清空临时输入框
+          this.tempLatitude = '';
+          this.tempLongitude = '';
+        }
       },
       
-      // 显示定位授权提示
-      showLocationAuthModal() {
-        uni.showModal({
-          title: '需要定位权限',
-          content: '为了获取您的位置信息，请在设置中开启定位权限',
-          showCancel: true,
-          cancelText: '取消',
-          confirmText: '去设置',
-          success: (res) => {
-            if (res.confirm) {
-              // 打开设置页面
-              uni.openSetting({
-                success: (settingRes) => {
-                  if (settingRes.authSetting['scope.userLocation']) {
-                    uni.showToast({
-                      title: '定位权限已开启',
-                      icon: 'success'
-                    });
-                  }
-                }
-              });
-            }
+      // 经度输入处理
+      onLongitudeInput(e) {
+        this.tempLongitude = e.detail.value || '';
+        // 实时更新表单数据
+        if (this.tempLongitude) {
+          const longitude = parseFloat(this.tempLongitude);
+          if (!isNaN(longitude)) {
+            this.formData.longitude = longitude;
           }
-        });
+        } else {
+          this.formData.longitude = null;
+        }
+        // 触发防抖反查
+        this.debouncedReverseGeocode();
+      },
+      
+      // 纬度输入处理
+      onLatitudeInput(e) {
+        this.tempLatitude = e.detail.value || '';
+        // 实时更新表单数据
+        if (this.tempLatitude) {
+          const latitude = parseFloat(this.tempLatitude);
+          if (!isNaN(latitude)) {
+            this.formData.latitude = latitude;
+          }
+        } else {
+          this.formData.latitude = null;
+        }
+        // 触发防抖反查
+        this.debouncedReverseGeocode();
+      },
+      
+      // 根据经纬度反查地址信息（内部方法，由防抖调用）
+      async reverseGeocodeFromCoordinates() {
+        // 只在经纬度模式下执行
+        if (!this.useCoordinateInput || this.formData.type !== 3) {
+          return;
+        }
+        
+        if (!this.tempLatitude || !this.tempLongitude) {
+          return;
+        }
+        
+        const latitude = parseFloat(this.tempLatitude);
+        const longitude = parseFloat(this.tempLongitude);
+        uni.showLoading({ title: '正在查询地址信息...' });
+        
+        try {
+          const res = await new Promise((resolve, reject) => {
+            uni.request({
+              url: this.serverUrl + '/location/reverseGeocode',
+              method: 'GET',
+              data: {
+                latitude: latitude,
+                longitude: longitude
+              },
+              success: resolve,
+              fail: reject
+            });
+          });
+          
+          if (res?.data?.code === 200) {
+            const data = res.data.data || {};
+            // 填充地址信息
+            this.formData.addressName = data.name || data.addressName || data.formatted_address || '';
+            this.formData.addressExt = data.address || data.fullAddress || '';
+            this.formData.latitude = latitude;
+            this.formData.longitude = longitude;
+          }
+        } catch (error) {
+          console.error('反查地址失败:', error);
+        } finally {
+          uni.hideLoading();
+        }
       }
     }
   }
@@ -2334,6 +2500,43 @@
   min-width: 0;
 }
 
+/* 坐标输入框样式 - 与显示文本保持一致 */
+.coordinate-input {
+  /* 继承 coordinate-value 的所有样式 */
+  font-size: 24rpx;
+  color: #1890ff !important;
+  font-weight: 700;
+  font-family: 'Courier New', monospace;
+  word-wrap: break-word;
+  word-break: break-all;
+  flex: 1;
+  min-width: 0;
+  /* 输入框特有样式 */
+  border: none;
+  padding: 0;
+  margin: 0;
+  text-align: right;
+  outline: none;
+  width: 100%;
+  box-sizing: border-box;
+  background-color: transparent;
+  /* 注意：输入框不支持渐变文字效果，使用纯色 */
+  -webkit-text-fill-color: #1890ff !important;
+  background: transparent !important;
+  -webkit-background-clip: unset !important;
+  background-clip: unset !important;
+}
+
+.coordinate-input::placeholder {
+  color: #95a5a6 !important;
+  font-weight: 400;
+  opacity: 0.6;
+  -webkit-text-fill-color: #95a5a6 !important;
+  background: none !important;
+  -webkit-background-clip: unset !important;
+  background-clip: unset !important;
+}
+
 /* 只读输入框样式 */
 .readonly-input {
   background: #f5f5f5 !important;
@@ -2931,5 +3134,17 @@
 .param-input-error {
   border: 2rpx solid #ff4d4f !important;
   background: #fff2f0 !important;
+}
+
+/* 地址选择方式切换样式 */
+.address-mode-switch {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex: 1;
+}
+
+.switch-wrapper {
+  transform: scale(0.9);
 }
 </style>

@@ -93,19 +93,19 @@
         {
             "path": "pages/data/addressSelector/index",
             "style": {
-                "navigationBarTitleText": "选择救灾地址"
+                "navigationBarTitleText": "选择救援地址"
             }
         },
         {
             "path": "pages/data/taskQuery/index",
             "style": {
-                "navigationBarTitleText": "作战任务查询"
+                "navigationBarTitleText": "增援动态查询"
             }
         },
         {
             "path": "pages/data/fireDetail/index",
             "style": {
-                "navigationBarTitleText": "火灾详情"
+                "navigationBarTitleText": "救援详情"
             }
         }
     ],

@@ -14,6 +14,16 @@
           </view>
         </view>
       </view>
+      
+      <!-- 支援信息 -->
+      <view class="form-section" v-if="isCommitTask && supportContent">
+        <view class="form-row">
+          <text class="section-title">支援信息</text>
+        </view>
+        <view class="support-content-box">
+          <text class="support-content-text">{{ supportContent }}</text>
+        </view>
+      </view>
 
       <!-- 当前地址 -->
       <view class="form-section">
@@ -42,23 +52,57 @@
 
       <!-- 已有救援单位显示 -->
       <view class="form-section" v-if="situationId && existingUnits.length > 0">
-        <view class="form-row">
+        <view class="form-row" @tap="toggleExistingUnits">
           <text class="section-title">已有救援单位</text>
+          <image :src="serverUrl + '/static/icons/common/down.png'" class="toggle-icon" :class="{ 'expanded': showExistingUnits }" />
         </view>
-        <view class="existing-units-content">
+        <view class="existing-units-content" v-if="showExistingUnits">
           <view v-for="(unit, index) in existingUnits" :key="index" class="existing-unit-card">
             <view class="unit-info-row">
-              <text class="unit-name">{{ unit.unitName }}</text>
-              <text class="unit-status" :class="unit.unitStatus === 'rescue' ? 'rescue-status' : 'support-status'">
-                {{ unit.unitStatus === 'rescue' ? '救援单位' : '支援单位' }}
-              </text>
+              <view class="unit-name-wrapper">
+                <text class="unit-name">{{ unit.unitName }}</text>
+                <view class="unit-status-badge" :class="unit.unitStatus === 'rescue' ? 'rescue-badge' : 'support-badge'">
+                  <view class="status-dot"></view>
+                  <text class="status-text">{{ unit.unitStatus === 'rescue' ? '救援单位' : '支援单位' }}</text>
+                </view>
+              </view>
+              <text class="unit-time" v-if="unit.rescueTime">{{ formatTime(unit.rescueTime) }}</text>
             </view>
-            <view class="unit-details-row">
-              <text class="detail-text" v-if="unit.rescueFloor">楼层：{{ unit.rescueFloor }}层</text>
-              <text class="detail-text" v-if="unit.direction">方向：{{ getDirectionName(unit.direction) }}</text>
-              <text class="detail-text" v-if="unit.taskType">任务：{{ getTaskTypeName(unit.taskType) }}</text>
-              <text class="detail-text" v-if="getTaskContent(unit)">内容：{{ getTaskContent(unit) }}</text>
-              <text class="detail-text" v-if="unit.rescueTime">时间：{{ formatTime(unit.rescueTime) }}</text>
+            <!-- 任务组列表 -->
+            <view v-if="unit.taskGroups && unit.taskGroups.length > 0" class="existing-task-groups">
+              <view v-for="(taskGroup, tgIdx) in unit.taskGroups" :key="tgIdx" class="existing-task-group">
+                <view class="task-group-badge">任务组{{ tgIdx + 1 }}</view>
+                <view class="task-group-details-row">
+                  <text class="detail-text" v-if="taskGroup.carNames && taskGroup.carNames.length > 0">参战车辆：{{ taskGroup.carNames.join('、') }}</text>
+                  <text class="detail-text" v-if="taskGroup.direction">方位：{{ getDirectionName(taskGroup.direction) }}</text>
+                  <text class="detail-text" v-if="taskGroup.floor">楼层：{{ taskGroup.floor }}层</text>
+                  <text class="detail-text" v-if="taskGroup.taskType">任务：{{ getTaskTypeName(taskGroup.taskType) }}</text>
+                  
+                  <!-- 搜救任务特殊字段 -->
+                  <template v-if="isSearchTask(taskGroup)">
+                    <text class="detail-text" v-if="getSearchPower(taskGroup)">搜救力量：{{ getSearchPower(taskGroup) }}</text>
+                    <text class="detail-text" v-if="getSearchResult(taskGroup)">搜救结果：{{ getSearchResult(taskGroup) }}</text>
+                  </template>
+                  
+                  <!-- 排烟任务特殊字段 -->
+                  <template v-else-if="isSmokeTask(taskGroup)">
+                    <text class="detail-text" v-if="getSmokePower(taskGroup)">排烟力量：{{ getSmokePower(taskGroup) }}</text>
+                  </template>
+                  
+                  <!-- 供水任务特殊字段 -->
+                  <template v-else-if="isWaterTask(taskGroup)">
+                    <text class="detail-text" v-if="getTargetUnit(taskGroup)">目标中队：{{ getTargetUnit(taskGroup) }}</text>
+                    <text class="detail-text" v-if="getTargetCars(taskGroup)">目标车辆：{{ getTargetCars(taskGroup) }}</text>
+                  </template>
+                  
+                  <!-- 其他任务类型：显示作战力量 -->
+                  <template v-else>
+                    <text class="detail-text" v-if="getTaskPower(taskGroup)">{{ getTaskPowerLabel(taskGroup) }}：{{ getTaskPower(taskGroup) }}</text>
+                  </template>
+                  
+                  <text class="detail-text" v-if="taskGroup.description">描述：{{ taskGroup.description }}</text>
+                </view>
+              </view>
             </view>
           </view>
         </view>
@@ -80,46 +124,49 @@
         
         <!-- 已选择的救援单位列表（内联配置） -->
         <view class="selected-units" v-if="selectedUnits.length > 0">
-          <view v-for="(unit, index) in selectedUnits" :key="index" class="unit-item">
+          <view v-for="(unit, index) in selectedUnits" :key="index" class="unit-item" :class="{ 'disabled-unit': isChangeTask && unit.unitStatus === 'support' }">
             <!-- 顶部标题 + 操作 -->
             <view class="unit-header">
               <text class="unit-title">{{ unit.label }}</text>
+              <view class="unit-status-badge" v-if="isChangeTask" :class="unit.unitStatus === 'rescue' ? 'rescue-badge' : 'support-badge'">
+                <view class="status-dot"></view>
+                <text class="status-text">{{ unit.unitStatus === 'rescue' ? '救援单位' : '支援单位' }}</text>
+              </view>
             </view>
-            <view class="remove-btn" @tap="removeUnit(index)">
+            <view class="remove-btn" v-if="!(isChangeTask && unit.unitStatus === 'support')" @tap="removeUnit(index)">
               <image :src="serverUrl + '/static/icons/common/close.png'" class="remove-icon" />
             </view>
             <!-- 内联配置区域 -->
-            <view class="unit-config-inline">
+            <view class="unit-config-inline" :class="{ 'disabled-config': isChangeTask && unit.unitStatus === 'support' }">
               <!-- 参战车辆选择 -->
               <view class="config-section config-section-inline">
-                <text class="config-label">选择参战车辆 <text class="required">*</text></text>
-                <view class="car-selector" @tap="showCarDrawer(unit, index)">
+                <view class="car-selector" :class="{ 'disabled': isChangeTask && unit.unitStatus === 'support' }" @tap="showCarDrawer(unit, index)">
                   <text class="car-text">{{ getCarNames(unit) || '选择参战车辆' }}</text>
-                  <image :src="serverUrl + '/static/icons/common/down.png'" class="arrow-icon" />
+                  <image v-if="!(isChangeTask && unit.unitStatus === 'support')" :src="serverUrl + '/static/icons/common/down.png'" class="arrow-icon" />
                 </view>
               </view>
 
               <!-- 任务配置组列表 -->
-              <view v-for="(taskGroup, taskGroupIndex) in unit.taskGroups" :key="taskGroupIndex" class="task-group-item">
+              <view v-for="(taskGroup, taskGroupIndex) in unit.taskGroups" :key="taskGroupIndex" class="task-group-item" :class="{ 'disabled-task-group': isChangeTask && unit.unitStatus === 'support' }">
                 <view class="task-group-badge">任务组{{ taskGroupIndex + 1 }}</view>
                 <view class="task-group-header">
                   <text class="task-group-label">参战车辆</text>
-                  <view class="task-group-cars-selector" @tap="showTaskGroupCarDrawer(unit, index, taskGroupIndex)">
+                  <view class="task-group-cars-selector" :class="{ 'disabled': isChangeTask && unit.unitStatus === 'support' }" @tap="showTaskGroupCarDrawer(unit, index, taskGroupIndex)">
                     <text class="task-group-cars" :class="{'placeholder': !getTaskGroupCarsText(taskGroup)}">{{ getTaskGroupCarsText(taskGroup) || '选择参战车辆' }}</text>
-                    <image :src="serverUrl + '/static/icons/common/down.png'" class="arrow-icon" />
+                    <image v-if="!(isChangeTask && unit.unitStatus === 'support')" :src="serverUrl + '/static/icons/common/down.png'" class="arrow-icon" />
                   </view>
                 </view>
-                <view class="remove-task-group-btn" @tap="removeTaskGroup(unit, taskGroupIndex, index)">
+                <view class="remove-task-group-btn" v-if="!(isChangeTask && unit.unitStatus === 'support')" @tap="removeTaskGroup(unit, taskGroupIndex, index)">
                   <image :src="serverUrl + '/static/icons/common/close.png'" class="remove-icon" />
                 </view>
 
                 <!-- 任务类型 -->
                 <view class="config-section">
                   <text class="config-label">任务类型 <text class="required">*</text></text>
-                  <picker :value="taskGroup.taskTypeIndex" :range="taskTypeOptions" range-key="label" @change="onTaskTypeChange($event, taskGroup)" @bindchange="onTaskTypeChange($event, taskGroup)" class="form-picker">
-                    <view class="picker-display">
+                  <picker :value="taskGroup.taskTypeIndex" :range="taskTypeOptions" range-key="label" :disabled="isChangeTask && unit.unitStatus === 'support'" @change="onTaskTypeChange($event, taskGroup)" @bindchange="onTaskTypeChange($event, taskGroup)" class="form-picker">
+                    <view class="picker-display" :class="{ 'disabled': isChangeTask && unit.unitStatus === 'support' }">
                       <text class="picker-text" :class="{'placeholder':!taskGroup.taskType}">{{ getTaskTypeText(taskGroup) }}</text>
-                      <image :src="serverUrl + '/static/icons/common/down.png'" class="picker-arrow" />
+                      <image v-if="!(isChangeTask && unit.unitStatus === 'support')" :src="serverUrl + '/static/icons/common/down.png'" class="picker-arrow" />
                     </view>
                   </picker>
                 </view>
@@ -129,31 +176,32 @@
                   <text class="config-label">{{ getTaskContentTitle(taskGroup) }}</text>
                   <view v-if="taskGroup.taskConfig && taskGroup.taskConfig.uiType === 'select'" class="form-picker-section">
                     <view class="force-options">
-                      <view v-for="opt in taskGroup.taskConfig.options" :key="opt" class="force-option" :class="{ active: taskGroup.taskExtra[taskGroup.taskConfig.actionKey] === opt }" @tap="selectTaskOption($event, opt, taskGroup)">
+                      <view v-for="opt in taskGroup.taskConfig.options" :key="opt" class="force-option" :class="{ active: taskGroup.taskExtra[taskGroup.taskConfig.actionKey] === opt, disabled: isChangeTask && unit.unitStatus === 'support' }" @tap="selectTaskOption($event, opt, taskGroup)">
                         <text class="force-label">{{ opt }}</text>
                       </view>
                     </view>
                   </view>
                   <view v-else-if="taskGroup.taskConfig && taskGroup.taskConfig.uiType === 'input'" class="input-container">
-                    <input v-model="taskGroup.taskExtra[taskGroup.taskConfig.actionKey]" class="form-input" :placeholder="taskGroup.taskConfig.placeholder || '请输入'" v-if="taskGroup.taskExtra && taskGroup.taskConfig" />
+                    <input v-model="taskGroup.taskExtra[taskGroup.taskConfig.actionKey]" class="form-input" :disabled="isChangeTask && unit.unitStatus === 'support'" :placeholder="taskGroup.taskConfig.placeholder || '请输入'" v-if="taskGroup.taskExtra && taskGroup.taskConfig" />
                   </view>
                   <view v-else-if="taskGroup.taskConfig && taskGroup.taskConfig.uiType === 'select-collection'" class="form-picker-section">
-                    <picker :value="taskGroup.dynamicSelectIndex" :range="assignedUnitOptions" range-key="label" @change="onDynamicSelectChange($event, taskGroup)" @bindchange="onDynamicSelectChange($event, taskGroup)" class="form-picker">
-                      <view class="picker-display">
+                    <picker :value="taskGroup.dynamicSelectIndex" :range="assignedUnitOptions" range-key="label" :disabled="isChangeTask && unit.unitStatus === 'support'" @change="onDynamicSelectChange($event, taskGroup)" @bindchange="onDynamicSelectChange($event, taskGroup)" class="form-picker">
+                      <view class="picker-display" :class="{ 'disabled': isChangeTask && unit.unitStatus === 'support' }">
                         <text class="picker-text" :class="{'placeholder':!taskGroup.taskExtra[taskGroup.taskConfig.actionKey]}">{{ getDynamicSelectText(taskGroup) }}</text>
-                        <image :src="serverUrl + '/static/icons/common/down.png'" class="picker-arrow" />
+                        <image v-if="!(isChangeTask && unit.unitStatus === 'support')" :src="serverUrl + '/static/icons/common/down.png'" class="picker-arrow" />
                       </view>
                     </picker>
                   </view>
                 </view>
 
-                <!-- 供水任务特殊字段（目标车辆） -->
+                <!-- 供水任务特殊字段（目标中队和目标车辆） -->
                 <template v-if="isWaterTask(taskGroup)">
+                  <!-- 目标车辆 -->
                   <view class="config-section">
                     <text class="config-label">目标车辆</text>
                     <view class="form-picker-section">
                       <view class="force-options">
-                        <view v-for="car in taskGroup.cars" :key="car.value" class="force-option" :class="{ active: isTargetCarSelected(car, taskGroup) }" @tap="selectTargetCar(car, taskGroup)">
+                        <view v-for="car in taskGroup.cars" :key="car.value" class="force-option" :class="{ active: isTargetCarSelected(car, taskGroup), disabled: isChangeTask && unit.unitStatus === 'support' }" @tap="selectTargetCar(car, taskGroup)">
                           <text class="force-label">{{ car.label }}</text>
                         </view>
                       </view>
@@ -168,7 +216,7 @@
                     <text class="config-label">搜救力量</text>
                     <view class="form-picker-section">
                       <view class="force-options">
-                        <view v-for="opt in searchPowerOptions" :key="opt" class="force-option" :class="{ active: taskGroup.searchPower === opt }" @tap="selectSearchPower(opt, taskGroup)">
+                        <view v-for="opt in searchPowerOptions" :key="opt" class="force-option" :class="{ active: taskGroup.searchPower === opt, disabled: isChangeTask && unit.unitStatus === 'support' }" @tap="selectSearchPower(opt, taskGroup)">
                           <text class="force-label">{{ opt }}</text>
                         </view>
                       </view>
@@ -180,7 +228,7 @@
                     <text class="config-label">搜救结果</text>
                     <view class="form-picker-section">
                       <view class="force-options">
-                        <view v-for="opt in searchResultOptions" :key="opt" class="force-option" :class="{ active: taskGroup.searchResult === opt }" @tap="selectSearchResult(opt, taskGroup)">
+                        <view v-for="opt in searchResultOptions" :key="opt" class="force-option" :class="{ active: taskGroup.searchResult === opt, disabled: isChangeTask && unit.unitStatus === 'support' }" @tap="selectSearchResult(opt, taskGroup)">
                           <text class="force-label">{{ opt }}</text>
                         </view>
                       </view>
@@ -195,7 +243,7 @@
                     <text class="config-label">排烟力量</text>
                     <view class="form-picker-section">
                       <view class="force-options">
-                        <view v-for="opt in smokePowerOptions" :key="opt" class="force-option" :class="{ active: taskGroup.smokePower === opt }" @tap="selectSmokePower(opt, taskGroup)">
+                        <view v-for="opt in smokePowerOptions" :key="opt" class="force-option" :class="{ active: taskGroup.smokePower === opt, disabled: isChangeTask && unit.unitStatus === 'support' }" @tap="selectSmokePower(opt, taskGroup)">
                           <text class="force-label">{{ opt }}</text>
                         </view>
                       </view>
@@ -205,24 +253,26 @@
 
                 <!-- 共用字段：层数、方位、描述 -->
                 <template v-if="shouldShowFloor(taskGroup) || shouldShowDirection(taskGroup) || shouldShowDescription(taskGroup)">
-                  <!-- 层数 -->
-                  <view class="config-section" v-if="shouldShowFloor(taskGroup)">
-                    <text class="config-label">层数</text>
-                    <view class="input-container">
-                      <input v-model="taskGroup.floor" class="form-input" type="number" maxlength="2" placeholder="请输入层数(0~99)" @input="onFloorInput(taskGroup, $event)" />
+                  <!-- 层数和方位在同一行 -->
+                  <view class="config-section floor-direction-row" v-if="shouldShowFloor(taskGroup) || shouldShowDirection(taskGroup)">
+                    <!-- 方位 -->
+                    <view class="floor-direction-item" v-if="shouldShowDirection(taskGroup)">
+                      <text class="config-label">{{ getDirectionLabel(taskGroup) }}</text>
+                      <view class="form-picker-row">
+                        <picker :value="taskGroup.directionIndex" :range="directionOptions" range-key="label" :disabled="isChangeTask && unit.unitStatus === 'support'" @change="onDirectionChange($event, taskGroup)" @bindchange="onDirectionChange($event, taskGroup)" class="form-picker">
+                          <view class="picker-display" :class="{ 'disabled': isChangeTask && unit.unitStatus === 'support' }">
+                            <text class="picker-text" :class="{'placeholder':!taskGroup.direction}">{{ getDirectionText(taskGroup) }}</text>
+                            <image v-if="!(isChangeTask && unit.unitStatus === 'support')" :src="serverUrl + '/static/icons/common/down.png'" class="picker-arrow" />
+                          </view>
+                        </picker>
+                      </view>
                     </view>
-                  </view>
-                  
-                  <!-- 方位 -->
-                  <view class="config-section" v-if="shouldShowDirection(taskGroup)">
-                    <text class="config-label">{{ getDirectionLabel(taskGroup) }}</text>
-                    <view class="form-picker-row">
-                      <picker :value="taskGroup.directionIndex" :range="directionOptions" range-key="label" @change="onDirectionChange($event, taskGroup)" @bindchange="onDirectionChange($event, taskGroup)" class="form-picker">
-                        <view class="picker-display">
-                          <text class="picker-text" :class="{'placeholder':!taskGroup.direction}">{{ getDirectionText(taskGroup) }}</text>
-                          <image :src="serverUrl + '/static/icons/common/down.png'" class="picker-arrow" />
-                        </view>
-                      </picker>
+                    <!-- 层数 -->
+                    <view class="floor-direction-item" v-if="shouldShowFloor(taskGroup)">
+                      <text class="config-label">层数</text>
+                      <view class="input-container">
+                        <input v-model="taskGroup.floor" class="form-input" :disabled="isChangeTask && unit.unitStatus === 'support'" type="number" maxlength="2" placeholder="请输入层数(0~99)" @input="onFloorInput(taskGroup, $event)" />
+                      </view>
                     </view>
                   </view>
                   
@@ -230,14 +280,14 @@
                   <view class="config-section" v-if="shouldShowDescription(taskGroup)">
                     <text class="config-label">描述</text>
                     <view class="textarea-container">
-                      <textarea v-model="taskGroup.description" class="form-textarea" maxlength="200" auto-height show-confirm-bar="false" placeholder="请输入描述信息（200字以内）" @input="onDescriptionInput(taskGroup)" />
+                      <textarea v-model="taskGroup.description" class="form-textarea" :disabled="isChangeTask && unit.unitStatus === 'support'" maxlength="200" auto-height show-confirm-bar="false" placeholder="请输入描述信息（200字以内）" @input="onDescriptionInput(taskGroup)" />
                     </view>
                   </view>
                 </template>
               </view>
 
               <!-- 添加任务组按钮 -->
-              <view class="config-section" v-if="unit.selectedCars && unit.selectedCars.length > 0 && hasAvailableCars(unit)">
+              <view class="config-section" v-if="unit.selectedCars && unit.selectedCars.length > 0 && hasAvailableCars(unit) && !(isChangeTask && unit.unitStatus === 'support')">
                 <button class="add-task-btn" @tap="addNewTaskGroup(unit, index)">
                   <text class="add-task-text">+ 添加任务组</text>
                 </button>
@@ -379,6 +429,7 @@ export default {
       serverUrl: 'https://www.xiaobei.space',
       situationId: '', // 已有火灾情况ID
       isChangeTask: false, // 是否是变更任务
+      isCommitTask: false, // 是否是任务下达
       formData: {
         addressId: '',
         addressName: '',
@@ -406,14 +457,16 @@ export default {
       currentTaskGroupUnitIndex: -1, // 当前任务组所属单位索引
       currentTaskGroupIndex: -1, // 当前编辑的任务组索引（-1表示新建）
       tempTaskGroupCars: [], // 任务组临时选择的车辆
-      rescuingCars: [], // 正在救援的车辆列表
-      unitCarMap: {}, // 单位-车辆映射关系 { unitId: [carId1, carId2, ...] }
+      unitCarMap: {}, // 单位-车辆映射关系 { unitId: [carId1, carId2, ...] } 表示当前单位已使用的车辆
       showCurrentAddress: true, // 是否展开当前地址（默认展开）
       currentLocation: null, // 当前位置信息
       currentLocationLoading: false, // 是否正在获取位置
       matchedAddress: null, // 匹配到的地址
       showLastRecordModal: false, // 显示上一次记录弹窗
-      lastRecordData: null // 上一次记录的数据
+      lastRecordData: null, // 上一次记录的数据
+      supportContent: '', // 支援信息
+      initData: {}, // 初始数据
+      showExistingUnits: false // 是否展开已有救援单位（默认缩回）
     }
   },
   computed: {
@@ -427,6 +480,12 @@ export default {
     // 检查是否是变更任务
     if (options && options.taskType === 'change') {
       this.isChangeTask = true
+    }
+    // 检查是否是任务下达（commit）
+    if (options && options.taskType === 'commit') {
+      this.isCommitTask = true
+      // 任务下达场景：当前地址默认缩回
+      this.showCurrentAddress = false
     }
     // 检查是否从火灾详情页跳转过来
     if (options && options.situationId) {
@@ -474,9 +533,8 @@ export default {
         
         if (res && res.data && res.data.code === 200) {
           const data = res.data.data || {}
-          // 正在使用的车辆列表
-          this.rescuingCars = data.usingCars || []
           // 单位-车辆映射关系（优先使用接口返回的，否则从静态资源构建）
+          // unitCarMap 表示当前单位已使用的车辆
           if (data.unitCarMap) {
             // 将后端返回的 unitCarMap 中的车辆ID统一转换为字符串
             this.unitCarMap = {}
@@ -554,18 +612,15 @@ export default {
         const unitCarIdsStr = unitCarIds.map(id => String(id))
         
         // 检查该单位正在使用的车辆数量
-        // 包括：1. 接口返回的占用车辆（rescuingCars） 2. 当前表单中已选择的车辆（selectedCarIds）
+        // 包括：1. unitCarMap中已使用的车辆 2. 当前表单中已选择的车辆（selectedCarIds）
         const usingCarCount = unitCarIdsStr.filter(carId => {
-          // 检查是否在接口返回的占用车辆中
-          const isInRescuingCars = this.rescuingCars.some(usingCar => {
-            const usingCarId = String(usingCar.carId || usingCar.id || usingCar.value || '')
-            return usingCarId && usingCarId === carId
-          })
+          // 检查是否在unitCarMap中（已使用的车辆）
+          const isInUnitCarMap = unitCarIdsStr.includes(carId)
           
           // 检查是否在当前表单已选择的车辆中
           const isInSelectedCars = selectedCarIds.has(carId)
           
-          return isInRescuingCars || isInSelectedCars
+          return isInUnitCarMap || isInSelectedCars
         }).length
 
         
@@ -612,6 +667,7 @@ export default {
         
         if (res && res.data && res.data.code === 200) {
           const fireData = res.data.data || {}
+          this.initData = fireData
           
           // 填充地址信息
           this.selectedAddress = {
@@ -624,8 +680,14 @@ export default {
           this.formData.locationType = fireData.locationType
           this.formData.remark = fireData.remark || ''
           
-          // 如果是变更任务，加载任务组信息到selectedUnits
+          // 如果是任务下达场景，保存支援信息
+          if (this.isCommitTask && fireData.supportContent) {
+            this.supportContent = fireData.supportContent
+          }
+          
+          // 如果是变更任务，加载任务组信息到selectedUnits（救援单位和支援单位都加载，但支援单位禁用）
           if (this.isChangeTask && fireData.assignedUnits && fireData.assignedUnits.length > 0) {
+            // 所有单位都加载到selectedUnits（支援单位会显示禁用状态）
             this.selectedUnits = fireData.assignedUnits.map(unit => {
               // 收集该单位所有任务组使用的车辆ID
               const allCarIds = new Set()
@@ -672,7 +734,7 @@ export default {
                   searchResult: taskGroup.searchResult || taskExtra.searchResult || '',
                   // 排烟任务特殊字段（优先从taskGroup获取，否则从taskExtra获取）
                   smokePower: taskGroup.smokePower || taskExtra.smokePower || '',
-                  // 供水任务特殊字段
+                  // 供水任务和排烟任务特殊字段
                   targetCars: []
                 }
                 
@@ -682,6 +744,11 @@ export default {
                     const car = this.fireCarOptions.find(c => String(c.value) === String(tc.carId || tc.value))
                     return car ? { ...car } : null
                   }).filter(Boolean)
+                }
+                
+                // 排烟任务不需要目标车辆，初始化为空数组
+                if (this.isSmokeTask(tg)) {
+                  tg.targetCars = []
                 }
                 
                 // 处理供水任务的目标中队（先设置为0，后续会在构建完selectedUnits后更新）
@@ -741,6 +808,17 @@ export default {
               this.$forceUpdate()
             })
             
+            // 强制清除所有排烟任务的目标车辆
+            this.selectedUnits.forEach(unit => {
+              if (unit.taskGroups && unit.taskGroups.length > 0) {
+                unit.taskGroups.forEach(taskGroup => {
+                  if (this.isSmokeTask(taskGroup)) {
+                    this.$set(taskGroup, 'targetCars', [])
+                  }
+                })
+              }
+            })
+            
             // 更新表单数据
             this.updateFormData()
             // 更新单位状态
@@ -751,13 +829,9 @@ export default {
               this.existingUnits = fireData.assignedUnits.map(unit => ({
                 unitId: unit.unitId,
                 unitName: unit.unitName,
-                carInfo: unit.carInfo || [],
-                rescueFloor: unit.rescueFloor || '',
-                direction: unit.direction || '',
-                taskType: unit.taskType || '',
-                taskExtra: unit.taskExtra || {},
                 unitStatus: unit.unitStatus || 'rescue',
-                rescueTime: unit.rescueTime || new Date().toISOString()
+                rescueTime: unit.rescueTime || new Date().toISOString(),
+                taskGroups: unit.taskGroups || [] // 保存任务组数据
               }))
             }
           }
@@ -829,6 +903,7 @@ export default {
         uni.showToast({ title: '请先选择救援地址', icon: 'none' })
         return
       }
+      // 变更任务场景下允许添加新单位（用于添加救援单位）
       this.tempSelectedUnits = [...this.selectedUnits]
       this.showUnitDrawer = true
     },
@@ -844,17 +919,35 @@ export default {
       if (index > -1) {
         this.tempSelectedUnits.splice(index, 1)
       } else {
+        // 变更任务场景下，新添加的单位默认为救援单位（可编辑）
+        // 非变更任务场景下，如果有situationId则默认为支援单位，否则为救援单位
+        const defaultUnitStatus = this.isChangeTask ? 'rescue' : (this.situationId ? 'support' : 'rescue')
         this.tempSelectedUnits.push({
           ...unit,
           selectedCars: [],
-          unitStatus: this.situationId ? 'support' : 'rescue', // 新添加的单位默认为支援单位
+          unitStatus: defaultUnitStatus,
           rescueTime: new Date().toISOString() // 救援时间设为当前时间
         })
       }
     },
     // 打开车辆抽屉
     showCarDrawer(unit, index) {
+      // 如果是变更任务场景且是支援单位，不允许修改
+      if (this.isChangeTask && unit.unitStatus === 'support') {
+        uni.showToast({ title: '变更任务场景下无法修改支援单位的车辆', icon: 'none' })
+        return
+      }
+      
       this.currentUnitIndex = index
+      
+      // 如果是变更任务场景，加载当前单位已有的参战车辆
+      if (this.isChangeTask && this.selectedUnits[index] && this.selectedUnits[index].selectedCars) {
+        // 直接使用当前单位已选择的车辆作为临时选择
+        this.tempSelectedCars = this.selectedUnits[index].selectedCars.map(car => ({ ...car }))
+      } else {
+        // 非变更任务场景，初始化为空数组
+        this.tempSelectedCars = []
+      }
       
       // 先获取可用车辆列表
       const availableCars = this.getAvailableCarsForUnit()
@@ -865,7 +958,6 @@ export default {
         return
       }
       
-      this.tempSelectedCars = [...((this.selectedUnits[index] && this.selectedUnits[index].selectedCars) || [])]
       this.carDrawerVisible = true
     },
     hideCarDrawer() {
@@ -891,9 +983,6 @@ export default {
     isCarTempSelected(car) {
       return this.tempSelectedCars.some(c => c.value === car.value)
     },
-    getCarStatusClass(car) {
-      return this.isCarRescuing(car) ? 'rescuing' : 'idle'
-    },
     getCarStatusText(car) {
       // 如果车辆正在使用，显示"救援中"；否则显示"空闲中"（可以选择）
       return this.isCarRescuing(car) ? '救援中' : '空闲中'
@@ -905,11 +994,111 @@ export default {
       const currentUnit = this.selectedUnits[this.currentUnitIndex]
       if (!currentUnit || !currentUnit.value) return []
       
-      // 从unitCarMap中获取该单位的所有车辆ID
-      const unitCarIds = this.unitCarMap[currentUnit.value] || []
+      // 获取该单位的所有车辆（从fireCarOptions中筛选，根据unitId等字段匹配）
+      const unitValue = String(currentUnit.value || '')
+      const unitId = String(currentUnit.id || '')
+      const unitCode = String(currentUnit.code || '')
       
-      // 从fireCarOptions中筛选出属于该单位的车辆
-      const unitCarIdsStr = unitCarIds.map(id => String(id))
+      // 从fireCarOptions中筛选出属于该单位的所有车辆
+      const unitCars = this.fireCarOptions.filter(car => {
+        const carUnitId = String(car.unitId || '')
+        const carUnitCode = String(car.unitCode || '')
+        return carUnitId === unitValue || 
+               carUnitId === unitId || 
+               carUnitCode === unitCode ||
+               (car.unit && (String(car.unit.value || '') === unitValue || String(car.unit.id || '') === unitId))
+      })
+      
+      // 获取unitCarMap中该单位已使用的车辆ID（unitCarMap表示当前单位已使用的车辆）
+      const usedCarIds = this.unitCarMap[currentUnit.value] || []
+      const usedCarIdsStr = usedCarIds.map(id => String(id))
+      
+      // 如果是变更任务场景，返回：已选中的车辆 + 剩余可用车辆
+      if (this.isChangeTask) {
+        // 1. 获取当前单位已选中的车辆ID
+        const selectedCarIds = new Set()
+        if (currentUnit.selectedCars && currentUnit.selectedCars.length > 0) {
+          currentUnit.selectedCars.forEach(car => {
+            if (car.value) {
+              selectedCarIds.add(String(car.value))
+            }
+          })
+        }
+        
+        // 2. 从initData中获取初始数据中该单位的车辆（用于对比）
+        const initCarIds = new Set() // 初始数据中该单位的车辆ID
+        if (this.initData && this.initData.assignedUnits) {
+          const initUnit = this.initData.assignedUnits.find(unit => String(unit.unitId) === String(currentUnit.value))
+          if (initUnit && initUnit.carInfo && Array.isArray(initUnit.carInfo)) {
+            initUnit.carInfo.forEach(car => {
+              if (car.carId) {
+                initCarIds.add(String(car.carId))
+                // 如果初始数据中有该车辆，也加入已选中列表（用于对比）
+                selectedCarIds.add(String(car.carId))
+              }
+            })
+          }
+        }
+        
+        // 3. 从unitCarMap中获取当前单位已使用的车辆ID（用于过滤剩余可用车辆）
+        const occupiedCarIds = new Set() // 被占用的车辆ID（从unitCarMap获取）
+        
+        // 从unitCarMap中获取当前单位已使用的车辆ID
+        const usedCarIds = this.unitCarMap[currentUnit.value] || []
+        usedCarIds.forEach(usedCarId => {
+          const usedCarIdStr = String(usedCarId)
+          // 检查该车辆是否属于当前单位的所有车辆
+          const isUnitCar = unitCars.some(car => {
+            const carId = String(car.value || car.id || car.carId || '')
+            return carId === usedCarIdStr
+          })
+          if (isUnitCar) {
+            occupiedCarIds.add(usedCarIdStr)
+          }
+        })
+        
+        // 4. 合并：初始数据中的车辆 + 当前选中的车辆 + 剩余可用车辆 
+        const result = []
+        
+        // 先添加初始数据中的车辆（默认勾选）
+        if (this.initData && this.initData.assignedUnits) {
+          const initUnit = this.initData.assignedUnits.find(unit => String(unit.unitId) === String(currentUnit.value))
+          if (initUnit && initUnit.carInfo && Array.isArray(initUnit.carInfo)) {
+            initUnit.carInfo.forEach(carInfo => {
+              const carId = String(carInfo.carId)
+              // 从unitCars中找到对应的车辆对象
+              const car = unitCars.find(c => String(c.value || c.id || c.carId || '') === carId)
+              if (car) {
+                result.push({ ...car })
+              }
+            })
+          }
+        }
+        
+        // 再添加当前表单中已选中的车辆（排除已在初始数据中的车辆，避免重复）
+        if (currentUnit.selectedCars && currentUnit.selectedCars.length > 0) {
+          currentUnit.selectedCars.forEach(car => {
+            const carId = String(car.value || car.id || car.carId || '')
+            // 如果不在初始数据中，才添加（避免重复）
+            if (!initCarIds.has(carId)) {
+              result.push({ ...car })
+            }
+          })
+        }
+        
+        // 再添加剩余可用车辆（排除已选中的车辆和被占用的车辆）
+        unitCars.forEach(car => {
+          const carId = String(car.value || car.id || car.carId || '')
+          if (!selectedCarIds.has(carId) && !occupiedCarIds.has(carId)) {
+            result.push(car)
+          }
+        })
+      
+        return result
+      }
+      
+      // 非变更任务场景，返回不属于该单位的车辆（保持原有逻辑）
+      const unitCarIdsStr = usedCarIdsStr
       return this.fireCarOptions.filter(car => {
         const carId = String(car.value || car.id || car.carId || '')
         return !(carId && unitCarIdsStr.includes(carId))
@@ -925,47 +1114,120 @@ export default {
       const currentUnit = this.selectedUnits[this.currentUnitIndex]
       if (!currentUnit || !currentUnit.value) return false
       
-      // 验证车辆是否属于当前单位
-      const unitCarIds = this.unitCarMap[currentUnit.value] || []
-      const unitCarIdsStr = unitCarIds.map(id => String(id))
+      // 验证车辆是否属于当前单位（从fireCarOptions中筛选）
+      const unitValue = String(currentUnit.value || '')
+      const unitId = String(currentUnit.id || '')
+      const unitCode = String(currentUnit.code || '')
       const carId = String(car.value)
       
-      // 如果车辆不属于当前单位，返回false（不应该出现在列表中）
-      if (!unitCarIdsStr.includes(carId)) return false
-      
-      // 检查是否在接口返回的占用车辆中
-      const isInRescuingCars = this.rescuingCars.some(usingCar => {
-        const usingCarId = String(usingCar.carId || usingCar.id || usingCar.value || '')
-        return usingCarId && usingCarId === carId
-      })
-      
-      // 检查是否在其他单位已选择的车辆中（排除当前正在编辑的单位）
-      const isInSelectedCars = this.selectedUnits.some((unit, unitIndex) => {
-        // 如果正在编辑当前单位，排除该单位的车辆
-        if (this.currentUnitIndex === unitIndex) return false
+      // 检查车辆是否属于当前单位
+      const isUnitCar = this.fireCarOptions.some(fireCar => {
+        const fireCarId = String(fireCar.value || fireCar.id || fireCar.carId || '')
+        if (fireCarId !== carId) return false
         
-        if (unit.selectedCars && unit.selectedCars.length > 0) {
-          return unit.selectedCars.some(selectedCar => String(selectedCar.value) === carId)
-        }
-        return false
+        const carUnitId = String(fireCar.unitId || '')
+        const carUnitCode = String(fireCar.unitCode || '')
+        return carUnitId === unitValue || 
+               carUnitId === unitId || 
+               carUnitCode === unitCode ||
+               (fireCar.unit && (String(fireCar.unit.value || '') === unitValue || String(fireCar.unit.id || '') === unitId))
       })
       
-      return isInRescuingCars || isInSelectedCars
+      // 如果车辆不属于当前单位，返回false（不应该出现在列表中）
+      if (!isUnitCar) return false
+      
+      // 如果是变更任务场景，检查车辆是否被占用但不在已选中列表中
+      if (this.isChangeTask) {
+        // 从unitCarMap中检查当前单位是否已使用该车辆
+        const usedCarIds = this.unitCarMap[currentUnit.value] || []
+        const usedCarIdsStr = usedCarIds.map(id => String(id))
+        const isInUnitCarMap = usedCarIdsStr.includes(carId)
+        
+        // 如果被占用，检查是否在已选中列表中
+        if (isInUnitCarMap) {
+          const selectedCarIds = new Set()
+          
+          // 检查当前表单中已选中的车辆
+          if (currentUnit.selectedCars && currentUnit.selectedCars.length > 0) {
+            currentUnit.selectedCars.forEach(selectedCar => {
+              if (selectedCar.value) {
+                selectedCarIds.add(String(selectedCar.value))
+              }
+            })
+          }
+          
+          // 检查初始数据中是否已选择当前车辆（变更任务场景下的对比）
+          if (this.isChangeTask && this.initData && this.initData.assignedUnits) {
+            const initUnit = this.initData.assignedUnits.find(unit => String(unit.unitId) === String(currentUnit.value))
+            if (initUnit && initUnit.carInfo && Array.isArray(initUnit.carInfo)) {
+              const isInInitData = initUnit.carInfo.some(car => String(car.carId) === carId)
+              if (isInInitData) {
+                selectedCarIds.add(carId)
+              }
+            }
+          }
+          
+          // 如果被占用但不在已选中列表中，返回true（不可选）
+          if (!selectedCarIds.has(carId)) {
+            return true
+          }
+        }
+        // 变更任务场景下，已选中的车辆即使被占用也可以选择（因为已经在当前火灾情况中）
+        return false
+      }
+      
+      // 非变更任务场景，从unitCarMap中检查当前单位是否已使用该车辆
+      const usedCarIds = this.unitCarMap[currentUnit.value] || []
+      const usedCarIdsStr = usedCarIds.map(id => String(id))
+      const isInUnitCarMap = usedCarIdsStr.includes(carId)
+      return isInUnitCarMap
     },
     confirmCarDrawer() {
       const list = [...this.tempSelectedCars]
       if (this.currentUnitIndex > -1 && this.selectedUnits[this.currentUnitIndex]) {
-        this.$set(this.selectedUnits[this.currentUnitIndex], 'selectedCars', list)
+        const unit = this.selectedUnits[this.currentUnitIndex]
+        this.$set(unit, 'selectedCars', list)
+        
         // 初始化任务组列表
-        if (!this.selectedUnits[this.currentUnitIndex].taskGroups) {
-          this.$set(this.selectedUnits[this.currentUnitIndex], 'taskGroups', [])
+        if (!unit.taskGroups) {
+          this.$set(unit, 'taskGroups', [])
         }
-        // 如果没有任务组，自动创建一个任务组
-        if (this.selectedUnits[this.currentUnitIndex].taskGroups.length === 0 && list.length > 0) {
-          // 如果只有一辆车，默认添加到任务组1
-          const defaultCars = list.length === 1 ? [list[0]] : []
-          const newTaskGroup = this.createDefaultTaskGroup(defaultCars)
-          this.selectedUnits[this.currentUnitIndex].taskGroups.push(newTaskGroup)
+        
+        // 如果任务组存在，同步更新任务组的参战车辆
+        if (unit.taskGroups && unit.taskGroups.length > 0) {
+          // 获取新的参战车辆ID集合
+          const newSelectedCarIds = new Set(list.map(car => String(car.value)))
+          
+          // 遍历所有任务组，更新车辆列表
+          unit.taskGroups.forEach(taskGroup => {
+            if (taskGroup.cars && taskGroup.cars.length > 0) {
+              // 过滤出仍然在新的参战车辆列表中的车辆
+              const validCars = taskGroup.cars.filter(car => {
+                const carId = String(car.value || car.id || car.carId || '')
+                return newSelectedCarIds.has(carId)
+              })
+              
+              // 更新任务组的车辆列表
+              this.$set(taskGroup, 'cars', validCars)
+              
+              // 如果是供水任务，也需要更新目标车辆
+              if (this.isWaterTask(taskGroup) && taskGroup.targetCars && taskGroup.targetCars.length > 0) {
+                const validTargetCars = taskGroup.targetCars.filter(car => {
+                  const carId = String(car.value || car.id || car.carId || '')
+                  return newSelectedCarIds.has(carId)
+                })
+                this.$set(taskGroup, 'targetCars', validTargetCars)
+              }
+            }
+          })
+        } else {
+          // 如果没有任务组，自动创建一个任务组（非变更任务场景）
+          if (!this.isChangeTask && list.length > 0) {
+            // 如果只有一辆车，默认添加到任务组1
+            const defaultCars = list.length === 1 ? [list[0]] : []
+            const newTaskGroup = this.createDefaultTaskGroup(defaultCars)
+            unit.taskGroups.push(newTaskGroup)
+          }
         }
       }
       // 同步更新表单数据
@@ -980,6 +1242,12 @@ export default {
     },
     // 任务组相关方法
     showTaskGroupCarDrawer(unit, unitIndex, taskGroupIndex) {
+      // 如果是变更任务场景且是支援单位，不允许修改
+      if (this.isChangeTask && unit.unitStatus === 'support') {
+        uni.showToast({ title: '变更任务场景下无法修改支援单位的任务组', icon: 'none' })
+        return
+      }
+      
       this.currentTaskGroupUnitIndex = unitIndex
       this.currentTaskGroupIndex = taskGroupIndex !== undefined ? taskGroupIndex : -1
       // 如果是编辑现有任务组，初始化已选择的车辆
@@ -1048,17 +1316,34 @@ export default {
       if (this.currentTaskGroupIndex >= 0 && unit.taskGroups[this.currentTaskGroupIndex]) {
         // 更新现有任务组的车辆
         this.$set(unit.taskGroups[this.currentTaskGroupIndex], 'cars', [...this.tempTaskGroupCars])
-        // 如果是供水任务且只有1辆车，自动选择这辆车
         const taskGroup = unit.taskGroups[this.currentTaskGroupIndex]
+        // 如果是供水任务且只有1辆车，自动选择这辆车
         if (this.isWaterTask(taskGroup) && this.tempTaskGroupCars.length === 1) {
           if (!taskGroup.targetCars || taskGroup.targetCars.length === 0) {
             this.$set(taskGroup, 'targetCars', [{ ...this.tempTaskGroupCars[0] }])
+          }
+        }
+        // 排烟任务不需要目标车辆，确保为空数组
+        if (this.isSmokeTask(taskGroup)) {
+          this.$set(taskGroup, 'targetCars', [])
+        }
+        // 如果是供水任务且只有一个参战单位，自动选择该单位作为目标中队
+        if (this.isWaterTask(taskGroup) && this.assignedUnitOptions.length === 1 && taskGroup.taskConfig && taskGroup.taskConfig.actionKey) {
+          if (!taskGroup.taskExtra) {
+            this.$set(taskGroup, 'taskExtra', {})
+          }
+          const targetUnit = this.assignedUnitOptions[0]
+          // 如果目标中队未设置，自动设置为唯一的参战单位
+          if (!taskGroup.taskExtra[taskGroup.taskConfig.actionKey]) {
+            this.$set(taskGroup, 'dynamicSelectIndex', 0)
+            this.$set(taskGroup.taskExtra, taskGroup.taskConfig.actionKey, String(targetUnit.value))
           }
         }
       } else {
         // 创建新的任务组（默认任务类型为灭火）
         const newTaskGroup = this.createDefaultTaskGroup([...this.tempTaskGroupCars])
         unit.taskGroups.push(newTaskGroup)
+        // 注意：新创建的任务组默认是灭火任务，如果后续切换为供水任务，会在 onTaskTypeChange 中处理目标中队的自动选择
       }
       
       this.updateFormData()
@@ -1067,10 +1352,12 @@ export default {
     },
     async removeTaskGroup(unit, taskGroupIndex, unitIndex) {
       // 确认删除
+      const unitName = unit?.label || '该单位'
+      const taskGroupNum = taskGroupIndex + 1
       const confirmResult = await new Promise((resolve) => {
         uni.showModal({
           title: '确认删除',
-          content: '确定要删除该任务组吗？',
+          content: `确定要删除${unitName}的任务组${taskGroupNum}吗？`,
           success: (res) => resolve(res.confirm),
           fail: () => resolve(false)
         })
@@ -1184,6 +1471,12 @@ export default {
     },
     // 添加新任务组
     addNewTaskGroup(unit, unitIndex) {
+      // 如果是变更任务场景且是支援单位，不允许添加
+      if (this.isChangeTask && unit.unitStatus === 'support') {
+        uni.showToast({ title: '变更任务场景下无法为支援单位添加任务组', icon: 'none' })
+        return
+      }
+      
       // 检查是否有可用车辆
       if (!this.hasAvailableCars(unit)) {
         uni.showToast({ title: '所有车辆已分配到任务组', icon: 'none' })
@@ -1220,11 +1513,46 @@ export default {
       this.updateFormData()
       // 更新单位状态（因为已选择的单位会影响其他单位的状态）
       this.updateUnitStatus()
+      
+      // 如果只有一个参战单位，自动为所有供水任务设置目标中队
+      if (this.assignedUnitOptions.length === 1) {
+        this.$nextTick(() => {
+          const targetUnit = this.assignedUnitOptions[0]
+          this.selectedUnits.forEach(unit => {
+            if (unit.taskGroups && unit.taskGroups.length > 0) {
+              unit.taskGroups.forEach(taskGroup => {
+                if (this.isWaterTask(taskGroup) && taskGroup.taskConfig && taskGroup.taskConfig.actionKey) {
+                  // 如果目标中队未设置，自动设置为唯一的参战单位
+                  if (!taskGroup.taskExtra || !taskGroup.taskExtra[taskGroup.taskConfig.actionKey]) {
+                    if (!taskGroup.taskExtra) {
+                      this.$set(taskGroup, 'taskExtra', {})
+                    }
+                    this.$set(taskGroup, 'dynamicSelectIndex', 0)
+                    this.$set(taskGroup.taskExtra, taskGroup.taskConfig.actionKey, String(targetUnit.value))
+                  }
+                }
+              })
+            }
+          })
+          this.updateFormData()
+          this.$forceUpdate()
+        })
+      }
+      
       this.hideUnitSelector()
     },
     // 方向选择
     onDirectionChange(e, taskGroup) {
       try {
+        // 如果是变更任务场景，检查当前单位是否是支援单位
+        if (this.isChangeTask) {
+          const unit = this.selectedUnits.find(u => u.taskGroups && u.taskGroups.includes(taskGroup))
+          if (unit && unit.unitStatus === 'support') {
+            uni.showToast({ title: '变更任务场景下无法修改支援单位内容', icon: 'none' })
+            return
+          }
+        }
+        
         const value = e.detail ? e.detail.value : e.value
         taskGroup.directionIndex = Number(value)
         
@@ -1241,6 +1569,15 @@ export default {
     },
     // 层数输入处理（0-99）
     onFloorInput(taskGroup, e) {
+      // 如果是变更任务场景，检查当前单位是否是支援单位
+      if (this.isChangeTask) {
+        const unit = this.selectedUnits.find(u => u.taskGroups && u.taskGroups.includes(taskGroup))
+        if (unit && unit.unitStatus === 'support') {
+          uni.showToast({ title: '变更任务场景下无法修改支援单位内容', icon: 'none' })
+          return
+        }
+      }
+      
       let val = String(e.detail.value || '').replace(/\D/g, '')
       if (val === '') { 
         this.$set(taskGroup, 'floor', '')
@@ -1280,7 +1617,7 @@ export default {
     },
     // 判断是否需要显示描述字段
     shouldShowDescription(taskGroup) {
-      return this.isFireOrBlockTask(taskGroup) || this.isSearchTask(taskGroup) || this.isSmokeTask(taskGroup)
+      return this.isFireOrBlockTask(taskGroup) || this.isSearchTask(taskGroup) || this.isSmokeTask(taskGroup) || this.isWaterTask(taskGroup)
     },
     // 判断是否是灭火或堵截任务
     isFireOrBlockTask(taskGroup) {
@@ -1299,6 +1636,15 @@ export default {
     // 任务类型选择
     onTaskTypeChange(e, taskGroup) {
       try {
+        // 如果是变更任务场景，检查当前单位是否是支援单位
+        if (this.isChangeTask) {
+          const unit = this.selectedUnits.find(u => u.taskGroups && u.taskGroups.includes(taskGroup))
+          if (unit && unit.unitStatus === 'support') {
+            uni.showToast({ title: '变更任务场景下无法修改支援单位内容', icon: 'none' })
+            return
+          }
+        }
+        
         const value = e.detail ? e.detail.value : e.value
         taskGroup.taskTypeIndex = Number(value)
         const picked = this.taskTypeOptions[taskGroup.taskTypeIndex] || {}
@@ -1361,6 +1707,8 @@ export default {
           if (!taskGroup.smokePower) {
             this.$set(taskGroup, 'smokePower', '')
           }
+          // 排烟任务不需要目标车辆，强制清除为空数组
+          this.$set(taskGroup, 'targetCars', [])
           // 初始化层数（空）
           if (!taskGroup.floor) {
             this.$set(taskGroup, 'floor', '')
@@ -1387,6 +1735,21 @@ export default {
           if (taskGroup.cars && taskGroup.cars.length === 1 && taskGroup.targetCars.length === 0) {
             this.$set(taskGroup, 'targetCars', [{ ...taskGroup.cars[0] }])
           }
+          // 如果只有一个参战单位，默认选择该单位作为目标中队
+          if (this.assignedUnitOptions.length === 1 && taskGroup.taskConfig && taskGroup.taskConfig.actionKey) {
+            // 确保 taskExtra 对象存在
+            if (!taskGroup.taskExtra) {
+              this.$set(taskGroup, 'taskExtra', {})
+            }
+            // 设置目标中队为唯一的参战单位
+            const targetUnit = this.assignedUnitOptions[0]
+            this.$set(taskGroup, 'dynamicSelectIndex', 0)
+            this.$set(taskGroup.taskExtra, taskGroup.taskConfig.actionKey, String(targetUnit.value))
+          }
+          // 初始化描述（空）
+          if (!taskGroup.description) {
+            this.$set(taskGroup, 'description', '')
+          }
         } else {
           // 如果不是灭火/堵截/搜救/排烟/供水，清除这些字段
           this.$set(taskGroup, 'floor', '')
@@ -1401,7 +1764,15 @@ export default {
         
         // 如果 taskConfig 存在且有 actionKey，初始化 taskExtra
         if (taskGroup.taskConfig && taskGroup.taskConfig.actionKey) {
-          this.$set(taskGroup.taskExtra, taskGroup.taskConfig.actionKey, '')
+          // 如果是供水任务且只有一个参战单位，默认选择该单位作为目标中队
+          if (this.isWaterTask(taskGroup) && this.assignedUnitOptions.length === 1) {
+            const targetUnit = this.assignedUnitOptions[0]
+            this.$set(taskGroup, 'dynamicSelectIndex', 0)
+            this.$set(taskGroup.taskExtra, taskGroup.taskConfig.actionKey, String(targetUnit.value))
+          } else {
+            // 其他情况初始化为空
+            this.$set(taskGroup.taskExtra, taskGroup.taskConfig.actionKey, '')
+          }
         }
         
         // 强制更新视图
@@ -1467,7 +1838,7 @@ export default {
     isSmokeTask(taskGroup) {
       if (!taskGroup || !taskGroup.taskType) return false
       const taskTypeValue = String(taskGroup.taskType)
-      return taskTypeValue === '6' || 
+      return taskTypeValue === '4' || 
              taskGroup.taskType === 'smoke' ||
              (this.taskTypeOptions[taskGroup.taskTypeIndex] && 
               (this.taskTypeOptions[taskGroup.taskTypeIndex].label === '排烟' || 
@@ -1477,46 +1848,101 @@ export default {
     isWaterTask(taskGroup) {
       if (!taskGroup || !taskGroup.taskType) return false
       const taskTypeValue = String(taskGroup.taskType)
-      return taskTypeValue === '4' || taskTypeValue === '5' || 
+      return taskTypeValue === '5' || 
              taskGroup.taskType === 'water' || taskGroup.taskType === 'supply' ||
              (this.taskTypeOptions[taskGroup.taskTypeIndex] && 
               (this.taskTypeOptions[taskGroup.taskTypeIndex].label === '供水' || 
                this.taskTypeOptions[taskGroup.taskTypeIndex].label === '火场供水' ||
                this.taskTypeOptions[taskGroup.taskTypeIndex].label === '供水救援'))
     },
-    // 获取任务类型的具体内容
-    getTaskContent(unit) {
-      if (!unit || !unit.taskExtra) return ''
+    // 获取任务组的作战力量
+    getTaskPower(taskGroup) {
+      if (!taskGroup || !taskGroup.taskExtra) return ''
       
-      const taskExtra = unit.taskExtra || {}
+      const taskExtra = taskGroup.taskExtra || {}
+      const taskType = String(taskGroup.taskType || '')
       
-      // 字段中文映射
-      const fieldMap = {
-        'blockPower': '堵截力量',
-        'blockArea': '堵截区域',
-        'blockMethod': '堵截方法',
-        'searchRoom': '搜救房间',
-        'searchArea': '搜救区域',
-        'searchMethod': '搜救方法',
-        'searchTarget': '搜救目标',
-        'waterTarget': '供水目标',
-        'targetUnit': '目标单位',
-        'supplyTarget': '供水目标',
-        'smokeMethod': '排烟方法',
-        'firePower': '灭火力量'
+      // 根据任务类型获取作战力量
+      if (taskType === '1' && taskExtra.firePower) {
+        return taskExtra.firePower // 灭火力量
+      }
+      if (taskType === '2' && taskExtra.blockPower) {
+        return taskExtra.blockPower // 堵截力量
       }
       
-      // 只显示taskExtra中的具体配置，不显示任务类型和方向
-      const extraDetails = Object.keys(taskExtra).map(key => {
-        const value = taskExtra[key]
-        if (value && value !== '') {
-          const chineseKey = fieldMap[key] || key
-          return `${chineseKey}：${value}`
-        }
-        return null
-      }).filter(Boolean)
+      return ''
+    },
+    // 获取任务组的作战力量标签（根据任务类型）
+    getTaskPowerLabel(taskGroup) {
+      if (!taskGroup) return '作战力量'
       
-      return extraDetails.join('，')
+      const taskType = String(taskGroup.taskType || '')
+      
+      if (taskType === '1') return '灭火力量'
+      if (taskType === '2') return '堵截力量'
+      if (taskType === '3') return '搜救力量'
+      if (taskType === '4') return '排烟力量'
+      if (taskType === '5') return '目标中队'
+      
+      return '作战力量'
+    },
+    // 获取搜救力量
+    getSearchPower(taskGroup) {
+      if (!taskGroup) return ''
+      // 优先从 taskGroup 顶层获取
+      if (taskGroup.searchPower) return taskGroup.searchPower
+      // 其次从 taskExtra 获取
+      if (taskGroup.taskExtra && taskGroup.taskExtra.searchPower) {
+        return taskGroup.taskExtra.searchPower
+      }
+      return ''
+    },
+    // 获取搜救结果
+    getSearchResult(taskGroup) {
+      if (!taskGroup) return ''
+      // 优先从 taskGroup 顶层获取
+      if (taskGroup.searchResult) return taskGroup.searchResult
+      // 其次从 taskExtra 获取
+      if (taskGroup.taskExtra && taskGroup.taskExtra.searchResult) {
+        return taskGroup.taskExtra.searchResult
+      }
+      return ''
+    },
+    // 获取排烟力量
+    getSmokePower(taskGroup) {
+      if (!taskGroup) return ''
+      // 优先从 taskGroup 顶层获取
+      if (taskGroup.smokePower) return taskGroup.smokePower
+      // 其次从 taskExtra 获取
+      if (taskGroup.taskExtra && taskGroup.taskExtra.smokePower) {
+        return taskGroup.taskExtra.smokePower
+      }
+      return ''
+    },
+    // 获取目标中队（供水任务）
+    getTargetUnit(taskGroup) {
+      if (!taskGroup || !taskGroup.taskExtra) return ''
+      const taskExtra = taskGroup.taskExtra || {}
+      // 优先从 targetUnit 获取
+      if (taskExtra.targetUnit) {
+        const targetUnit = this.fireUnitOptions.find(u => u.value === taskExtra.targetUnit)
+        return targetUnit ? targetUnit.label : taskExtra.targetUnit
+      }
+      // 其次从 supplyTarget 获取
+      if (taskExtra.supplyTarget) {
+        const targetUnit = this.fireUnitOptions.find(u => u.value === taskExtra.supplyTarget)
+        return targetUnit ? targetUnit.label : taskExtra.supplyTarget
+      }
+      return ''
+    },
+    // 获取目标车辆（供水任务）
+    getTargetCars(taskGroup) {
+      if (!taskGroup) return ''
+      // 从 targetCars 数组获取
+      if (taskGroup.targetCars && Array.isArray(taskGroup.targetCars) && taskGroup.targetCars.length > 0) {
+        return taskGroup.targetCars.map(car => car.carName || car.name || car.label || '').filter(Boolean).join('、')
+      }
+      return ''
     },
     getDynamicSelectText(taskGroup) {
       if (!taskGroup) return '请选择目标中队'
@@ -1529,6 +1955,15 @@ export default {
         // 阻止事件冒泡
         if (event && event.stopPropagation) {
           event.stopPropagation()
+        }
+        
+        // 如果是变更任务场景，检查当前单位是否是支援单位
+        if (this.isChangeTask) {
+          const unit = this.selectedUnits.find(u => u.taskGroups && u.taskGroups.includes(taskGroup))
+          if (unit && unit.unitStatus === 'support') {
+            uni.showToast({ title: '变更任务场景下无法修改支援单位内容', icon: 'none' })
+            return
+          }
         }
         
         if (!taskGroup || !taskGroup.taskConfig) return
@@ -1558,6 +1993,15 @@ export default {
     // 选择搜救力量
     selectSearchPower(val, taskGroup) {
       try {
+        // 如果是变更任务场景，检查当前单位是否是支援单位
+        if (this.isChangeTask) {
+          const unit = this.selectedUnits.find(u => u.taskGroups && u.taskGroups.includes(taskGroup))
+          if (unit && unit.unitStatus === 'support') {
+            uni.showToast({ title: '变更任务场景下无法修改支援单位内容', icon: 'none' })
+            return
+          }
+        }
+        
         this.$set(taskGroup, 'searchPower', val)
         this.updateFormData()
         this.$forceUpdate()
@@ -1568,6 +2012,15 @@ export default {
     // 选择搜救结果
     selectSearchResult(val, taskGroup) {
       try {
+        // 如果是变更任务场景，检查当前单位是否是支援单位
+        if (this.isChangeTask) {
+          const unit = this.selectedUnits.find(u => u.taskGroups && u.taskGroups.includes(taskGroup))
+          if (unit && unit.unitStatus === 'support') {
+            uni.showToast({ title: '变更任务场景下无法修改支援单位内容', icon: 'none' })
+            return
+          }
+        }
+        
         this.$set(taskGroup, 'searchResult', val)
         this.updateFormData()
         this.$forceUpdate()
@@ -1578,6 +2031,15 @@ export default {
     // 选择排烟力量
     selectSmokePower(val, taskGroup) {
       try {
+        // 如果是变更任务场景，检查当前单位是否是支援单位
+        if (this.isChangeTask) {
+          const unit = this.selectedUnits.find(u => u.taskGroups && u.taskGroups.includes(taskGroup))
+          if (unit && unit.unitStatus === 'support') {
+            uni.showToast({ title: '变更任务场景下无法修改支援单位内容', icon: 'none' })
+            return
+          }
+        }
+        
         this.$set(taskGroup, 'smokePower', val)
         this.updateFormData()
         this.$forceUpdate()
@@ -1593,6 +2055,15 @@ export default {
     // 选择目标车辆
     selectTargetCar(car, taskGroup) {
       try {
+        // 如果是变更任务场景，检查当前单位是否是支援单位
+        if (this.isChangeTask) {
+          const unit = this.selectedUnits.find(u => u.taskGroups && u.taskGroups.includes(taskGroup))
+          if (unit && unit.unitStatus === 'support') {
+            uni.showToast({ title: '变更任务场景下无法修改支援单位内容', icon: 'none' })
+            return
+          }
+        }
+        
         if (!taskGroup.targetCars) {
           this.$set(taskGroup, 'targetCars', [])
         }
@@ -1611,6 +2082,15 @@ export default {
     // 动态选择变化
     onDynamicSelectChange(e, taskGroup) {
       try {
+        // 如果是变更任务场景，检查当前单位是否是支援单位
+        if (this.isChangeTask) {
+          const unit = this.selectedUnits.find(u => u.taskGroups && u.taskGroups.includes(taskGroup))
+          if (unit && unit.unitStatus === 'support') {
+            uni.showToast({ title: '变更任务场景下无法修改支援单位内容', icon: 'none' })
+            return
+          }
+        }
+        
         const value = e.detail ? e.detail.value : e.value
         taskGroup.dynamicSelectIndex = Number(value)
         const picked = this.assignedUnitOptions[taskGroup.dynamicSelectIndex]
@@ -1644,6 +2124,16 @@ export default {
     },
     // 描述输入处理
     onDescriptionInput(taskGroup) {
+      // 如果是变更任务场景，检查当前单位是否是支援单位
+      if (this.isChangeTask) {
+        const unit = this.selectedUnits.find(u => u.taskGroups && u.taskGroups.includes(taskGroup))
+        if (unit && unit.unitStatus === 'support') {
+          // 恢复原值，不允许修改
+          this.$forceUpdate()
+          return
+        }
+      }
+      
       // 更新表单数据
       this.updateFormData()
     },
@@ -1679,10 +2169,11 @@ export default {
     // 移除救援单位
     async removeUnit(index) {
       // 确认删除
+      const unitName = this.selectedUnits[index]?.label || '该救援单位'
       const confirmResult = await new Promise((resolve) => {
         uni.showModal({
           title: '确认删除',
-          content: '确定要删除该救援单位吗？',
+          content: `确定要删除${unitName}吗？`,
           success: (res) => resolve(res.confirm),
           fail: () => resolve(false)
         })
@@ -1761,6 +2252,10 @@ export default {
       if (this.showCurrentAddress && !this.currentLocation && !this.currentLocationLoading) {
         this.getCurrentLocationAndMatch()
       }
+    },
+    // 切换已有救援单位显示
+    toggleExistingUnits() {
+      this.showExistingUnits = !this.showExistingUnits
     },
     
     // 获取当前位置并匹配地址
@@ -1915,6 +2410,19 @@ export default {
           return
         }
         
+        // 检查参战车辆是否都已分配到任务组
+        const usedCarIds = this.getUsedCarIds(unit)
+        const unassignedCars = unit.selectedCars.filter(car => !usedCarIds.includes(car.value))
+        if (unassignedCars.length > 0) {
+          const unassignedCarNames = unassignedCars.map(car => car.label).join('、')
+          uni.showToast({ 
+            title: `${unit.label}的参战车辆未全部分配：${unassignedCarNames}`, 
+            icon: 'none',
+            duration: 3000
+          })
+          return
+        }
+        
         // 验证每个任务组的配置
         for (let j = 0; j < unit.taskGroups.length; j++) {
           const taskGroup = unit.taskGroups[j]
@@ -1936,17 +2444,8 @@ export default {
                 return
               }
             }
-            // 方位验证（必填）
-            if (!taskGroup.direction) {
-              uni.showToast({ title: `请为${unit.label}的任务组${j + 1}选择${this.getDirectionLabel(taskGroup)}`, icon: 'none' })
-              return
-            }
-            // 描述验证（必填，200字以内）
-            if (!taskGroup.description || taskGroup.description.trim() === '') {
-              uni.showToast({ title: `请为${unit.label}的任务组${j + 1}填写描述`, icon: 'none' })
-              return
-            }
-            if (taskGroup.description.length > 200) {
+            // 描述验证（可选，如果填写了必须在200字以内）
+            if (taskGroup.description && taskGroup.description.length > 200) {
               uni.showToast({ title: `请为${unit.label}的任务组${j + 1}的描述控制在200字以内`, icon: 'none' })
               return
             }
@@ -1970,23 +2469,15 @@ export default {
                 return
               }
             }
-            // 方位验证（必填）
-            if (!taskGroup.direction) {
-              uni.showToast({ title: `请为${unit.label}的任务组${j + 1}选择${this.getDirectionLabel(taskGroup)}`, icon: 'none' })
-              return
-            }
-            // 描述验证（必填，200字以内）
-            if (!taskGroup.description || taskGroup.description.trim() === '') {
-              uni.showToast({ title: `请为${unit.label}的任务组${j + 1}填写描述`, icon: 'none' })
-              return
-            }
-            if (taskGroup.description.length > 200) {
+            // 描述验证（可选，如果填写了必须在200字以内）
+            if (taskGroup.description && taskGroup.description.length > 200) {
               uni.showToast({ title: `请为${unit.label}的任务组${j + 1}的描述控制在200字以内`, icon: 'none' })
               return
             }
           } else if (this.isSmokeTask(taskGroup)) {
             // 验证排烟任务的特殊字段
             // 排烟力量验证（可选）
+            // 排烟任务不需要目标车辆，不需要验证
             // 层数验证（可选，如果填写了必须是0-99的正整数）
             if (taskGroup.floor !== undefined && taskGroup.floor !== '') {
               const floorNum = parseInt(taskGroup.floor, 10)
@@ -1995,17 +2486,8 @@ export default {
                 return
               }
             }
-            // 排烟方位验证（必填）
-            if (!taskGroup.direction) {
-              uni.showToast({ title: `请为${unit.label}的任务组${j + 1}选择${this.getDirectionLabel(taskGroup)}`, icon: 'none' })
-              return
-            }
-            // 描述验证（必填，200字以内）
-            if (!taskGroup.description || taskGroup.description.trim() === '') {
-              uni.showToast({ title: `请为${unit.label}的任务组${j + 1}填写描述`, icon: 'none' })
-              return
-            }
-            if (taskGroup.description.length > 200) {
+            // 描述验证（可选，如果填写了必须在200字以内）
+            if (taskGroup.description && taskGroup.description.length > 200) {
               uni.showToast({ title: `请为${unit.label}的任务组${j + 1}的描述控制在200字以内`, icon: 'none' })
               return
             }
@@ -2024,6 +2506,11 @@ export default {
               uni.showToast({ title: `请为${unit.label}的任务组${j + 1}选择目标车辆`, icon: 'none' })
               return
             }
+            // 描述验证（可选，如果填写了必须在200字以内）
+            if (taskGroup.description && taskGroup.description.length > 200) {
+              uni.showToast({ title: `请为${unit.label}的任务组${j + 1}的描述控制在200字以内`, icon: 'none' })
+              return
+            }
           } else {
             // 验证其他任务类型的动态内容
             if (taskGroup.taskConfig && taskGroup.taskConfig.actionKey) {
@@ -2038,14 +2525,31 @@ export default {
       }
       
       // 确认提交
-      const confirmResult = await new Promise((resolve) => {
-        uni.showModal({
-          title: '确认提交',
-          content: '确定要提交火灾情况信息吗？',
-          success: (res) => resolve(res.confirm),
-          fail: () => resolve(false)
+      let confirmResult = false
+      
+      // 如果是任务下达场景，显示特殊确认提示
+      if (this.isCommitTask) {
+        confirmResult = await new Promise((resolve) => {
+          uni.showModal({
+            title: '确认操作',
+            content: '请确认当前操作仅由指挥部或者主战队站执行？',
+            confirmText: '确认',
+            cancelText: '取消',
+            success: (res) => resolve(res.confirm),
+            fail: () => resolve(false)
+          })
         })
-      })
+      } else {
+        // 非任务下达场景，显示普通确认提示
+        confirmResult = await new Promise((resolve) => {
+          uni.showModal({
+            title: '确认提交',
+            content: '确定要提交火灾情况信息吗？',
+            success: (res) => resolve(res.confirm),
+            fail: () => resolve(false)
+          })
+        })
+      }
       
       if (!confirmResult) return
       
@@ -2072,6 +2576,15 @@ export default {
           payload.situationId = this.situationId
         }
         
+        // 如果是变更任务场景，传递taskType参数
+        if (this.isChangeTask) {
+          payload.taskType = 'change'
+        }
+        // 如果是任务下达场景，传递taskType参数
+        if (this.isCommitTask) {
+          payload.taskType = 'commit'
+        }
+        
         const res = await new Promise((resolve, reject) => {
           uni.request({ 
             url: this.serverUrl + '/fire/upload', 
@@ -2083,12 +2596,18 @@ export default {
         })
         if (res?.data?.code === 200) {
           uni.showToast({ title: '提交成功', icon: 'success' })
-          // 如果有situationId，跳转到火灾查询页面；否则跳转到任务查询页面
-          if (this.situationId) {
+          // 如果是变更任务，返回上一页（会刷新详情页或查询页）
+          if (this.isChangeTask) {
+            setTimeout(() => {
+              uni.navigateBack()
+            }, 1200)
+          } else if (this.situationId) {
+            // 如果有situationId但不是变更任务，跳转到任务查询页面
             setTimeout(() => {
               uni.redirectTo({ url: '/pages/data/taskQuery/index' })
             }, 1200)
           } else {
+            // 新建任务，跳转到火灾查询页面
             setTimeout(() => {
               uni.redirectTo({ url: '/pages/data/fireQuery/index' })
             }, 1200)
@@ -2124,10 +2643,10 @@ export default {
 .address-info { display: flex; align-items: center; gap: 12rpx; flex: 1; }
 .address-text { font-size: 26rpx; color: #333; flex: 1; }
 .address-text.placeholder { color: #999; }
-.floor-info { font-size: 20rpx; color: #666; background: #e6f7ff; padding: 4rpx 8rpx; border-radius: 6rpx; border: 1rpx solid #f0f8ff; flex-shrink: 0; }
 .arrow-icon { width: 32rpx; height: 32rpx; opacity: .6; }
 .form-textarea { width: 100%; min-height: 160rpx; padding: 16rpx; background: #f0f8ff; border: 1rpx solid #f0f8ff; border-radius: 8rpx; font-size: 26rpx; color: #333; margin: 0; box-sizing: border-box; line-height: 1.6; transition: all 0.2s; }
 .form-textarea:focus { background: #fff; border-color: #1890ff; }
+.form-textarea:disabled { background: #fafafa; border-color: #e8e8e8; opacity: 0.6; color: #999; }
 .textarea-container { padding: 0}
 .remark-textarea-container { padding: 0 24rpx 24rpx 24rpx; }
 .form-bottom-spacer { height: 120rpx; }
@@ -2221,22 +2740,49 @@ export default {
 .add-unit-btn { display: flex; align-items: center; gap: 8rpx; padding: 12rpx 20rpx; background: #fff; border: 1rpx solid #f0f8ff; border-radius: 8rpx; transition: all 0.2s; }
 .add-unit-btn:active { background: #e6f7ff; }
 
+/* 支援信息样式 */
+.support-content-box {
+  padding: 0 24rpx 24rpx;
+}
+
+.support-content-text {
+  font-size: 26rpx;
+  color: #333;
+  line-height: 1.6;
+  word-break: break-all;
+  white-space: pre-wrap;
+  padding: 16rpx;
+  background: linear-gradient(135deg, #fff1f0, #fff);
+  border-left: 4rpx solid #ff4d4f;
+  border-radius: 8rpx;
+}
+
 /* 已有救援单位样式 */
 .existing-units-content { padding: 0 24rpx 24rpx; }
 .existing-unit-card { background: #f0f8ff; border-radius: 8rpx; padding: 16rpx; margin-bottom: 12rpx; border: 1rpx solid #f0f8ff; }
 .existing-unit-card:last-child { margin-bottom: 0; }
-.unit-info-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12rpx; }
-.unit-name { font-size: 26rpx; color: #333; font-weight: 600; }
-.unit-status { font-size: 20rpx; padding: 4rpx 8rpx; border-radius: 8rpx; font-weight: 500; }
-.unit-status.rescue-status { background: #f0f8ff; color: #1890ff; border: 1rpx solid #f0f8ff; }
-.unit-status.support-status { background: #fff7e6; color: #fa8c16; border: 1rpx solid #f0f8ff; }
-.unit-details-row { display: flex; flex-wrap: wrap; gap: 12rpx; }
-.detail-text { font-size: 22rpx; color: #666; }
+.unit-info-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12rpx; gap: 12rpx; }
+.unit-name-wrapper { display: flex; align-items: center; gap: 12rpx; flex: 1; min-width: 0; }
+.unit-name { font-size: 26rpx; color: #333; font-weight: 600; flex-shrink: 0; }
+.unit-status-badge { display: flex; align-items: center; gap: 6rpx; padding: 4rpx 12rpx; border-radius: 16rpx; font-size: 20rpx; font-weight: 500; }
+.unit-status-badge.rescue-badge { background: linear-gradient(135deg, #1890ff, #40a9ff); color: #fff; }
+.unit-status-badge.support-badge { background: linear-gradient(135deg, #fa8c16, #ffa940); color: #fff; }
+.status-dot { width: 6rpx; height: 6rpx; border-radius: 50%; background: rgba(255, 255, 255, 0.9); }
+.status-text { font-size: 20rpx; font-weight: 500; }
+.unit-time { font-size: 22rpx; color: #999; flex-shrink: 0; white-space: nowrap; }
+.existing-task-groups { margin-top: 12rpx; }
+.existing-task-group { background: #fff; border-radius: 8rpx; padding: 12rpx; margin-bottom: 12rpx; position: relative; border-left: 4rpx solid #1890ff; }
+.existing-task-group:last-child { margin-bottom: 0; }
+.task-group-badge { position: absolute; top: 0; left: 0; background: linear-gradient(135deg, #1890ff, #40a9ff); color: #fff; font-size: 20rpx; font-weight: 600; padding: 4rpx 12rpx; border-radius: 8rpx 0 8rpx 0; z-index: 1; }
+.task-group-details-row { display: flex; flex-direction: column; gap: 8rpx; margin-top: 24rpx; }
+.detail-text { font-size: 22rpx; color: #666; line-height: 1.5; }
 .add-text { font-size: 24rpx; color: #1890ff; font-weight: 500; }
 .selected-units { padding: 0 20rpx 8rpx; }
 .unit-item { background: #fff; border-radius: 12rpx; margin: 0 4rpx 14rpx 4rpx; box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.04); border: 1rpx solid #f0f8ff; position: relative; overflow: visible; }
-.unit-header { display: flex; align-items: center; justify-content: space-between; padding: 16rpx 16rpx 8rpx 16rpx; }
-.unit-title { font-size: 28rpx; color: #1f2d3d; font-weight: 700; }
+.unit-item.disabled-unit { background: #fafafa; opacity: 0.8; }
+.unit-header { display: flex; align-items: center; justify-content: space-between; padding: 16rpx 16rpx 8rpx 16rpx; gap: 12rpx; }
+.unit-title { font-size: 28rpx; color: #1f2d3d; font-weight: 700; flex: 1; }
+.unit-config-inline.disabled-config { opacity: 0.6; pointer-events: none; }
 .unit-config-inline { padding: 8rpx 16rpx 14rpx 16rpx; background: #fff; border: 0; border-bottom-left-radius: 12rpx; border-bottom-right-radius: 12rpx; }
 .config-section { margin-bottom: 24rpx; }
 .config-section:last-child { margin-bottom: 0; }
@@ -2247,6 +2793,7 @@ export default {
 .add-task-btn:active { background: linear-gradient(135deg, #40a9ff, #1890ff); opacity: 0.9; }
 .add-task-text { color: #fff; }
 .task-group-item { margin-bottom: 24rpx; padding: 20rpx; background: #fff; border-radius: 12rpx; box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.04); border: 1rpx solid #f0f8ff; position: relative; overflow: visible; }
+.task-group-item.disabled-task-group { background: #fafafa; opacity: 0.8; }
 .task-group-badge { position: absolute; top: 0; left: 0; background: linear-gradient(135deg, #1890ff, #40a9ff); color: #fff; font-size: 20rpx; font-weight: 600; padding: 4rpx 12rpx; border-radius: 12rpx 0 12rpx 0; z-index: 1; box-shadow: 0 2rpx 4rpx rgba(24, 144, 255, 0.3); line-height: 1.2; }
 .task-group-item:last-child { margin-bottom: 0; }
 .task-group-header { display: flex; align-items: center; gap: 12rpx; margin-bottom: 20rpx; }
@@ -2256,6 +2803,7 @@ export default {
 .task-group-title { font-size: 26rpx; color: #1890ff; font-weight: 600; flex-shrink: 0; }
 .task-group-cars-selector { display: flex; align-items: center; flex: 1; min-width: 0; padding: 10rpx 14rpx; background: #f0f8ff; border-radius: 8rpx; border: 1rpx solid #f0f8ff; transition: all 0.2s; }
 .task-group-cars-selector:active { background: #e6f7ff; border-color: #f0f8ff; }
+.task-group-cars-selector.disabled { background: #fafafa; border-color: #e8e8e8; opacity: 0.6; pointer-events: none; }
 .task-group-cars { font-size: 22rpx; color: #666; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .task-group-cars.placeholder { color: #999; }
 .remove-task-group-btn { position: absolute; top: -18rpx; right: -18rpx; width: 40rpx; height: 40rpx; border-radius: 50%; background: #ff4d4f; transition: background 0.2s; z-index: 2; display: flex; align-items: center; justify-content: center; box-shadow: 0 2rpx 8rpx rgba(255, 77, 79, 0.3); }
@@ -2265,24 +2813,38 @@ export default {
 .car-used-tip { font-size: 22rpx; color: #ff4d4f; margin-left: 8rpx; }
 .config-label { font-size: 24rpx; color: #333; font-weight: 500; margin-bottom: 12rpx; display: block; }
 .input-container { margin-top: 12rpx; }
-.form-input { width: 100%; height: 64rpx; padding: 0 16rpx; background: #f0f8ff; border: 1rpx solid #f0f8ff; border-radius: 8rpx; font-size: 26rpx; color: #333; box-sizing: border-box; transition: all 0.2s; }
+.form-input { width: 100%; height: 64rpx; padding: 0 16rpx; background: #f0f8ff; border: 1rpx solid #f0f8ff; border-radius: 8rpx; font-size: 26rpx; color: #333; box-sizing: border-box; transition: all 0.2s; line-height: 64rpx; }
 .form-input:focus { background: #fff; border-color: #1890ff; }
+.form-input:disabled { background: #fafafa; border-color: #e8e8e8; opacity: 0.6; color: #999; }
 .form-picker-row { margin-top: 12rpx; }
+/* 层数和方位同一行 */
+.floor-direction-row { display: flex; gap: 16rpx; align-items: flex-start; }
+.floor-direction-item { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.floor-direction-item .config-label { margin-bottom: 12rpx; }
+.floor-direction-item .input-container { margin-top: 0; }
+.floor-direction-item .form-picker-row { margin-top: 0; }
+/* 确保同一行中的输入框和下拉框高度完全一致 */
+.floor-direction-item .form-input,
+.floor-direction-item .picker-display { height: 64rpx; min-height: 64rpx; max-height: 64rpx; }
+.floor-direction-item .picker-display { display: flex; align-items: center; }
 .form-picker-section { margin-top: 12rpx; }
 .form-picker { width: 100%; }
-.picker-display { display: flex; align-items: center; justify-content: space-between; height: 64rpx; padding: 0 16rpx; background: #f0f8ff; border-radius: 8rpx; border: 1rpx solid #f0f8ff; transition: all 0.2s; }
+.picker-display { display: flex; align-items: center; justify-content: space-between; height: 64rpx; padding: 0 16rpx; background: #f0f8ff; border-radius: 8rpx; border: 1rpx solid #f0f8ff; transition: all 0.2s; box-sizing: border-box; line-height: 64rpx; }
 .picker-display:active { background: #e6f7ff; border-color: #f0f8ff; }
+.picker-display.disabled { background: #fafafa; border-color: #e8e8e8; opacity: 0.6; pointer-events: none; }
 .picker-text { font-size: 26rpx; color: #333; flex: 1; }
 .picker-text.placeholder { color: #999; }
 .picker-arrow { width: 32rpx; height: 32rpx; opacity: .6; }
 .car-selector { display: flex; align-items: center; justify-content: space-between; height: 64rpx; padding: 0 16rpx; background: #f0f8ff; border-radius: 8rpx; border: 1rpx solid #f0f8ff; margin-top: 12rpx; transition: all 0.2s; }
 .car-selector:active { background: #e6f7ff; border-color: #f0f8ff; }
+.car-selector.disabled { background: #fafafa; border-color: #e8e8e8; opacity: 0.6; pointer-events: none; }
 .car-text { font-size: 26rpx; color: #333; }
 .force-options { display: flex; flex-wrap: wrap; gap: 8rpx; width: 100%; margin-top: 12rpx; }
 .force-option { display: flex; align-items: center; justify-content: center; padding: 10rpx 16rpx; border: 1rpx solid #f0f8ff; border-radius: 8rpx; background: #f0f8ff; transition: background .2s, border-color .2s, color .2s; flex: 1; min-width: 0; height: 64rpx; box-sizing: border-box; }
 .force-option:active { background: #e6f7ff; }
 .force-option.active { border-color: #1890ff; background: #1890ff; color: #fff; }
 .force-option.active .force-label { color: #fff; }
+.force-option.disabled { background: #fafafa; border-color: #e8e8e8; opacity: 0.6; pointer-events: none; }
 .force-label { font-size: 22rpx; color: #333; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .unit-info { flex: 1; min-width: 0; }
 .unit-actions { display: flex; align-items: center; gap: 12rpx; }
