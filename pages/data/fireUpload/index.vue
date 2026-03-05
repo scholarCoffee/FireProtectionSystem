@@ -172,7 +172,7 @@
                 </view>
 
                 <!-- 动态内容（所有任务类型都显示，包括灭火/堵截，但搜救/排烟任务不显示input类型）- 放在任务类型下面 -->
-                <view class="config-section" v-if="taskGroup && taskGroup.taskType && taskGroup.taskConfig && !isSearchTask(taskGroup) && !isSmokeTask(taskGroup)">
+                <view class="config-section" v-if=" !isWaterTask(taskGroup) && taskGroup && taskGroup.taskType && taskGroup.taskConfig && !isSearchTask(taskGroup) && !isSmokeTask(taskGroup)">
                   <text class="config-label">{{ getTaskContentTitle(taskGroup) }}</text>
                   <view v-if="taskGroup.taskConfig && taskGroup.taskConfig.uiType === 'select'" class="form-picker-section">
                     <view class="force-options">
@@ -184,7 +184,7 @@
                   <view v-else-if="taskGroup.taskConfig && taskGroup.taskConfig.uiType === 'input'" class="input-container">
                     <input v-model="taskGroup.taskExtra[taskGroup.taskConfig.actionKey]" class="form-input" :disabled="isChangeTask && unit.unitStatus === 'support'" :placeholder="taskGroup.taskConfig.placeholder || '请输入'" v-if="taskGroup.taskExtra && taskGroup.taskConfig" />
                   </view>
-                  <view v-else-if="taskGroup.taskConfig && taskGroup.taskConfig.uiType === 'select-collection'" class="form-picker-section">
+                  <view v-else-if="taskGroup.taskConfig && taskGroup.taskConfig.uiType === 'select-collection' && !isWaterTask(taskGroup)" class="form-picker-section">
                     <picker :value="taskGroup.dynamicSelectIndex" :range="assignedUnitOptions" range-key="label" :disabled="isChangeTask && unit.unitStatus === 'support'" @change="onDynamicSelectChange($event, taskGroup)" @bindchange="onDynamicSelectChange($event, taskGroup)" class="form-picker">
                       <view class="picker-display" :class="{ 'disabled': isChangeTask && unit.unitStatus === 'support' }">
                         <text class="picker-text" :class="{'placeholder':!taskGroup.taskExtra[taskGroup.taskConfig.actionKey]}">{{ getDynamicSelectText(taskGroup) }}</text>
@@ -196,12 +196,24 @@
 
                 <!-- 供水任务特殊字段（目标中队和目标车辆） -->
                 <template v-if="isWaterTask(taskGroup)">
-                  <!-- 目标车辆 -->
+                  <!-- 目标中队 -->
                   <view class="config-section">
+                    <text class="config-label">目标中队</text>
+                    <view class="form-picker-section">
+                      <picker :value="getTargetUnitIndex(taskGroup)" :range="getIdleUnitOptions()" range-key="label" :disabled="isChangeTask && unit.unitStatus === 'support'" @change="onTargetUnitChange($event, taskGroup)" @bindchange="onTargetUnitChange($event, taskGroup)" class="form-picker">
+                        <view class="picker-display" :class="{ 'disabled': isChangeTask && unit.unitStatus === 'support' }">
+                          <text class="picker-text" :class="{'placeholder':!getTargetUnitValue(taskGroup)}">{{ getTargetUnitText(taskGroup) }}</text>
+                          <image v-if="!(isChangeTask && unit.unitStatus === 'support')" :src="serverUrl + '/static/icons/common/down.png'" class="picker-arrow" />
+                        </view>
+                      </picker>
+                    </view>
+                  </view>
+                  <!-- 目标车辆（只在选择了目标中队后显示） -->
+                  <view class="config-section" v-if="getTargetUnitValue(taskGroup)">
                     <text class="config-label">目标车辆</text>
                     <view class="form-picker-section">
                       <view class="force-options">
-                        <view v-for="car in taskGroup.cars" :key="car.value" class="force-option" :class="{ active: isTargetCarSelected(car, taskGroup), disabled: isChangeTask && unit.unitStatus === 'support' }" @tap="selectTargetCar(car, taskGroup)">
+                        <view v-for="car in getIdleCarOptionsForUnit(taskGroup)" :key="car.value" class="force-option" :class="{ active: isTargetCarSelected(car, taskGroup), disabled: isChangeTask && unit.unitStatus === 'support' }" @tap="selectTargetCar(car, taskGroup)">
                           <text class="force-label">{{ car.label }}</text>
                         </view>
                       </view>
@@ -427,7 +439,7 @@ export default {
   data() {
     return {
       serverUrl: 'https://www.xiaobei.space',
-      situationId: '', // 已有火灾情况ID
+      situationId: '', // 已有火场情况ID
       isChangeTask: false, // 是否是变更任务
       isCommitTask: false, // 是否是任务下达
       formData: {
@@ -487,7 +499,7 @@ export default {
       // 任务下达场景：当前地址默认缩回
       this.showCurrentAddress = false
     }
-    // 检查是否从火灾详情页跳转过来
+    // 检查是否从火场详情页跳转过来
     if (options && options.situationId) {
       this.situationId = options.situationId
       // 延迟加载，确保静态数据已加载完成
@@ -651,7 +663,7 @@ export default {
         }
       })
     },
-    // 加载已有火灾数据
+    // 加载已有火场数据
     async loadExistingFireData() {
       try {
         uni.showLoading({ title: '加载中...' })
@@ -751,10 +763,19 @@ export default {
                   tg.targetCars = []
                 }
                 
-                // 处理供水任务的目标中队（先设置为0，后续会在构建完selectedUnits后更新）
-                if (this.isWaterTask(tg) && taskGroup.taskExtra && taskGroup.taskExtra.targetUnit) {
-                  // 暂时保存目标单位ID，后续处理
-                  tg._targetUnitId = String(taskGroup.taskExtra.targetUnit)
+                // 处理供水任务的目标中队（单选）
+                if (this.isWaterTask(tg)) {
+                  // 兼容旧数据：从 taskExtra.targetUnit 获取（单选）
+                  if (taskGroup.taskExtra && taskGroup.taskExtra.targetUnit) {
+                    // 暂时保存目标单位ID，后续处理
+                    tg._targetUnitId = String(taskGroup.taskExtra.targetUnit)
+                  }
+                  // 兼容多选数据：从 targetUnits 数组获取第一个
+                  else if (taskGroup.targetUnits && Array.isArray(taskGroup.targetUnits) && taskGroup.targetUnits.length > 0) {
+                    const firstUnit = taskGroup.targetUnits[0]
+                    const unitId = firstUnit.unitId || firstUnit.value || firstUnit
+                    tg._targetUnitId = String(unitId)
+                  }
                 }
                 
                 return tg
@@ -782,21 +803,25 @@ export default {
             })
             
             // 处理供水任务的目标中队（需要在selectedUnits构建完成后）
-            // 使用$nextTick确保assignedUnitOptions计算属性已更新
+            // 使用$nextTick确保数据已更新
             this.$nextTick(() => {
               this.selectedUnits.forEach(unit => {
                 if (unit.taskGroups && unit.taskGroups.length > 0) {
                   unit.taskGroups.forEach(taskGroup => {
                     if (this.isWaterTask(taskGroup) && taskGroup._targetUnitId) {
-                      // 从assignedUnitOptions中查找目标单位（因为供水任务只能选择已参战的单位）
-                      const targetUnitIndex = this.assignedUnitOptions.findIndex(u => String(u.value) === String(taskGroup._targetUnitId))
-                      if (targetUnitIndex >= 0) {
-                        taskGroup.dynamicSelectIndex = targetUnitIndex
+                      // 从空闲中队中查找目标单位
+                      const targetUnit = this.fireUnitOptions.find(u => 
+                        String(u.value) === String(taskGroup._targetUnitId) && 
+                        (u.status === 'idle' || (u.canSelect === true && u.status !== 'rescuing_all'))
+                      )
+                      if (targetUnit) {
                         // 更新taskExtra中的targetUnit
                         if (!taskGroup.taskExtra) {
                           this.$set(taskGroup, 'taskExtra', {})
                         }
-                        this.$set(taskGroup.taskExtra, 'targetUnit', String(taskGroup._targetUnitId))
+                        this.$set(taskGroup.taskExtra, 'targetUnit', String(targetUnit.value))
+                        // 兼容旧数据：同时更新 targetUnits 数组
+                        this.$set(taskGroup, 'targetUnits', [{ ...targetUnit }])
                       }
                       // 清除临时字段
                       delete taskGroup._targetUnitId
@@ -837,7 +862,7 @@ export default {
           }
         }
       } catch (e) {
-        uni.showToast({ title: '加载火灾数据失败', icon: 'none' })
+        uni.showToast({ title: '加载火场数据失败', icon: 'none' })
       } finally {
         uni.hideLoading()
       }
@@ -881,7 +906,7 @@ export default {
     goToAddressSelector() {
       // 如果有situationId且不是变更任务，则不允许修改地址
       if (this.situationId && !this.isChangeTask) {
-        uni.showToast({ title: '已有火灾情况无法修改地址', icon: 'none' })
+        uni.showToast({ title: '已有火场情况无法修改地址', icon: 'none' })
         return
       }
       
@@ -1172,7 +1197,7 @@ export default {
             return true
           }
         }
-        // 变更任务场景下，已选中的车辆即使被占用也可以选择（因为已经在当前火灾情况中）
+        // 变更任务场景下，已选中的车辆即使被占用也可以选择（因为已经在当前火场情况中）
         return false
       }
       
@@ -1317,28 +1342,11 @@ export default {
         // 更新现有任务组的车辆
         this.$set(unit.taskGroups[this.currentTaskGroupIndex], 'cars', [...this.tempTaskGroupCars])
         const taskGroup = unit.taskGroups[this.currentTaskGroupIndex]
-        // 如果是供水任务且只有1辆车，自动选择这辆车
-        if (this.isWaterTask(taskGroup) && this.tempTaskGroupCars.length === 1) {
-          if (!taskGroup.targetCars || taskGroup.targetCars.length === 0) {
-            this.$set(taskGroup, 'targetCars', [{ ...this.tempTaskGroupCars[0] }])
-          }
-        }
         // 排烟任务不需要目标车辆，确保为空数组
         if (this.isSmokeTask(taskGroup)) {
           this.$set(taskGroup, 'targetCars', [])
         }
-        // 如果是供水任务且只有一个参战单位，自动选择该单位作为目标中队
-        if (this.isWaterTask(taskGroup) && this.assignedUnitOptions.length === 1 && taskGroup.taskConfig && taskGroup.taskConfig.actionKey) {
-          if (!taskGroup.taskExtra) {
-            this.$set(taskGroup, 'taskExtra', {})
-          }
-          const targetUnit = this.assignedUnitOptions[0]
-          // 如果目标中队未设置，自动设置为唯一的参战单位
-          if (!taskGroup.taskExtra[taskGroup.taskConfig.actionKey]) {
-            this.$set(taskGroup, 'dynamicSelectIndex', 0)
-            this.$set(taskGroup.taskExtra, taskGroup.taskConfig.actionKey, String(targetUnit.value))
-          }
-        }
+        // 供水任务的目标中队和目标车辆需要用户手动选择（从空闲状态的中队和车辆中选择）
       } else {
         // 创建新的任务组（默认任务类型为灭火）
         const newTaskGroup = this.createDefaultTaskGroup([...this.tempTaskGroupCars])
@@ -1727,24 +1735,13 @@ export default {
           this.$set(taskGroup, 'searchResult', '')
         } else if (this.isWaterTask(taskGroup)) {
           // 如果是供水任务，初始化特殊字段
-          // 初始化目标车辆（如果只有1辆车，默认选择这1辆车）
+          // 初始化目标车辆（空数组，用户需要手动选择空闲车辆）
           if (!taskGroup.targetCars) {
             this.$set(taskGroup, 'targetCars', [])
           }
-          // 如果任务组只有1辆车，默认选择这辆车
-          if (taskGroup.cars && taskGroup.cars.length === 1 && taskGroup.targetCars.length === 0) {
-            this.$set(taskGroup, 'targetCars', [{ ...taskGroup.cars[0] }])
-          }
-          // 如果只有一个参战单位，默认选择该单位作为目标中队
-          if (this.assignedUnitOptions.length === 1 && taskGroup.taskConfig && taskGroup.taskConfig.actionKey) {
-            // 确保 taskExtra 对象存在
-            if (!taskGroup.taskExtra) {
-              this.$set(taskGroup, 'taskExtra', {})
-            }
-            // 设置目标中队为唯一的参战单位
-            const targetUnit = this.assignedUnitOptions[0]
-            this.$set(taskGroup, 'dynamicSelectIndex', 0)
-            this.$set(taskGroup.taskExtra, taskGroup.taskConfig.actionKey, String(targetUnit.value))
+          // 初始化目标中队（空数组，用户需要手动选择空闲中队）
+          if (!taskGroup.targetUnits) {
+            this.$set(taskGroup, 'targetUnits', [])
           }
           // 初始化描述（空）
           if (!taskGroup.description) {
@@ -1762,17 +1759,10 @@ export default {
           this.$set(taskGroup, 'targetCars', [])
         }
         
-        // 如果 taskConfig 存在且有 actionKey，初始化 taskExtra
-        if (taskGroup.taskConfig && taskGroup.taskConfig.actionKey) {
-          // 如果是供水任务且只有一个参战单位，默认选择该单位作为目标中队
-          if (this.isWaterTask(taskGroup) && this.assignedUnitOptions.length === 1) {
-            const targetUnit = this.assignedUnitOptions[0]
-            this.$set(taskGroup, 'dynamicSelectIndex', 0)
-            this.$set(taskGroup.taskExtra, taskGroup.taskConfig.actionKey, String(targetUnit.value))
-          } else {
-            // 其他情况初始化为空
-            this.$set(taskGroup.taskExtra, taskGroup.taskConfig.actionKey, '')
-          }
+        // 如果 taskConfig 存在且有 actionKey，初始化 taskExtra（非供水任务）
+        if (taskGroup.taskConfig && taskGroup.taskConfig.actionKey && !this.isWaterTask(taskGroup)) {
+          // 其他情况初始化为空
+          this.$set(taskGroup.taskExtra, taskGroup.taskConfig.actionKey, '')
         }
         
         // 强制更新视图
@@ -1919,21 +1909,13 @@ export default {
       }
       return ''
     },
-    // 获取目标中队（供水任务）
+    // 获取目标中队（供水任务）- 单选
     getTargetUnit(taskGroup) {
-      if (!taskGroup || !taskGroup.taskExtra) return ''
-      const taskExtra = taskGroup.taskExtra || {}
-      // 优先从 targetUnit 获取
-      if (taskExtra.targetUnit) {
-        const targetUnit = this.fireUnitOptions.find(u => u.value === taskExtra.targetUnit)
-        return targetUnit ? targetUnit.label : taskExtra.targetUnit
-      }
-      // 其次从 supplyTarget 获取
-      if (taskExtra.supplyTarget) {
-        const targetUnit = this.fireUnitOptions.find(u => u.value === taskExtra.supplyTarget)
-        return targetUnit ? targetUnit.label : taskExtra.supplyTarget
-      }
-      return ''
+      if (!taskGroup) return ''
+      const unitValue = this.getTargetUnitValue(taskGroup)
+      if (!unitValue) return ''
+      const targetUnit = this.fireUnitOptions.find(u => String(u.value) === unitValue)
+      return targetUnit ? targetUnit.label : unitValue
     },
     // 获取目标车辆（供水任务）
     getTargetCars(taskGroup) {
@@ -2047,10 +2029,143 @@ export default {
         console.error('selectSmokePower error:', e)
       }
     },
+    // 获取空闲状态的中队列表
+    getIdleUnitOptions() {
+      // 返回所有空闲状态的中队（status === 'idle' 或 canSelect === true）
+      return this.fireUnitOptions.filter(unit => {
+        return unit.status === 'idle' || (unit.canSelect === true && unit.status !== 'rescuing_all')
+      })
+    },
+    // 获取目标中队的值（单选）
+    getTargetUnitValue(taskGroup) {
+      if (!taskGroup) return ''
+      // 优先从 taskExtra.targetUnit 获取（单选）
+      const taskExtra = taskGroup.taskExtra || {}
+      if (taskExtra.targetUnit) {
+        return String(taskExtra.targetUnit)
+      }
+      // 兼容旧数据：从 supplyTarget 获取
+      if (taskExtra.supplyTarget) {
+        return String(taskExtra.supplyTarget)
+      }
+      // 兼容多选数据：从 targetUnits 数组获取第一个
+      if (taskGroup.targetUnits && Array.isArray(taskGroup.targetUnits) && taskGroup.targetUnits.length > 0) {
+        return String(taskGroup.targetUnits[0].value)
+      }
+      return ''
+    },
+    // 获取目标中队的显示文本
+    getTargetUnitText(taskGroup) {
+      const unitValue = this.getTargetUnitValue(taskGroup)
+      if (!unitValue) return '请选择目标中队'
+      const unit = this.fireUnitOptions.find(u => String(u.value) === unitValue)
+      return unit ? unit.label : '请选择目标中队'
+    },
+    // 获取目标中队在选项中的索引
+    getTargetUnitIndex(taskGroup) {
+      const unitValue = this.getTargetUnitValue(taskGroup)
+      if (!unitValue) return 0
+      const idleUnits = this.getIdleUnitOptions()
+      const index = idleUnits.findIndex(u => String(u.value) === unitValue)
+      return index >= 0 ? index : 0
+    },
+    // 获取指定中队下的空闲车辆列表
+    getIdleCarOptionsForUnit(taskGroup) {
+      if (!taskGroup) return []
+      
+      const targetUnitValue = this.getTargetUnitValue(taskGroup)
+      if (!targetUnitValue) return []
+      
+      // 从unitCarMap中获取目标中队的所有车辆ID（因为fireCarOptions是固定枚举值，需要通过unitCarMap来关联）
+      const targetUnitCarIds = this.unitCarMap[targetUnitValue] || []
+      const targetUnitCarIdsStr = targetUnitCarIds.map(id => String(id))
+      
+      // 如果unitCarMap中没有该中队的车辆，返回空数组
+      if (targetUnitCarIdsStr.length === 0) {
+        // 尝试从buildUnitCarMap的逻辑中获取（如果unitCarMap还未构建）
+        // 这里直接返回空，因为如果unitCarMap没有数据，说明该中队没有车辆
+        return []
+      }
+      
+      // 从fireCarOptions中筛选出属于该中队的车辆（通过unitCarMap中的车辆ID匹配）
+      const canSelectCars = this.fireCarOptions.filter(car => {
+        const carId = String(car.value || car.id || car.carId || '')
+        return !targetUnitCarIdsStr.includes(carId)
+      })
+      return canSelectCars
+    },
+    // 获取空闲状态的车辆列表
+    getIdleCarOptions() {
+      // 获取所有正在使用的车辆ID（从unitCarMap和当前表单中已选择的车辆）
+      const usedCarIds = new Set()
+      
+      // 从unitCarMap中获取所有已使用的车辆
+      Object.keys(this.unitCarMap || {}).forEach(unitId => {
+        const carIds = this.unitCarMap[unitId] || []
+        carIds.forEach(carId => {
+          usedCarIds.add(String(carId))
+        })
+      })
+      
+      // 从当前表单中已选择的车辆获取
+      this.selectedUnits.forEach(unit => {
+        if (unit.selectedCars && unit.selectedCars.length > 0) {
+          unit.selectedCars.forEach(car => {
+            if (car.value) {
+              usedCarIds.add(String(car.value))
+            }
+          })
+        }
+      })
+      
+      // 返回所有不在使用中的车辆（空闲状态）
+      return this.fireCarOptions.filter(car => {
+        const carId = String(car.value || car.id || car.carId || '')
+        return !usedCarIds.has(carId)
+      })
+    },
+    // 目标中队选择变化（下拉框）
+    onTargetUnitChange(e, taskGroup) {
+      try {
+        // 如果是变更任务场景，检查当前单位是否是支援单位
+        if (this.isChangeTask) {
+          const unit = this.selectedUnits.find(u => u.taskGroups && u.taskGroups.includes(taskGroup))
+          if (unit && unit.unitStatus === 'support') {
+            uni.showToast({ title: '变更任务场景下无法修改支援单位内容', icon: 'none' })
+            return
+          }
+        }
+        
+        const value = e.detail ? e.detail.value : e.value
+        const idleUnits = this.getIdleUnitOptions()
+        const selectedUnit = idleUnits[Number(value)]
+        
+        if (!selectedUnit) return
+        
+        // 确保 taskExtra 对象存在
+        if (!taskGroup.taskExtra) {
+          this.$set(taskGroup, 'taskExtra', {})
+        }
+        
+        // 更新目标中队（单选）
+        this.$set(taskGroup.taskExtra, 'targetUnit', String(selectedUnit.value))
+        
+        // 清除之前选择的目标车辆（因为中队改变了）
+        this.$set(taskGroup, 'targetCars', [])
+        
+        // 兼容旧数据：同时更新 targetUnits 数组（只保留一个）
+        this.$set(taskGroup, 'targetUnits', [{ ...selectedUnit }])
+        
+        this.updateFormData()
+        this.$forceUpdate()
+      } catch (e) {
+        console.error('onTargetUnitChange error:', e)
+      }
+    },
     // 判断目标车辆是否被选中
     isTargetCarSelected(car, taskGroup) {
       if (!taskGroup.targetCars || !Array.isArray(taskGroup.targetCars)) return false
-      return taskGroup.targetCars.some(tc => tc.value === car.value)
+      return taskGroup.targetCars.some(tc => String(tc.value) === String(car.value))
     },
     // 选择目标车辆
     selectTargetCar(car, taskGroup) {
@@ -2146,22 +2261,46 @@ export default {
           carId: car.value,
           carName: car.label
         })),
-        taskGroups: (unit.taskGroups || []).map(taskGroup => ({
-          carIds: (taskGroup.cars || []).map(car => car.value),
-          carNames: (taskGroup.cars || []).map(car => car.label),
-          floor: taskGroup.floor || '', // 层数
-          direction: taskGroup.direction || '', // 方位
-          description: taskGroup.description || '', // 描述
-          searchPower: taskGroup.searchPower || '', // 搜救力量
-          searchResult: taskGroup.searchResult || '', // 搜救结果
-          smokePower: taskGroup.smokePower || '', // 排烟力量
-          targetCars: (taskGroup.targetCars || []).map(car => ({
-            carId: car.value,
-            carName: car.label
-          })), // 目标车辆（供水任务）
-          taskType: taskGroup.taskType || '',
-          taskExtra: taskGroup.taskExtra || {}
-        })),
+        taskGroups: (unit.taskGroups || []).map(taskGroup => {
+          const taskGroupData = {
+            carIds: (taskGroup.cars || []).map(car => car.value),
+            carNames: (taskGroup.cars || []).map(car => car.label),
+            floor: taskGroup.floor || '', // 层数
+            direction: taskGroup.direction || '', // 方位
+            description: taskGroup.description || '', // 描述
+            searchPower: taskGroup.searchPower || '', // 搜救力量
+            searchResult: taskGroup.searchResult || '', // 搜救结果
+            smokePower: taskGroup.smokePower || '', // 排烟力量
+            targetCars: (taskGroup.targetCars || []).map(car => ({
+              carId: car.value,
+              carName: car.label
+            })), // 目标车辆（供水任务）
+            taskType: taskGroup.taskType || '',
+            taskExtra: taskGroup.taskExtra || {}
+          }
+          
+          // 供水任务：添加目标中队（单选）
+          if (this.isWaterTask(taskGroup)) {
+            const targetUnitValue = this.getTargetUnitValue(taskGroup)
+            if (targetUnitValue) {
+              // 更新 taskExtra.targetUnit
+              if (!taskGroupData.taskExtra) {
+                taskGroupData.taskExtra = {}
+              }
+              taskGroupData.taskExtra.targetUnit = String(targetUnitValue)
+              // 兼容旧数据：同时更新 targetUnits 数组
+              const targetUnit = this.fireUnitOptions.find(u => String(u.value) === targetUnitValue)
+              if (targetUnit) {
+                taskGroupData.targetUnits = [{
+                  unitId: targetUnit.value,
+                  unitName: targetUnit.label || ''
+                }]
+              }
+            }
+          }
+          
+          return taskGroupData
+        }),
         unitStatus: unit.unitStatus || 'rescue', // 单位状态：rescue-首次救援单位，support-支援单位
         rescueTime: unit.rescueTime || new Date().toISOString() // 救援时间，以每次提交为基准
       }))
@@ -2494,12 +2633,10 @@ export default {
           } else if (this.isWaterTask(taskGroup)) {
             // 验证供水任务的特殊字段
             // 验证目标中队（必填）
-            if (taskGroup.taskConfig && taskGroup.taskConfig.actionKey) {
-              const taskExtraValue = taskGroup.taskExtra[taskGroup.taskConfig.actionKey]
-              if (!taskExtraValue || taskExtraValue.trim() === '') {
-                uni.showToast({ title: `请为${unit.label}的任务组${j + 1}选择目标中队`, icon: 'none' })
-                return
-              }
+            const targetUnitValue = this.getTargetUnitValue(taskGroup)
+            if (!targetUnitValue || targetUnitValue.trim() === '') {
+              uni.showToast({ title: `请为${unit.label}的任务组${j + 1}选择目标中队`, icon: 'none' })
+              return
             }
             // 验证目标车辆（必填，至少选择一辆）
             if (!taskGroup.targetCars || taskGroup.targetCars.length === 0) {
@@ -2544,7 +2681,7 @@ export default {
         confirmResult = await new Promise((resolve) => {
           uni.showModal({
             title: '确认提交',
-            content: '确定要提交火灾情况信息吗？',
+            content: '确定要提交火场情况信息吗？',
             success: (res) => resolve(res.confirm),
             fail: () => resolve(false)
           })
@@ -2607,7 +2744,7 @@ export default {
               uni.redirectTo({ url: '/pages/data/taskQuery/index' })
             }, 1200)
           } else {
-            // 新建任务，跳转到火灾查询页面
+            // 新建任务，跳转到火场查询页面
             setTimeout(() => {
               uni.redirectTo({ url: '/pages/data/fireQuery/index' })
             }, 1200)

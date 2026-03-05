@@ -294,7 +294,7 @@ export default {
       refresherTriggered: false,
       showSupportModal: false, // 支援弹框显示状态
       supportContent: '', // 支援内容
-      currentSupportItem: null, // 当前申请支援的火灾情况
+      currentSupportItem: null, // 当前申请支援的火场情况
       swipeClickTimer: null // 滑动点击防抖定时器
     }
   },
@@ -934,7 +934,7 @@ export default {
     },
     async finishRescue(item) {
       try {
-        const addressName = item.addressName || '该火灾情况'
+        const addressName = item.addressName || '该火场情况'
         const confirmResult = await new Promise((resolve) => {
           uni.showModal({
             title: '确认完成任务',
@@ -1020,7 +1020,7 @@ export default {
     // 撤回支援
     async cancelSupport(item) {
       try {
-        const addressName = item.addressName || '该火灾情况'
+        const addressName = item.addressName || '该火场情况'
         const confirmResult = await new Promise((resolve) => {
           uni.showModal({
             title: '确认撤回支援',
@@ -1056,15 +1056,15 @@ export default {
         uni.showToast({ title: '操作失败', icon: 'none' })
       }
     },
-    // 删除火灾情况
+    // 删除火场情况
     async deleteFireSituation(item) {
       try {
         // 构建提示内容，显示地址名称
-        const addressName = item.addressName || '该火灾情况'
+        const addressName = item.addressName || '该火场情况'
         const confirmResult = await new Promise((resolve) => {
           uni.showModal({
             title: '确认删除',
-            content: `确定要删除"${addressName}"的火灾情况吗？\n删除后无法恢复，请谨慎操作。`,
+            content: `确定要删除"${addressName}"的火场情况吗？\n删除后无法恢复，请谨慎操作。`,
             confirmText: '确认删除',
             cancelText: '取消',
             confirmColor: '#ff4d4f',

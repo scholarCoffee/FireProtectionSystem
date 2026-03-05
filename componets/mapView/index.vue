@@ -701,27 +701,8 @@ export default {
       const parts = [];
       // 如果是队站辖区，显示编号
       if (location.type === 3 && location.addressId) {
-        // 判断是全景云还是消火栓
-        const district = locationTabList.find(item => item.type === 3);
-        const keywordOption = district?.keywordOptions?.find(opt => opt.value === location.keywordType);
-        // const category = keywordOption?.category || '';
-        
         // 显示编号（全景云编号或消火栓编号）
         parts.push(`${location.addressId}`);
-        
-        // 消火栓显示性能参数
-        // if (category === 'hydrant') {
-        //   const pressure = location.hydrantPressure || '';
-        //   const flow = location.hydrantFlow || '';
-        //   if (pressure || flow) {
-        //     const paramParts = [];
-        //     if (pressure) paramParts.push(`压力:${pressure}mpa`);
-        //     if (flow) paramParts.push(`流量:${flow}L/s`);
-        //     if (paramParts.length > 0) {
-        //       parts.push(paramParts.join(' '));
-        //     }
-        //   }
-        // }
       } else {
         parts.push(location.addressName);
       }
@@ -738,8 +719,17 @@ export default {
         const category = keywordOption?.category || '';
         
         if (category === 'hydrant') {
-          // 消火栓图标
-          return this.serverUrl + '/static/icons/map/hydrant.png';
+          // 消火栓：根据空闲状态切换不同图标
+          // idleStatus: true(或未设置) = 空闲，false = 非空闲
+          const isIdle = location.idleStatus === undefined || location.idleStatus === null
+            ? true
+            : !!location.idleStatus;
+          // 约定：
+          // - 空闲：绿色消火栓图标  /static/icons/map/hydrant.png
+          // - 非空闲：红色消火栓图标 /static/icons/map/hydrant-danger.png
+          return this.serverUrl + (isIdle
+            ? '/static/icons/map/hydrant.png'
+            : '/static/icons/map/hydrant-danger.png');
         } else if (category === 'panorama') {
           // 全景云/森林图标
           return this.serverUrl + '/static/icons/map/forset.png';
@@ -765,8 +755,11 @@ export default {
         const category = keywordOption?.category || '';
         
         if (category === 'hydrant') {
-          // 消火栓：绿色边框
-          return '#52c41a';
+          // 消火栓：空闲=绿色边框，非空闲=红色边框
+          const isIdle = location.idleStatus === undefined || location.idleStatus === null
+            ? true
+            : !!location.idleStatus;
+          return isIdle ? '#52c41a' : '#ff4d4f';
         } else if (category === 'panorama') {
           // 森林（全景云）：红色边框
           return '#ff4d4f';

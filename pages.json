@@ -87,7 +87,7 @@
         {
             "path": "pages/data/fireQuery/index",
             "style": {
-                "navigationBarTitleText": "火灾情况查询"
+                "navigationBarTitleText": "火场动态查询"
             }
         },
         {

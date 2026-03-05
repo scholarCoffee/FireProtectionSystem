@@ -66,9 +66,19 @@
         </picker>
       </view>
       
+      <!-- 队站辖区时，空闲状态（仅消火栓类型显示） -->
+      <view class="form-item" v-if="formData.type === 3 && isHydrant">
+        <text class="form-label">空闲状态</text>
+        <view class="address-mode-switch">
+          <view class="switch-wrapper">
+            <switch :checked="formData.idleStatus !== false" color="#1890ff" @change="toggleIdleStatus" />
+          </view>
+        </view>
+      </view>
+      
       <!-- 队站辖区时，地址选择方式切换 -->
       <view class="form-item" v-if="formData.type === 3">
-        <text class="form-label">选择方式</text>
+        <text class="form-label">经纬度选择</text>
         <view class="address-mode-switch">
           <view class="switch-wrapper">
             <switch :checked="useCoordinateInput" color="#1890ff" @change="toggleAddressMode" />
@@ -613,8 +623,8 @@
           addressExt: '',
           addressId: '',
           allSenceLink: '',
-          type: 1,
-          keywordType: '',
+          type: 3,
+          keywordType: "yushanCityHydrant",
           description: '',
           ownerInfo: {
             total: 0,
@@ -628,7 +638,9 @@
           defaultImg: '',
           // 消火栓性能参数
           hydrantPressure: '0.05',
-          hydrantFlow: '10'
+          hydrantFlow: '10',
+          // 空闲状态（默认：空闲）
+          idleStatus: true
         },
         errors: {},
         tempAllSenceLink: '', // 临时存储全景云地址（用于弹窗编辑）
@@ -641,7 +653,7 @@
         locationTypeOptions: [], // 单位类型选项
         // 队站辖区关键字选项
         keywordOptions: [],
-        keywordPickerIndex: 0,
+        keywordPickerIndex: 3,
         // 消防单位相关
         fireUnitOptions: [],
         selectedFireUnit: null,
@@ -688,10 +700,20 @@
         : []
       // 过滤掉"全部"选项
       this.keywordOptions = allKeywords.filter(item => item.value !== 'all')
-      // 默认关键字：虞山森林-全景云
-      if (!this.formData.keywordType) {
-        const defaultKeyword = this.keywordOptions.find(item => item.value === 'yushanForestPanorama')
+      // 如果关键字为空，默认设置为"虞山城区-消火栓"
+      if (!this.formData.keywordType && this.formData.type === 3) {
+        const defaultKeyword = this.keywordOptions.find(item => item.value === 'yushanCityHydrant')
         this.formData.keywordType = defaultKeyword ? defaultKeyword.value : (this.keywordOptions[0]?.value || '')
+        // 设置关键字选择器索引
+        const defaultIdx = this.keywordOptions.findIndex(o => String(o.value) === String(this.formData.keywordType))
+        this.keywordPickerIndex = defaultIdx >= 0 ? defaultIdx : 0
+        // 如果是消火栓类型，确保空闲状态有默认值
+        const selectedKeyword = this.keywordOptions[defaultIdx >= 0 ? defaultIdx : 0]
+        if (selectedKeyword && selectedKeyword.category === 'hydrant') {
+          if (this.formData.idleStatus === undefined || this.formData.idleStatus === null) {
+            this.formData.idleStatus = true
+          }
+        }
       }
       this.setFormData(this.initialData)
       // 重点单位下拉：预加载消防单位
@@ -743,7 +765,7 @@
       getKeywordLabel() {
         if (!Array.isArray(this.keywordOptions) || this.keywordOptions.length === 0) return ''
         const found = this.keywordOptions.find(o => String(o.value) === String(this.formData.keywordType))
-        return found ? found.label : (this.keywordOptions[0]?.label || '')
+        return found ? found.label : (this.keywordOptions[3]?.label || '')
       },
       // 判断当前关键字类型是全景云还是消火栓
       currentKeywordCategory() {
@@ -781,7 +803,9 @@
           longitude: this.formData.longitude || null,
           keywordType: this.formData.keywordType || 'all',
           // 提交完整地址
-          allSenceLink: allSenceLink
+          allSenceLink: allSenceLink,
+          // 确保空闲状态被包含（仅消火栓类型）
+          idleStatus: this.formData.type === 3 && this.isHydrant ? (this.formData.idleStatus !== false) : undefined
         } 
       },
       setFormData(data = {}) {
@@ -800,15 +824,18 @@
           if (this.formData.type === 3) {
             const incomingKeyword = data.keywordType || this.formData.keywordType
             const idx = this.keywordOptions.findIndex(o => String(o.value) === String(incomingKeyword))
+            let selectedKeyword = null
             if (idx >= 0) {
               this.formData.keywordType = this.keywordOptions[idx].value
               this.keywordPickerIndex = idx
+              selectedKeyword = this.keywordOptions[idx]
             } else {
-              // 默认选择"虞山森林-全景云"
-              const defaultKeyword = this.keywordOptions.find(item => item.value === 'yushanForestPanorama')
+              // 默认选择"虞山城区-消火栓"
+              const defaultKeyword = this.keywordOptions.find(item => item.value === 'yushanCityHydrant')
               this.formData.keywordType = defaultKeyword ? defaultKeyword.value : (this.keywordOptions[0]?.value || '')
               const defaultIdx = this.keywordOptions.findIndex(o => String(o.value) === String(this.formData.keywordType))
               this.keywordPickerIndex = defaultIdx >= 0 ? defaultIdx : 0
+              selectedKeyword = this.keywordOptions[defaultIdx >= 0 ? defaultIdx : 0]
             }
             // 如果有经纬度，同步到临时输入框
             if (data.latitude) {
@@ -816,6 +843,16 @@
             }
             if (data.longitude) {
               this.tempLongitude = String(data.longitude)
+            }
+            // 处理空闲状态回填（消火栓类型）
+            // 直接根据关键字选项判断，不依赖计算属性
+            if (selectedKeyword && selectedKeyword.category === 'hydrant') {
+              if (data.idleStatus !== undefined) {
+                this.formData.idleStatus = data.idleStatus !== false
+              } else if (this.formData.idleStatus === undefined || this.formData.idleStatus === null) {
+                // 如果是消火栓类型但没有传入空闲状态，默认设为空闲
+                this.formData.idleStatus = true
+              }
             }
           }
           // 从 location/detail 返回的 ownerInfo 节点回填住户总数
@@ -830,6 +867,8 @@
           this.residentCount = 0
           this.tempLatitude = ''
           this.tempLongitude = ''
+          // 重置空闲状态为默认值（空闲）
+          this.formData.idleStatus = true
         }
       },
       validate() {
@@ -980,16 +1019,23 @@
         const idx = Number(e?.detail?.value || 0)
         this.keywordPickerIndex = idx
         const opt = this.keywordOptions[idx] || this.keywordOptions[0]
-        this.formData.keywordType = opt ? opt.value : ''
+        // 使用 $set 确保响应式更新
+        this.$set(this.formData, 'keywordType', opt ? opt.value : '')
         // 切换关键字类型时，清空相关字段
         if (opt && opt.category === 'panorama') {
           // 切换到全景云，清空消火栓相关字段
-          this.formData.hydrantPressure = ''
-          this.formData.hydrantFlow = ''
+          this.$set(this.formData, 'hydrantPressure', '')
+          this.$set(this.formData, 'hydrantFlow', '')
         } else if (opt && opt.category === 'hydrant') {
           // 切换到消火栓，清空全景云地址
-          this.formData.allSenceLink = ''
+          this.$set(this.formData, 'allSenceLink', '')
+          // 确保空闲状态有默认值（空闲）
+          if (this.formData.idleStatus === undefined || this.formData.idleStatus === null) {
+            this.$set(this.formData, 'idleStatus', true)
         }
+        }
+        // 强制更新视图，确保计算属性重新计算
+        this.$forceUpdate()
       },
       // 住户数量从 location/detail 接口的 ownerInfo 节点回填
       // 跳转户主编辑页
@@ -1021,12 +1067,19 @@
           // 切换到队站辖区（type=3）时，确保关键字有默认值与索引（按 value 匹配）
           if (newType === 3) {
             if (!this.formData.keywordType) {
-              // 默认选择"虞山森林-全景云"
-              const defaultKeyword = this.keywordOptions.find(item => item.value === 'yushanForestPanorama')
+              // 默认选择"虞山城区-消火栓"
+              const defaultKeyword = this.keywordOptions.find(item => item.value === 'yushanCityHydrant')
               this.formData.keywordType = defaultKeyword ? defaultKeyword.value : (this.keywordOptions[0]?.value || '')
             }
             const idx = this.keywordOptions.findIndex(o => String(o.value) === String(this.formData.keywordType))
             this.keywordPickerIndex = idx >= 0 ? idx : 0
+            // 如果是消火栓类型，确保空闲状态有默认值
+            const selectedKeyword = this.keywordOptions[idx >= 0 ? idx : 0]
+            if (selectedKeyword && selectedKeyword.category === 'hydrant') {
+              if (this.formData.idleStatus === undefined || this.formData.idleStatus === null) {
+                this.$set(this.formData, 'idleStatus', true)
+              }
+            }
           }
         }
         this.$set(this.formData, 'type', newType)
@@ -1592,6 +1645,11 @@
             icon: 'none'
           });
         }
+      },
+      
+      // 切换空闲状态（消火栓类型）
+      toggleIdleStatus(e) {
+        this.formData.idleStatus = e.detail.value !== false;
       },
       
       // 切换地址选择方式（队站辖区）

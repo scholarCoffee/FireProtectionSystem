@@ -25,7 +25,7 @@
           </view>
           <view class="message-content">
             <view class="message-bubble">
-              <text class="message-text">您好！我是消防AI助手小贝，专注于消防安全知识普及和应急指导。我可以为您解答火灾预防、逃生技巧、消防设备使用等各类消防安全问题。请问有什么可以帮助您的吗？</text>
+              <text class="message-text">您好！我是消防AI助手小贝，专注于消防安全知识普及和应急指导。我可以为您解答火场预防、逃生技巧、消防设备使用等各类消防安全问题。请问有什么可以帮助您的吗？</text>
             </view>
             <text class="message-time">{{ getCurrentTime() }}</text>
           </view>

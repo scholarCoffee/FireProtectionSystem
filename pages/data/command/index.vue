@@ -27,8 +27,8 @@ export default {
             serverUrl: 'https://www.xiaobei.space',
             commndList: [
                 { title: '户主反馈查询', desc: '查询住户信息', icon: 'analysis', url: '' },
-                { title: '火灾情况上传', desc: '上报现场火灾情况', icon: 'report', url: '' },
-                { title: '火灾情况查询', desc: '查看火灾信息记录', icon: 'device', url: '' },
+                { title: '火场动态上传', desc: '上报现场火场情况', icon: 'report', url: '' },
+                { title: '火场动态查询', desc: '查看火场信息记录', icon: 'device', url: '' },
                 { title: '增援动态查询', desc: '查看增援情况', icon: 'analysis', url: '' }
             ]
         }
@@ -88,11 +88,11 @@ export default {
         },
         onCommandItemClick(item) {
             const title = item?.title || ''
-            if (title === '火灾情况上传') {
+            if (title === '火场动态上传') {
                 uni.navigateTo({ url: '/pages/data/fireUpload/index' })
                 return
             }
-            if (title === '火灾情况查询') {
+            if (title === '火场动态查询') {
                 uni.navigateTo({ url: '/pages/data/fireQuery/index' })
                 return
             }

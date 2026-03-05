@@ -67,6 +67,19 @@
               <view class="info-value">{{ getKeywordLabel() }}</view>
             </view>
             
+            <!-- 空闲状态（仅消火栓类型显示） -->
+            <view class="info-row idle-status-row" v-if="isHydrant()">
+              <view class="info-label">空闲</view>
+              <view class="idle-status-switch">
+                <switch 
+                  :checked="idleStatusValue" 
+                  color="#1890ff" 
+                  @change="toggleIdleStatus"
+                  :disabled="updatingIdleStatus"
+                />
+              </view>
+            </view>
+            
             <!-- 编号 -->
             <view class="info-row" v-if="locationObj.addressId">
               <view class="info-label">{{ getNumberLabel() }}</view>
@@ -271,7 +284,7 @@ export default {
       currentImageIndex: 0, // 当前图片索引
       showCustomModal: false, // 控制自定义弹窗显示
       modalContent: '', // 弹窗内容
-      serverUrl: 'https://www.xiaobei.space',
+      serverUrl: 'http://2.0.0.1:3000',
       isShowHeaderImage: true,
       scrollTop: 0, // 滚动位置
       isAnyVideoFullscreen: false,
@@ -281,6 +294,8 @@ export default {
       // 图片放大相关
       showImageZoom: false, // 控制图片放大弹窗显示
       zoomedImageUrl: '', // 放大的图片URL
+      // 空闲状态更新相关
+      updatingIdleStatus: false, // 是否正在更新空闲状态
     };
   },
   onLoad(data) {
@@ -308,6 +323,16 @@ export default {
       
       const deployment = this.locationObj.fireUnitDeploymentMap.find(item => String(item.key) === String(selectedUnit.value))
       return deployment && deployment.data ? [deployment.data] : []
+    },
+    // 获取空闲状态值（确保有默认值）
+    idleStatusValue() {
+      // 如果是消火栓类型，返回空闲状态，未定义时默认为 true（空闲）
+      if (this.isHydrant()) {
+        return this.locationObj.idleStatus !== undefined && this.locationObj.idleStatus !== null 
+          ? this.locationObj.idleStatus !== false 
+          : true;
+      }
+      return false;
     }
   },
   methods: {
@@ -319,6 +344,13 @@ export default {
         success: (res) => {
           if (res.data && res.data.code === 200) {
             this.locationObj = res.data.data || {};
+            // 使用 $nextTick 确保数据更新后再判断
+            this.$nextTick(() => {
+              // 如果是消火栓类型且没有空闲状态字段，设置默认值为 true（空闲）
+              if (this.isHydrant() && (this.locationObj.idleStatus === undefined || this.locationObj.idleStatus === null)) {
+                this.$set(this.locationObj, 'idleStatus', true);
+              }
+            });
           } else {
             this.locationObj = {};
             uni.showToast({ title: '获取详情失败', icon: 'none' });
@@ -667,6 +699,65 @@ export default {
           uni.showToast({ title: '跳转失败', icon: 'none' });
         }
       });
+    },
+    
+    // 切换空闲状态
+    async toggleIdleStatus(e) {
+      if (this.updatingIdleStatus) return;
+      
+      const newStatus = e.detail.value !== false;
+      // 保存原始状态值（用于错误恢复）
+      const oldStatusValue = this.locationObj.idleStatus !== undefined && this.locationObj.idleStatus !== null 
+        ? this.locationObj.idleStatus 
+        : true; // 默认值为 true（空闲）
+      const oldStatus = this.idleStatusValue;
+      
+      // 如果状态没有变化，直接返回
+      if (newStatus === oldStatus) return;
+      
+      this.updatingIdleStatus = true;
+      
+      try {
+        const res = await new Promise((resolve, reject) => {
+          uni.request({
+            url: this.serverUrl + '/location/updateIdleStatus',
+            method: 'POST',
+            data: {
+              addressId: this.addressId,
+              idleStatus: newStatus
+            },
+            success: resolve,
+            fail: reject
+          });
+        });
+        
+        if (res.data && res.data.code === 200) {
+          // 更新本地状态
+          this.$set(this.locationObj, 'idleStatus', newStatus);
+          uni.showToast({
+            title: newStatus ? '已设置为空闲' : '已设置为使用中',
+            icon: 'success',
+            duration: 1500
+          });
+        } else {
+          // 恢复原状态
+          this.$set(this.locationObj, 'idleStatus', oldStatusValue);
+          uni.showToast({
+            title: res.data?.msg || '更新失败',
+            icon: 'none'
+          });
+        }
+      } catch (error) {
+        console.error('更新空闲状态失败:', error);
+        // 恢复原状态
+        this.$set(this.locationObj, 'idleStatus', oldStatusValue);
+        uni.showToast({
+          title: '网络错误，请重试',
+          icon: 'none'
+        });
+      } finally {
+        this.updatingIdleStatus = false;
+      }
     },
     
   }
@@ -1635,6 +1726,26 @@ export default {
   font-size: 14px;
   color: #333;
   font-weight: 600;
+}
+
+/* 空闲状态行样式 */
+.idle-status-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 0;
+  border-bottom: 1px solid #e8e8e8;
+}
+
+.idle-status-switch {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex: 1;
+}
+
+.idle-status-switch switch {
+  transform: scale(0.9);
 }
 
 </style>

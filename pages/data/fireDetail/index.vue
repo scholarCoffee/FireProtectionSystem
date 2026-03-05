@@ -541,7 +541,7 @@ export default {
     // 完成任务
     async finishRescue() {
       try {
-        const addressName = this.detail.addressName || '该火灾情况'
+        const addressName = this.detail.addressName || '该火场情况'
         const confirmResult = await new Promise((resolve) => {
           uni.showModal({
             title: '确认完成任务',
@@ -633,7 +633,7 @@ export default {
     // 撤回支援
     async cancelSupport() {
       try {
-        const addressName = this.detail.addressName || '该火灾情况'
+        const addressName = this.detail.addressName || '该火场情况'
         const confirmResult = await new Promise((resolve) => {
           uni.showModal({
             title: '确认撤回支援',
@@ -672,13 +672,13 @@ export default {
         uni.showToast({ title: '操作失败', icon: 'none' })
       }
     },
-    // 删除火灾情况
+    // 删除火场情况
     async deleteFireSituation() {
       try {
         const confirmResult = await new Promise((resolve) => {
           uni.showModal({
             title: '确认删除',
-            content: '确定要删除这个火灾情况吗？删除后无法恢复。',
+            content: '确定要删除这个火场情况吗？删除后无法恢复。',
             success: (res) => resolve(res.confirm),
             fail: () => resolve(false)
           })
