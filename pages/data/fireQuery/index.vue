@@ -634,8 +634,8 @@ export default {
         return '100%'
       }
       if (taskStatus == 2) {
-        // 救援中 - 第一段填满，第二段不填
-        return segment === 1 ? '100%' : '0%'
+        // 救援中 - 第一段显示一半，第二段不填
+        return segment === 1 ? '50%' : '0%'
       }
       return '0%'
     },
