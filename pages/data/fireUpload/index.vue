@@ -263,6 +263,15 @@
                   </view>
                 </template>
 
+                <!-- 任务位置（选择车辆后显示） -->
+                <view class="config-section" v-if="taskGroup.cars && taskGroup.cars.length > 0">
+                  <text class="config-label">任务位置</text>
+                  <view class="task-location-selector" :class="{ 'disabled': isChangeTask && unit.unitStatus === 'support' }" @tap="openTaskLocationSelector(taskGroup)">
+                    <text class="task-location-text" :class="{'placeholder':!getTaskLocationText(taskGroup)}">{{ getTaskLocationText(taskGroup) || '请选择任务位置' }}</text>
+                    <image v-if="!(isChangeTask && unit.unitStatus === 'support')" :src="serverUrl + '/static/icons/location/showLocation.png'" class="map-icon-small" />
+                  </view>
+                </view>
+
                 <!-- 共用字段：层数、方位、描述 -->
                 <template v-if="shouldShowFloor(taskGroup) || shouldShowDirection(taskGroup) || shouldShowDescription(taskGroup)">
                   <!-- 层数和方位在同一行 -->
@@ -478,7 +487,8 @@ export default {
       lastRecordData: null, // 上一次记录的数据
       supportContent: '', // 支援信息
       initData: {}, // 初始数据
-      showExistingUnits: false // 是否展开已有救援单位（默认缩回）
+      showExistingUnits: false, // 是否展开已有救援单位（默认缩回）
+      currentTaskGroupForLocation: null // 当前选择任务位置的任务组
     }
   },
   computed: {
@@ -747,7 +757,9 @@ export default {
                   // 排烟任务特殊字段（优先从taskGroup获取，否则从taskExtra获取）
                   smokePower: taskGroup.smokePower || taskExtra.smokePower || '',
                   // 供水任务和排烟任务特殊字段
-                  targetCars: []
+                  targetCars: [],
+                  // 任务位置信息
+                  taskLocation: taskGroup.taskLocation || null
                 }
                 
                 // 处理供水任务的目标车辆
@@ -2252,6 +2264,90 @@ export default {
       // 更新表单数据
       this.updateFormData()
     },
+    // 打开任务位置选择器
+    openTaskLocationSelector(taskGroup) {
+      // 如果是变更任务场景，检查当前单位是否是支援单位
+      if (this.isChangeTask) {
+        const unit = this.selectedUnits.find(u => u.taskGroups && u.taskGroups.includes(taskGroup))
+        if (unit && unit.unitStatus === 'support') {
+          uni.showToast({ title: '变更任务场景下无法修改支援单位内容', icon: 'none' })
+          return
+        }
+      }
+      
+      // 检查是否已选择车辆
+      if (!taskGroup.cars || taskGroup.cars.length === 0) {
+        uni.showToast({ title: '请先选择参战车辆', icon: 'none' })
+        return
+      }
+      
+      // 保存当前任务组，用于回调
+      this.currentTaskGroupForLocation = taskGroup
+      
+      // 跳转到地图选择页面
+      uni.navigateTo({
+        url: `/subPackages/locationInfo/mapView/index?enableSatellite=true&mode=select`,
+        success: (res) => {
+          // 页面打开成功，监听页面返回事件
+          res.eventChannel.on('locationSelected', (data) => {
+            this.handleTaskLocationResult(data, taskGroup)
+          })
+        },
+        fail: (err) => {
+          console.error('打开地图页面失败:', err)
+          // 如果跳转失败，回退到原来的选择方式
+          // #ifdef MP-WEIXIN
+          uni.chooseLocation({
+            success: (res) => {
+              this.handleTaskLocationResult(res, taskGroup)
+            },
+            fail: (err) => {
+              console.error('选择位置失败:', err)
+            }
+          })
+          // #endif
+        }
+      })
+    },
+    // 处理任务位置选择结果
+    handleTaskLocationResult(locationData, taskGroup) {
+      if (locationData && locationData.latitude && locationData.longitude) {
+        // 初始化任务位置信息
+        if (!taskGroup.taskLocation) {
+          this.$set(taskGroup, 'taskLocation', {})
+        }
+        
+        // 保存位置信息
+        this.$set(taskGroup.taskLocation, 'latitude', locationData.latitude)
+        this.$set(taskGroup.taskLocation, 'longitude', locationData.longitude)
+        this.$set(taskGroup.taskLocation, 'addressName', locationData.name || '')
+        this.$set(taskGroup.taskLocation, 'address', locationData.address || '')
+        
+        // 更新表单数据
+        this.updateFormData()
+        this.$forceUpdate()
+        
+        uni.showToast({
+          title: '任务位置已设置',
+          icon: 'success'
+        })
+      } else {
+        uni.showToast({
+          title: '您未选择位置，请重新选择',
+          icon: 'none'
+        })
+      }
+      
+      // 清空当前任务组引用
+      this.currentTaskGroupForLocation = null
+    },
+    // 获取任务位置显示文本
+    getTaskLocationText(taskGroup) {
+      if (!taskGroup || !taskGroup.taskLocation || !taskGroup.taskLocation.addressName) {
+        return ''
+      }
+      return taskGroup.taskLocation.addressName
+    },
     // 更新表单数据
     updateFormData() {
       this.formData.assignedUnits = this.selectedUnits.map(unit => ({
@@ -2276,7 +2372,9 @@ export default {
               carName: car.label
             })), // 目标车辆（供水任务）
             taskType: taskGroup.taskType || '',
-            taskExtra: taskGroup.taskExtra || {}
+            taskExtra: taskGroup.taskExtra || {},
+            // 任务位置信息
+            taskLocation: taskGroup.taskLocation || null
           }
           
           // 供水任务：添加目标中队（单选）
@@ -2976,6 +3074,12 @@ export default {
 .car-selector:active { background: #e6f7ff; border-color: #f0f8ff; }
 .car-selector.disabled { background: #fafafa; border-color: #e8e8e8; opacity: 0.6; pointer-events: none; }
 .car-text { font-size: 26rpx; color: #333; }
+.task-location-selector { display: flex; align-items: center; justify-content: space-between; height: 64rpx; padding: 0 16rpx; background: #f0f8ff; border-radius: 8rpx; border: 1rpx solid #f0f8ff; margin-top: 12rpx; transition: all 0.2s; }
+.task-location-selector:active { background: #e6f7ff; border-color: #f0f8ff; }
+.task-location-selector.disabled { background: #fafafa; border-color: #e8e8e8; opacity: 0.6; pointer-events: none; }
+.task-location-text { font-size: 26rpx; color: #333; flex: 1; }
+.task-location-text.placeholder { color: #999; }
+.map-icon-small { width: 28rpx; height: 28rpx; opacity: 0.7; flex-shrink: 0; }
 .force-options { display: flex; flex-wrap: wrap; gap: 8rpx; width: 100%; margin-top: 12rpx; }
 .force-option { display: flex; align-items: center; justify-content: center; padding: 10rpx 16rpx; border: 1rpx solid #f0f8ff; border-radius: 8rpx; background: #f0f8ff; transition: background .2s, border-color .2s, color .2s; flex: 1; min-width: 0; height: 64rpx; box-sizing: border-box; }
 .force-option:active { background: #e6f7ff; }

@@ -107,6 +107,18 @@
             "style": {
                 "navigationBarTitleText": "救援详情"
             }
+        },
+        {
+            "path": "pages/data/mapCombat/index",
+            "style": {
+                "navigationBarTitleText": "地图作战列表"
+            }
+        },
+        {
+            "path": "pages/data/mapCombatMap/index",
+            "style": {
+                "navigationBarTitleText": "地图作战位置"
+            }
         }
     ],
     "subPackages": [

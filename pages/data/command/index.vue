@@ -26,10 +26,11 @@ export default {
         return {
             serverUrl: 'https://www.xiaobei.space',
             commndList: [
-                { title: '户主反馈查询', desc: '查询住户信息', icon: 'analysis', url: '' },
+                { title: '地图作战列表', desc: '查看地图作战信息', icon: 'device', url: '' },
                 { title: '火场动态上传', desc: '上报现场火场情况', icon: 'report', url: '' },
                 { title: '火场动态查询', desc: '查看火场信息记录', icon: 'device', url: '' },
-                { title: '增援动态查询', desc: '查看增援情况', icon: 'analysis', url: '' }
+                { title: '增援动态查询', desc: '查看增援情况', icon: 'analysis', url: '' },
+                { title: '户主反馈查询', desc: '查询住户信息', icon: 'analysis', url: '' }
             ]
         }
     },
@@ -102,6 +103,10 @@ export default {
             }
             if (title === '户主反馈查询') {
                 uni.navigateTo({ url: `/pages/personal/userDetail/OwnerInfo?mode=query` })
+                return
+            }
+            if (title === '地图作战列表') {
+                uni.navigateTo({ url: '/pages/data/mapCombat/index' })
                 return
             }
             this.goToWebviewByUrl(item?.url, item?.title)

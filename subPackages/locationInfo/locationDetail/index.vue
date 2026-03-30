@@ -284,7 +284,7 @@ export default {
       currentImageIndex: 0, // 当前图片索引
       showCustomModal: false, // 控制自定义弹窗显示
       modalContent: '', // 弹窗内容
-      serverUrl: 'http://2.0.0.1:3000',
+      serverUrl: 'https://www.xiaobei.space',
       isShowHeaderImage: true,
       scrollTop: 0, // 滚动位置
       isAnyVideoFullscreen: false,
